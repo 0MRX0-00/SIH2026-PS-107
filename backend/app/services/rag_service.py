@@ -52,31 +52,187 @@ class RAGService:
     def resolve_conversational_query(
         self,
         current_query: str,
-        history: Optional[List[ChatMessageInput]] = None
+        history: Optional[List[ChatMessageInput]] = None,
+        language: str = "en"
     ) -> str:
         """
-        Combines short clarification responses with prior turn context to resolve the full user intent.
-        Example:
-          Turn 1 (User): "I want to start a water bottle business"
-          Turn 2 (User): "Stainless steel"
-          Resolved: "I want to start a water bottle business - Stainless steel"
+        Determines whether the current message is:
+        1. A clarification option selection (numeric '1'/'2'/'3'/'4', or text like 'lead acid')
+        2. A genuine anaphoric follow-up (e.g. 'what about clause 5?')
+        3. A brand new independent topic (e.g. 'I want to manufacture batteries' after plugs query)
+        
+        Guarantees zero conversation contamination, resolves clarification options to unambiguous product queries,
+        and cleanly discards stale clarification state upon topic switch.
         """
-        if not history or len(current_query.split()) > 6:
+        if not history:
             return current_query
 
+        norm_curr = current_query.strip()
+        norm_curr_lower = norm_curr.lower()
+
+        # Find the last assistant message and last user message
+        last_assistant_msg = None
         last_user_msg = None
         for turn in reversed(history):
             role = getattr(turn, "role", "") or (turn.get("role") if isinstance(turn, dict) else "")
-            if role.lower() == "user":
-                content = getattr(turn, "content", "") or (turn.get("content") if isinstance(turn, dict) else "")
+            content = getattr(turn, "content", "") or (turn.get("content") if isinstance(turn, dict) else "")
+            if role.lower() == "assistant" and last_assistant_msg is None:
+                last_assistant_msg = content.strip()
+            elif role.lower() == "user" and last_user_msg is None:
                 last_user_msg = content.strip()
-                break
 
-        if not last_user_msg or len(last_user_msg.split()) <= 1:
-            return current_query
+        # Check if the last assistant message presented clarification options
+        is_pending_clarification = False
+        pending_options: List[str] = []
+        if last_assistant_msg:
+            import re
+            # Extract numbered options e.g. "1. Packaged drinking water..." or "1. Lithium-ion..."
+            found_options = re.findall(r"(?:^|\n)\s*(\d+\.\s+[^\n]+)", last_assistant_msg)
+            if found_options:
+                is_pending_clarification = True
+                pending_options = [opt.strip() for opt in found_options]
+            elif any(q_marker in last_assistant_msg.lower() for q_marker in [
+                "which specific product", "what type of battery", "which category of", "what type of four-wheeler",
+                "which type of electric fan", "please select", "please specify your product"
+            ]):
+                is_pending_clarification = True
 
-        # Combine turns if current input is a short follow-up
-        return f"{last_user_msg} - {current_query}"
+        # Case A: Handling pending clarification
+        if is_pending_clarification:
+            # Check if current input is a direct topic switch (e.g. user abandons clarification and asks something new)
+            topic_switch_starters = [
+                "what is", "what bis", "which standard", "how to", "tell me about", "where is",
+                "actually", "never mind", "cancel", "hello", "hi", "namaste", "vanakkam", "help"
+            ]
+            has_independent_intent = any(norm_curr_lower.startswith(starter) for starter in topic_switch_starters)
+            if has_independent_intent and not any(f"option {i}" in norm_curr_lower or norm_curr_lower.startswith(f"{i}") for i in range(1, 10)):
+                # Topic switch detected: discard old clarification and process current query independently
+                logger.info(f"Topic switch detected during clarification: '{norm_curr}'. Discarding old clarification.")
+                return norm_curr
+
+            # 1. Numeric selection: e.g. "1", "2", "3", "4", "option 3", "#3", "3.", "3. Lead-acid..."
+            import re
+            num_match = re.match(r"^(?:option\s+|#)?(\d+)(?:\.|\b|\s)", norm_curr_lower)
+            if num_match:
+                opt_idx = int(num_match.group(1)) - 1
+                if pending_options and 0 <= opt_idx < len(pending_options):
+                    selected_text = pending_options[opt_idx]
+                    clean_opt = re.sub(r"^\d+\.\s*", "", selected_text).strip()
+                    logger.info(f"Resolved numeric clarification option {opt_idx + 1}: '{clean_opt}'")
+                    return clean_opt
+
+            # 2. Text keyword match against pending options
+            if pending_options:
+                for opt in pending_options:
+                    clean_opt = re.sub(r"^\d+\.\s*", "", opt).strip().lower()
+                    # Check if user query matches key segments of the option
+                    opt_words = [w for w in re.findall(r'\b\w+\b', clean_opt) if len(w) > 3]
+                    matched_words = [w for w in opt_words if w in norm_curr_lower]
+                    if len(matched_words) >= 2 or (len(opt_words) > 0 and len(matched_words) == len(opt_words)):
+                        logger.info(f"Resolved text clarification option: '{opt}'")
+                        return re.sub(r"^\d+\.\s*", "", opt).strip()
+
+            # 3. Known domain keyword match when options were presented
+            domain_specific_mappings = {
+                # Battery subtypes
+                "lithium": "Lithium-ion secondary cells and batteries for portable electronics (IS 16046 / Scheme-II CRS)",
+                "ev": "Lithium-ion traction battery packs for Electric Vehicles (AIS 038 / IS 16046-2)",
+                "lead acid": "Lead-acid storage batteries for motor vehicles (IS 7372 / IS 14257)",
+                "lead-acid": "Lead-acid storage batteries for motor vehicles (IS 7372 / IS 14257)",
+                "automotive": "Lead-acid storage batteries for motor vehicles (IS 7372 / IS 14257)",
+                "inverter": "Inverter and solar stationary lead-acid batteries (IS 13369 / IS 1651)",
+                "solar": "Inverter and solar stationary lead-acid batteries (IS 13369 / IS 1651)",
+                # Fan subtypes
+                "ceiling": "Electric ceiling type fans (IS 17803:2022)",
+                "bldc": "BLDC energy-efficient ceiling fans (IS 17803:2022)",
+                "table": "Table and pedestal fans (IS 555)",
+                "exhaust": "Industrial exhaust fans (IS 2312)",
+                # Water bottle subtypes
+                "packaged": "Packaged drinking water (IS 14543:2016)",
+                "drinking water": "Packaged drinking water (IS 14543:2016)",
+                "stainless steel": "Stainless steel water bottles and vacuum flasks (IS 17526:2021)",
+                "vacuum": "Stainless steel vacuum flasks (IS 17526:2021)",
+                "plastic": "Plastic reusable water bottles (IS 17526 / IS 15410)"
+            }
+            for kw, resolved_spec in domain_specific_mappings.items():
+                if kw in norm_curr_lower:
+                    logger.info(f"Resolved clarification keyword '{kw}' to '{resolved_spec}'")
+                    return resolved_spec
+
+            # If short sub-specification without matching preset options, combine with user topic
+            if len(norm_curr.split()) <= 6 and last_user_msg:
+                return f"{last_user_msg} - {norm_curr}"
+
+        # Case B: No pending clarification
+        # Check if the query is an anaphoric follow-up needing the immediately preceding product context
+        anaphoric_follow_ups = [
+            "what standard applies to my product", "what standard applies", "which standard applies",
+            "what documents do i need", "what documents are required", "what is the process",
+            "is this mandatory", "is it mandatory", "what is the fee", "what about clause",
+            "clause", "section", "table"
+        ]
+        is_anaphoric = any(phrase in norm_curr_lower for phrase in anaphoric_follow_ups)
+
+        if is_anaphoric and last_user_msg:
+            # Check if last user message had a specific product or standard
+            import re
+            is_match = re.search(r'\b(?:IS|IS/IEC)\s*\d+', last_user_msg, re.IGNORECASE)
+            if is_match:
+                return f"{is_match.group(0)}: {norm_curr}"
+            elif len(last_user_msg.split()) <= 8:
+                return f"{last_user_msg} - {norm_curr}"
+
+        # Check for explicit independent starters or standalone queries
+        independent_starters = [
+            "i want to", "we want to", "what is", "what are", "which standard", "tell me",
+            "now tell me", "how to apply", "how do i", "where is", "can i",
+            "hello", "hi", "hey", "namaste", "vanakkam", "bye", "goodbye", "thanks", "thank you"
+        ]
+        if any(norm_curr_lower.startswith(s) for s in independent_starters) or len(norm_curr.split()) >= 3:
+            # Independent query: Process solely on current message, strictly ZERO history concatenation!
+            return norm_curr
+
+        return norm_curr
+
+    def _log_query_trace(
+        self,
+        query: str,
+        detected_lang: str,
+        intent_result: IntentAnalysisResult,
+        retrieval_triggered: bool,
+        retrieved_docs: List[Any],
+        reranked_chunks: List[Any],
+        citations: List[Any],
+        answer_type: str,
+    ):
+        """Structured internal query trace logging as specified in Section 18."""
+        try:
+            import json
+            trace_payload = {
+                "query": query,
+                "detected_language": detected_lang,
+                "intent": intent_result.intent.value,
+                "entities": intent_result.extracted_entities,
+                "ambiguity_score": 1.0 if intent_result.intent == UserIntent.CLARIFICATION_REQUIRED else 0.0,
+                "query_sufficient": intent_result.intent != UserIntent.CLARIFICATION_REQUIRED,
+                "retrieval_triggered": retrieval_triggered,
+                "retrieved_documents": [
+                    getattr(doc, "standard_number", str(doc)) for doc in retrieved_docs
+                ],
+                "retrieval_scores": [
+                    getattr(doc, "score", 0.0) for doc in retrieved_docs
+                ],
+                "reranked_documents": [
+                    getattr(chunk, "standard_number", str(chunk)) for chunk in reranked_chunks
+                ],
+                "final_sources": [
+                    getattr(cit, "standard_number", str(cit)) for cit in citations
+                ],
+                "answer_type": answer_type,
+            }
+            logger.info("Query Trace: %s", json.dumps(trace_payload, ensure_ascii=False))
+        except Exception as e:
+            logger.debug(f"Error logging query trace: {e}")
 
     async def answer_query(self, request: ChatRequest) -> ChatResponse:
         """
@@ -92,7 +248,7 @@ class RAGService:
             target_lang = "en"
 
         # 2. Conversational Context Resolution for multi-turn dialogues
-        resolved_query = self.resolve_conversational_query(normalized_query, request.history)
+        resolved_query = self.resolve_conversational_query(normalized_query, request.history, language=target_lang)
 
         # 3. Intent Classification & Ambiguity Detection (Executed BEFORE vector retrieval)
         intent_result: IntentAnalysisResult = self.intent_router.classify_and_route(
@@ -102,6 +258,16 @@ class RAGService:
         # 4. Handle GREETING, GOODBYE, THANKS, HELP (Bypass RAG completely)
         if intent_result.intent in [UserIntent.GREETING, UserIntent.GOODBYE, UserIntent.THANKS, UserIntent.HELP]:
             total_latency_ms = (time.time() - start_time) * 1000
+            self._log_query_trace(
+                query=normalized_query,
+                detected_lang=target_lang,
+                intent_result=intent_result,
+                retrieval_triggered=False,
+                retrieved_docs=[],
+                reranked_chunks=[],
+                citations=[],
+                answer_type=intent_result.intent.value,
+            )
             return ChatResponse(
                 answer=intent_result.conversational_reply or "Namaste! I am e-BIS Sahayak.",
                 citations=[],
@@ -120,6 +286,16 @@ class RAGService:
         # 5. Handle CLARIFICATION_REQUIRED (Underspecified queries like 'water bottle business')
         if intent_result.intent == UserIntent.CLARIFICATION_REQUIRED:
             total_latency_ms = (time.time() - start_time) * 1000
+            self._log_query_trace(
+                query=normalized_query,
+                detected_lang=target_lang,
+                intent_result=intent_result,
+                retrieval_triggered=False,
+                retrieved_docs=[],
+                reranked_chunks=[],
+                citations=[],
+                answer_type="CLARIFICATION",
+            )
             return ChatResponse(
                 answer=intent_result.conversational_reply or intent_result.clarification_questions[0],
                 citations=[],
@@ -138,6 +314,16 @@ class RAGService:
         # 6. Handle OUT_OF_SCOPE queries
         if intent_result.intent == UserIntent.OUT_OF_SCOPE:
             total_latency_ms = (time.time() - start_time) * 1000
+            self._log_query_trace(
+                query=normalized_query,
+                detected_lang=target_lang,
+                intent_result=intent_result,
+                retrieval_triggered=False,
+                retrieved_docs=[],
+                reranked_chunks=[],
+                citations=[],
+                answer_type="OUT_OF_SCOPE",
+            )
             return ChatResponse(
                 answer=intent_result.conversational_reply or "I am e-BIS Sahayak, dedicated to Indian Standards and product compliance.",
                 citations=[],
@@ -173,7 +359,51 @@ class RAGService:
             query=resolved_query,
         )
 
-        # 10. Call Groq service (or deterministic multilingual grounded fallback)
+        # 10. Check evidence sufficiency before invoking LLM (Section 10 & 22)
+        if not context.has_sufficient_evidence or not context.evidence_chunks:
+            insufficient_msg = {
+                "en": (
+                    "I could not find sufficient supporting information in the available "
+                    "Bureau of Indian Standards (BIS) knowledge base to answer this query reliably. "
+                    "Please verify the product specifications or consult the official BIS portal at www.bis.gov.in."
+                ),
+                "hi": (
+                    "उपलब्ध भारतीय मानक ब्यूरो (BIS) ज्ञानकोष में इस प्रश्न का आधिकारिक उत्तर देने के लिए पर्याप्त जानकारी नहीं मिली। "
+                    "कृपया उत्पाद विनिर्देशों की पुष्टि करें या आधिकारिक BIS पोर्टल www.bis.gov.in देखें।"
+                ),
+                "ta": (
+                    "இந்த கேள்விக்கு பதிலளிக்க தேவையான போதுமான ஆதாரங்கள் தற்போதைய இந்திய தரநிலைகள் பணியகம் (BIS) தரவுத்தளத்தில் கிடைக்கவில்லை. "
+                    "தயாரிப்பு விவரங்களை சரிபார்க்கவும் அல்லது அதிகாரப்பூர்வ BIS இணையதளத்தை (www.bis.gov.in) பார்க்கவும்."
+                ),
+            }
+            clean_answer = insufficient_msg.get(target_lang, insufficient_msg["en"])
+            total_latency_ms = (time.time() - start_time) * 1000
+            self._log_query_trace(
+                query=normalized_query,
+                detected_lang=target_lang,
+                intent_result=intent_result,
+                retrieval_triggered=True,
+                retrieved_docs=retrieval_results,
+                reranked_chunks=[],
+                citations=[],
+                answer_type="INSUFFICIENT_EVIDENCE",
+            )
+            return ChatResponse(
+                answer=clean_answer,
+                citations=[],
+                sources_used=0,
+                insufficient_evidence=True,
+                intent=intent_result.intent.value,
+                clarification_needed=False,
+                clarification_options=[],
+                retrieval_triggered=True,
+                conversation_id=request.conversation_id,
+                model="GroundingGuardrail",
+                processing_time_ms=round(total_latency_ms, 2),
+                language=target_lang,
+            )
+
+        # 11. Call Groq service (or deterministic multilingual grounded fallback)
         groq_json, raw_content, groq_latency_ms = await self.groq_service.generate_response(
             query=resolved_query,
             formatted_evidence=context.formatted_context_str,
@@ -187,7 +417,7 @@ class RAGService:
         raw_citations = groq_json.get("citations", [])
         insufficient_evidence = groq_json.get("insufficient_evidence", False)
 
-        # 11. Validate and enrich citations against real retrieved chunks
+        # 12. Validate and enrich citations against real retrieved chunks
         clean_answer, validated_citations, rejected_citations = self.citation_engine.validate_and_enrich(
             raw_answer=raw_answer,
             raw_citations=raw_citations,
@@ -198,6 +428,17 @@ class RAGService:
             insufficient_evidence = True
 
         total_latency_ms = (time.time() - start_time) * 1000
+
+        self._log_query_trace(
+            query=normalized_query,
+            detected_lang=target_lang,
+            intent_result=intent_result,
+            retrieval_triggered=True,
+            retrieved_docs=retrieval_results,
+            reranked_chunks=context.evidence_chunks,
+            citations=validated_citations,
+            answer_type="INSUFFICIENT_EVIDENCE" if insufficient_evidence else "GROUNDED_RAG",
+        )
 
         return ChatResponse(
             answer=clean_answer,
@@ -226,7 +467,7 @@ class RAGService:
         if target_lang not in ["en", "hi", "ta"]:
             target_lang = "en"
 
-        resolved_query = self.resolve_conversational_query(normalized_query, request.history)
+        resolved_query = self.resolve_conversational_query(normalized_query, request.history, language=target_lang)
         intent_result = self.intent_router.classify_and_route(resolved_query, language=target_lang)
 
         retrieval_query = self.language_service.normalize_and_translate_for_retrieval(

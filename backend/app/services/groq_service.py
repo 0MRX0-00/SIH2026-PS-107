@@ -222,6 +222,14 @@ class GroqService:
         import time
         start_time = time.time()
 
+        # If evidence is insufficient, do not manufacture ungrounded claims
+        if not has_sufficient_evidence or not evidence_chunks:
+            fallback = self._generate_deterministic_grounded_response(
+                query, evidence_chunks, False, target_language
+            )
+            latency_ms = (time.time() - start_time) * 1000
+            return fallback, json.dumps(fallback, ensure_ascii=False), latency_ms
+
         user_prompt = self._build_user_prompt(
             query=query,
             formatted_evidence=formatted_evidence,
@@ -249,14 +257,14 @@ class GroqService:
 
             try:
                 async with httpx.AsyncClient(timeout=self.timeout) as client:
-                    for attempt in range(3):
+                    for attempt in range(2):
                         resp = await client.post(
                             f"{self.base_url.rstrip('/')}/chat/completions",
                             headers=headers,
                             json=payload,
                         )
-                        if resp.status_code == 429 and attempt < 2:
-                            retry_after = float(resp.headers.get("retry-after", "2.5"))
+                        if resp.status_code == 429 and attempt < 1:
+                            retry_after = min(float(resp.headers.get("retry-after", "1.5")), 2.0)
                             logger.info(f"Groq rate limit encountered (429). Retrying after {retry_after}s...")
                             await asyncio.sleep(retry_after)
                             continue

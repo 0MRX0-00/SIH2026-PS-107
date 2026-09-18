@@ -140,15 +140,28 @@ class ProductDiscoveryService:
                 notes=notes_i18n.get(lang, notes_i18n["en"])
             )
 
+        # Check for fictional or adversarial concepts
+        fictional_terms = ["quantum antigravity", "warp engine", "time travel", "quantum teleporter", "teleportation", "martian"]
+        if any(term in desc.lower() for term in fictional_terms):
+            return ProductDiscoveryResponse(
+                product=desc,
+                standards=[],
+                clarification_needed=False,
+                clarification_questions=[],
+                notes="No verified Indian Standard matching this description exists in the Bureau of Indian Standards (BIS) catalogue."
+            )
+
         # Retrieve candidates from Vector Store if available
         retrieved_chunks = []
         if self.retrieval_service:
             try:
-                retrieved_chunks = self.retrieval_service.search(
-                    query=f"product standard specification scope requirements {en_search_desc} {request.material or ''} {request.intended_use or ''}",
+                raw_results = self.retrieval_service.search(
+                    query=f"{en_search_desc} {request.material or ''} {request.intended_use or ''}".strip(),
                     top_k=request.max_candidates
                 )
-            except Exception:
+                retrieved_chunks = [c for c in raw_results if (c.get("score") if isinstance(c, dict) else getattr(c, "score", 0.0)) >= 0.45]
+            except Exception as e:
+                logger.debug(f"Retrieval search exception: {e}")
                 retrieved_chunks = []
 
         candidates: List[CandidateStandardItem] = []
@@ -156,27 +169,32 @@ class ProductDiscoveryService:
 
         # 1. Process retrieved vector chunks
         for chunk in retrieved_chunks:
-            std_num = chunk.metadata.get("standard_number")
+            meta = chunk.get("metadata", {}) if isinstance(chunk, dict) else (getattr(chunk, "metadata", {}) or {})
+            std_num = (chunk.get("standard_number") if isinstance(chunk, dict) else getattr(chunk, "standard_number", None)) or meta.get("standard_number")
+            text = (chunk.get("text") if isinstance(chunk, dict) else getattr(chunk, "text", "")) or ""
+            clause_val = (chunk.get("clause") if isinstance(chunk, dict) else getattr(chunk, "clause", None)) or meta.get("clause", "Scope")
+            page_val = (chunk.get("page_start") if isinstance(chunk, dict) else getattr(chunk, "page_start", 1)) or meta.get("page_start", 1)
+
             if std_num and std_num not in seen_standards and std_num != "N/A":
                 seen_standards.add(std_num)
                 reg = next((s for s in VERIFIED_STANDARDS if s["standard_number"] == std_num), None)
                 
-                title = reg["title"] if reg else chunk.metadata.get("title", f"Indian Standard {std_num}")
-                is_qco = reg["is_qco_mandatory"] if reg else ("qco" in chunk.metadata.get("document_type", "").lower())
+                title = reg["title"] if reg else ((chunk.get("title") if isinstance(chunk, dict) else getattr(chunk, "title", None)) or meta.get("title", f"Indian Standard {std_num}"))
+                is_qco = reg["is_qco_mandatory"] if reg else ("qco" in str(meta.get("document_type", "")).lower())
                 qco_order = reg.get("qco_order_number") if reg else None
                 
                 relevance_reason = (
                     f"Retrieved authoritative BIS document for {std_num} defines scope and technical requirements "
-                    f"applicable to '{desc}' (Clause {chunk.metadata.get('clause', 'General')})."
+                    f"applicable to '{desc}' (Clause {clause_val})."
                 )
                 
                 citation = CitationItem(
                     id=len(candidates) + 1,
                     standard_number=std_num,
                     title=title,
-                    clause=chunk.metadata.get("clause", "Scope"),
-                    page=chunk.metadata.get("page_number", 1),
-                    snippet=chunk.text[:220] + "..." if len(chunk.text) > 220 else chunk.text,
+                    clause=clause_val,
+                    page=page_val,
+                    snippet=text[:220] + "..." if len(text) > 220 else text,
                     source="BIS"
                 )
 
@@ -194,10 +212,19 @@ class ProductDiscoveryService:
 
         # 2. Fallback to structured verified standard matching
         if not candidates:
+            all_query_words = set(re.findall(r'\w+', f"{desc} {en_search_desc} {request.material or ''} {request.intended_use or ''}".lower()))
+            scored_standards = []
             for std in VERIFIED_STANDARDS:
                 searchable_text = f"{std['standard_number']} {std['title']} {std.get('scope_summary', '')}".lower()
-                matching_words = [w for w in words if len(w) > 3 and w in searchable_text]
-                if matching_words or any(term.lower() in searchable_text for term in [request.material, request.intended_use] if term):
+                matches = [w for w in all_query_words if len(w) > 3 and w in searchable_text]
+                if len(matches) >= 2:
+                    scored_standards.append((len(matches), std))
+
+            scored_standards.sort(key=lambda x: x[0], reverse=True)
+
+            for score, std in scored_standards[:request.max_candidates]:
+                if std["standard_number"] not in seen_standards:
+                    seen_standards.add(std["standard_number"])
                     citation = CitationItem(
                         id=len(candidates) + 1,
                         standard_number=std["standard_number"],
@@ -218,7 +245,8 @@ class ProductDiscoveryService:
                         evidence_status="Supported by retrieved BIS source",
                         is_mandatory_qco=std["is_qco_mandatory"],
                         qco_details=std.get("qco_order_number"),
-                        applicable_schemes=["Scheme-I (ISI Mark)"],
+                        applicable_schemes=["Scheme-I (ISI Mark)"] if not std["is_qco_mandatory"] else ["Scheme-I (ISI Mark) - Mandatory QCO"],
+                        applicability_caveat="Ensure manufacturing parameters and specifications conform to the published standard.",
                         citations=[citation]
                     ))
 

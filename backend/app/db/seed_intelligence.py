@@ -186,6 +186,148 @@ VERIFIED_STANDARDS: List[Dict[str, Any]] = [
                 "page_number": 8
             }
         ]
+    },
+    {
+        "id": "std-7372",
+        "standard_number": "IS 7372:2021",
+        "title": "Lead-Acid Storage Batteries for Motor Vehicles - Specification (Second Revision)",
+        "division": "Electrotechnical",
+        "year": 2021,
+        "status": "ACTIVE",
+        "is_qco_mandatory": True,
+        "qco_order_number": "Electrical Appliances and Batteries (Quality Control) Order, 2023",
+        "scope_summary": "Specifies requirements and tests for 6 V and 12 V lead-acid storage batteries used primarily as a power source for starting, lighting, and ignition (SLI) of internal combustion engine motor vehicles and automobiles.",
+        "related_standards": ["IS 14257:1995", "IS 1651:2013", "IEC 60095-1"],
+        "sections": [
+            {
+                "clause_number": "1.1",
+                "clause_title": "Scope and Field of Application",
+                "content": "This standard specifies performance, dimension, marking, and safety requirements for 12 V and 6 V lead-acid storage batteries used for starting, lighting, and ignition in passenger cars, commercial vehicles, and heavy transport vehicles.",
+                "page_number": 1
+            },
+            {
+                "clause_number": "4.1",
+                "clause_title": "Rating and Capacity Specifications",
+                "content": "The rated 20-hour capacity (C20) and cold cranking amperes (CCA) at -18 °C shall meet the declared nominal specifications without cell voltage dropping below 7.2 V for a 12 V battery during cranking.",
+                "page_number": 4
+            },
+            {
+                "clause_number": "5.1",
+                "clause_title": "Marking & Certification under Scheme-I",
+                "content": "Every lead-acid battery for motor vehicles shall be legibly marked with nominal voltage, rated capacity in Ampere-hours (Ah), cold cranking current (CCA), manufacturer identity, and the Standard Mark (ISI mark) under BIS Scheme-I licensing.",
+                "page_number": 6
+            },
+            {
+                "clause_number": "8.1",
+                "clause_title": "Endurance and Vibration Resistance Test",
+                "content": "Batteries shall withstand continuous vibration testing for 2 hours at 30 Hz with 20 m/s2 acceleration without terminal leakage, internal short-circuits, or electrolyte loss.",
+                "page_number": 11
+            }
+        ]
+    },
+    {
+        "id": "std-16046",
+        "standard_number": "IS 16046 (Part 2):2018",
+        "title": "Secondary Cells and Batteries Containing Alkaline or Other Non-Acid Electrolytes - Secondary Lithium Cells and Batteries for Portable Applications - Safety Requirements",
+        "division": "Electronics & Information Technology",
+        "year": 2018,
+        "status": "ACTIVE",
+        "is_qco_mandatory": True,
+        "qco_order_number": "Electronics and IT Goods (Requirement for Compulsory Registration) Order (CRO / Scheme-II CRS)",
+        "scope_summary": "Specifies safety requirements and tests for the safe operation of portable sealed secondary lithium cells and batteries (for mobile phones, laptops, and consumer electronics).",
+        "related_standards": ["IEC 62133-2:2017", "IS 16046 (Part 1):2018"],
+        "sections": [
+            {
+                "clause_number": "1.1",
+                "clause_title": "Scope",
+                "content": "Specifies requirements and tests for the safe operation of portable sealed secondary lithium cells and batteries containing non-acid electrolyte, under intended use and reasonably foreseeable misuse.",
+                "page_number": 1
+            },
+            {
+                "clause_number": "5.1",
+                "clause_title": "Scheme-II CRS Registration Requirements",
+                "content": "All lithium-ion cells and battery packs manufactured or imported for portable electronics in India must be registered under BIS Compulsory Registration Scheme (Scheme-II CRS) bearing standard mark and registration number R-XXXXXXXX.",
+                "page_number": 5
+            }
+        ]
+    },
+    {
+        "id": "std-bis-act",
+        "standard_number": "BIS Act 2016",
+        "title": "Bureau of Indian Standards Act, 2016 (Act No. 11 of 2016) - National Standards Body of India",
+        "division": "General Standards & Administration",
+        "year": 2016,
+        "status": "ACTIVE",
+        "is_qco_mandatory": False,
+        "qco_order_number": None,
+        "scope_summary": "Establishes the Bureau of Indian Standards (BIS) as the National Standards Body of India for the harmonious development of standardization, conformity assessment, and quality assurance of goods, articles, processes, systems, and services.",
+        "related_standards": ["BIS Rules 2018", "BIS Conformity Assessment Regulations 2018"],
+        "sections": [
+            {
+                "clause_number": "Section 10",
+                "clause_title": "Functions and Mandate of BIS",
+                "content": "The Bureau of Indian Standards (BIS) is the National Standards Body of India established under the BIS Act, 2016. Its primary functions include formulating Indian Standards (IS), operating product certification schemes (ISI Mark, CRS, FMCS, Hallmarking), recognizing testing laboratories, and ensuring consumer protection through national quality benchmarks.",
+                "page_number": 6
+            },
+            {
+                "clause_number": "Section 16",
+                "clause_title": "Mandatory Standards and Quality Control Orders",
+                "content": "The Central Government may, in public interest, human health, or environmental safety, issue Quality Control Orders (QCOs) making compliance to specific Indian Standards mandatory for manufacture, import, distribution, and sale in India.",
+                "page_number": 9
+            }
+        ]
+    },
+    {
+        "id": "std-qco-guide",
+        "standard_number": "QCO Framework",
+        "title": "Quality Control Orders (QCO) - Mandatory BIS Compliance and Enforcement Regulations",
+        "division": "Regulatory & Legal",
+        "year": 2023,
+        "status": "ACTIVE",
+        "is_qco_mandatory": True,
+        "qco_order_number": "General Quality Control Orders Framework Notification",
+        "scope_summary": "Regulatory framework governing mandatory Quality Control Orders (QCOs) issued by Line Ministries under Section 16 of the BIS Act, 2016.",
+        "related_standards": ["BIS Act 2016", "Scheme-I"],
+        "sections": [
+            {
+                "clause_number": "Clause 1",
+                "clause_title": "What is a Quality Control Order (QCO)?",
+                "content": "A Quality Control Order (QCO) is a statutory order issued by the Government of India that makes standard compliance and BIS certification mandatory for specific products. Once a QCO is enforced, no person or entity shall manufacture, import, distribute, store, or sell the notified product without a valid BIS license and Standard Mark.",
+                "page_number": 1
+            },
+            {
+                "clause_number": "Clause 2",
+                "clause_title": "Enforcement and Penalties",
+                "content": "Manufacturing, importing, or selling products without the requisite BIS certification under a mandatory QCO is a punishable offense under Section 29 of the BIS Act, 2016, carrying penalties including heavy fines, seizure of non-compliant goods, and imprisonment.",
+                "page_number": 2
+            }
+        ]
+    },
+    {
+        "id": "std-scheme-isi",
+        "standard_number": "Scheme-I (ISI Mark)",
+        "title": "BIS Scheme-I Product Certification Scheme (ISI Mark Licensing Guidelines)",
+        "division": "Conformity Assessment",
+        "year": 2023,
+        "status": "ACTIVE",
+        "is_qco_mandatory": False,
+        "qco_order_number": None,
+        "scope_summary": "Covers the grant and operation of Scheme-I product certification licenses for domestic and foreign manufacturers to use the prestigious ISI Mark.",
+        "related_standards": ["Scheme-II (CRS)", "FMCS"],
+        "sections": [
+            {
+                "clause_number": "Clause 3",
+                "clause_title": "What is the ISI Mark and Scheme-I Licensing?",
+                "content": "The ISI Mark is the official product certification mark granted by the Bureau of Indian Standards under Scheme-I. It certifies that a product conforms to the relevant Indian Standard (IS). Obtaining an ISI license involves factory manufacturing audit, in-house testing capability verification, third-party sample testing in BIS labs, and issuance of a unique CM/L license number.",
+                "page_number": 3
+            },
+            {
+                "clause_number": "Clause 4",
+                "clause_title": "Application and Grant Process",
+                "content": "Manufacturers apply online via the Manakonline portal with company registration, manufacturing machinery details, testing equipment calibration certificates, and test reports. Upon successful factory inspection and sample verification, BIS grants the Scheme-I license to apply the ISI mark on conforming batches.",
+                "page_number": 4
+            }
+        ]
     }
 ]
 

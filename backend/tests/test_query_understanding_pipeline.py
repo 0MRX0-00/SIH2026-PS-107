@@ -177,6 +177,35 @@ class TestRAGPipeline:
         assert len(resp.citations) > 0 or "17526" in resp.answer or "flask" in resp.answer.lower()
 
     @pytest.mark.asyncio
+    async def test_4wheeler_business_ambiguity(self, rag_service):
+        req = ChatRequest(message="I want to start a 4 wheeler business", language="en")
+        resp = await rag_service.answer_query(req)
+        
+        assert resp.intent == "CLARIFICATION_REQUIRED"
+        assert resp.clarification_needed
+        assert not resp.retrieval_triggered, "Ambiguous 4-wheeler business query must not trigger retrieval"
+        assert resp.sources_used == 0
+        assert len(resp.clarification_options) > 0
+        assert any("Passenger Car" in opt or "Electric Vehicle" in opt or "Automotive components" in opt for opt in resp.clarification_options)
+
+    @pytest.mark.asyncio
+    async def test_explicit_is_302_search(self, rag_service):
+        req = ChatRequest(message="What is IS 302?", language="en")
+        resp = await rag_service.answer_query(req)
+        
+        assert resp.intent in ["STANDARD_SEARCH", "STANDARD_EXPLANATION", "GENERAL_BIS_QUERY"]
+        assert resp.retrieval_triggered, "Explicit standard query must trigger retrieval"
+
+    @pytest.mark.asyncio
+    async def test_insufficient_evidence_unsupported_standard(self, rag_service):
+        req = ChatRequest(message="What are the quantum teleporter certification requirements under Martian standard IS 9999999?", language="en")
+        resp = await rag_service.answer_query(req)
+        
+        assert resp.insufficient_evidence is True
+        assert resp.sources_used == 0
+        assert "not find sufficient" in resp.answer.lower() or "insufficient" in resp.answer.lower()
+
+    @pytest.mark.asyncio
     async def test_out_of_scope_pipeline(self, rag_service):
         req = ChatRequest(
             message="Can you write a poem about artificial intelligence?",
@@ -189,3 +218,4 @@ class TestRAGPipeline:
         assert resp.sources_used == 0
         assert len(resp.citations) == 0
         assert "Bureau of Indian Standards" in resp.answer or "BIS" in resp.answer
+

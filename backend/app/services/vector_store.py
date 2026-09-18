@@ -18,6 +18,9 @@ from app.core.config import settings
 logger = logging.getLogger("ebis_sahayak.vector_store")
 
 
+_QDRANT_SERVER_AVAILABLE: Optional[bool] = None
+
+
 class VectorStoreService:
     """
     Manages vector storage, indexing, and retrieval.
@@ -40,20 +43,21 @@ class VectorStoreService:
         self._memory_points: List[Dict[str, Any]] = []
 
     def get_client(self) -> Optional[Any]:
+        global _QDRANT_SERVER_AVAILABLE
         if not HAS_QDRANT:
             return None
         if self._client is None:
-            if self.in_memory:
-                logger.info("Initializing in-memory Qdrant client for local execution")
+            if self.in_memory or _QDRANT_SERVER_AVAILABLE is False:
                 self._client = QdrantClient(":memory:")
             else:
                 try:
-                    logger.info(f"Connecting to Qdrant at {self.host}:{self.port}")
-                    self._client = QdrantClient(host=self.host, port=self.port, timeout=0.5)
+                    self._client = QdrantClient(host=self.host, port=self.port, timeout=0.3, check_compatibility=False)
                     # Verify connectivity
                     self._client.get_collections()
+                    _QDRANT_SERVER_AVAILABLE = True
                 except Exception as e:
-                    logger.warning(f"Could not connect to Qdrant at {self.host}:{self.port} ({e}). Falling back to local in-memory Qdrant instance.")
+                    logger.debug(f"Could not connect to Qdrant at {self.host}:{self.port} ({e}). Falling back to local in-memory Qdrant instance.")
+                    _QDRANT_SERVER_AVAILABLE = False
                     self._client = QdrantClient(":memory:")
         return self._client
 

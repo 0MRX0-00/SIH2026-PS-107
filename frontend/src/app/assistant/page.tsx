@@ -338,7 +338,11 @@ function AssistantContent() {
                     <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
                       <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider flex items-center space-x-1">
                         <BookOpen className="w-3 h-3 text-bis-blue" />
-                        <span>{t("assistant.sources_verified")} ({msg.citations.length})</span>
+                        <span>
+                          {new Set(msg.citations.map((c) => c.standard_number)).size}{" "}
+                          {new Set(msg.citations.map((c) => c.standard_number)).size === 1 ? "standard" : "standards"}{" "}
+                          ({msg.citations.length} {msg.citations.length === 1 ? "excerpt" : "excerpts"} verified)
+                        </span>
                       </p>
                       <div className="flex flex-wrap gap-1.5">
                         {msg.citations.map((cit) => (
@@ -364,14 +368,14 @@ function AssistantContent() {
                   {/* Latency, Source & Feedback Footer */}
                   {msg.sender === "assistant" && (
                     <div className="mt-2.5 pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between text-[10px] text-slate-400 gap-2">
-                      <span className="flex items-center space-x-1">
-                        <Clock className="w-3 h-3" />
-                        <span>
-                          {msg.retrieval_triggered === false
-                            ? "Instant Intent Reply"
-                            : (msg.processing_time_ms ? `${msg.processing_time_ms}ms` : t("assistant.grounded_badge", "Grounded"))}
+                      {msg.retrieval_triggered !== false && (
+                        <span className="flex items-center space-x-1">
+                          <Clock className="w-3 h-3" />
+                          <span>
+                            {msg.processing_time_ms ? `${msg.processing_time_ms}ms` : t("assistant.grounded_badge", "Grounded")}
+                          </span>
                         </span>
-                      </span>
+                      )}
 
                       {msg.id !== "welcome-1" && (
                         <div className="flex items-center space-x-1.5 bg-slate-50 px-2 py-0.5 rounded border border-slate-200 text-slate-500">
@@ -393,7 +397,7 @@ function AssistantContent() {
                         </div>
                       )}
 
-                      {msg.sources_used !== undefined && (
+                      {msg.retrieval_triggered !== false && msg.sources_used !== undefined && msg.sources_used > 0 && (
                         <span>{msg.sources_used} {t("assistant.sources_verified_count", "sources verified")}</span>
                       )}
                     </div>

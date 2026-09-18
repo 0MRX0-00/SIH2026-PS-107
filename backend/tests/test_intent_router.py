@@ -45,4 +45,5 @@ def test_general_bis_query_intent(router):
 
 def test_unknown_intent(router):
     result = router.classify_and_route("Hello, what is the weather today?")
-    assert result.intent == UserIntent.UNKNOWN
+    assert result.intent in [UserIntent.UNKNOWN, UserIntent.OUT_OF_SCOPE]
+

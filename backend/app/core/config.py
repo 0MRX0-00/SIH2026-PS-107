@@ -11,12 +11,11 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
-    # Core Application
+    # Application Metadata
     ENVIRONMENT: str = "development"
     PROJECT_NAME: str = "e-BIS Sahayak"
     VERSION: str = "0.1.0"
-    # Phase Information
-    PHASE: str = "Phase 3: Groq RAG Engine & Citation Grounding"
+    PHASE: str = "Production Grounded RAG & BIS Intelligence Engine"
     API_V1_STR: str = "/api/v1"
 
     # CORS Configuration

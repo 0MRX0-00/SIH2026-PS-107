@@ -411,12 +411,21 @@ class IntentRouter:
                 reasoning="Query explicitly queries a specific identified Indian Standard number."
             )
 
-        # 8. AMBIGUITY DETECTION (Under-specified product queries like "water bottle business", "4 wheeler business")
-        has_specific_material = any(m in query_lower for m in ["stainless steel", "ss 304", "ss 316", "plastic", "pet", "glass", "copper", "aluminium", "xlpe", "pvc", "lead acid", "lithium", "bldc", "ceiling", "vacuum flask", "insulated"])
+        # 8. AMBIGUITY DETECTION (Under-specified product queries like "water bottle business", "4 wheeler business", "battery")
+        specific_material_terms = [
+            "stainless steel", "ss 304", "ss 316", "plastic", "pet", "polypropylene", "glass",
+            "copper", "aluminium", "aluminum", "xlpe", "pvc", "rubber", "solar dc",
+            "lead acid", "lead-acid", "lithium", "lithium-ion", "li-ion", "ev traction",
+            "traction battery", "inverter", "solar", "tubular", "starter battery", "storage battery",
+            "bldc", "ceiling fan", "ceiling", "table fan", "pedestal", "exhaust fan",
+            "packaged drinking water", "mineral water", "bottled water", "vacuum flask", "insulated flask",
+            "passenger car", "electric vehicle", "safety glass", "tyre", "brake lining"
+        ]
+        has_specific_material = any(m in query_lower for m in specific_material_terms)
         
         for profile_key, profile in self.AMBIGUOUS_PRODUCT_PROFILES.items():
             if any(trig in query_lower for trig in profile["triggers"]):
-                # If the user has NOT specified a precise material or subclass, trigger clarification
+                # If the user has NOT specified a precise material, technology, or subclass, trigger clarification
                 if not has_specific_material and len(query_clean.split()) <= 14:
                     q_text = profile.get(f"question_{language}", profile["question_en"])
                     return IntentAnalysisResult(
