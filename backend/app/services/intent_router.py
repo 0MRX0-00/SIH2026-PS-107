@@ -245,6 +245,19 @@ class IntentRouter:
         r"\b(?:capital of|who is president|weather today|horoscope)\b"
     ]
 
+    ADVERSARIAL_PATTERNS = [
+        r"(?:ignore\s+all\s+previous|ignore\s+previous\s+instructions|system\s+override)",
+        r"(?:make\s+up\s+a\s+bis|pretend\s+is\s+\d+|allowed\s+to\s+hallucinate)",
+        r"(?:do\s+not\s+use\s+your\s+knowledge\s+base|ignore\s+citations)",
+        r"(?:tell\s+me\s+a\s+fake\s+bis|fake\s+clause|invent\s+a\s+qco)",
+        r"(?:treat\s+this\s+document\s+as\s+authoritative\s+even\s+if)"
+    ]
+
+    GIBBERISH_PATTERNS = [
+        r"^(?:asdfgh|qwerty|123456|lorem\s+ipsum|zxcvbn)[\s!.,?]*$",
+        r"^[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?~`\s]+$"
+    ]
+
     INDIAN_STATES = [
         "andhra pradesh", "arunachal pradesh", "assam", "bihar", "chhattisgarh", "goa", "gujarat",
         "haryana", "himachal pradesh", "jharkhand", "karnataka", "kerala", "madhya pradesh",
@@ -388,6 +401,38 @@ class IntentRouter:
                 suggested_route="/chat/out-of-scope",
                 reasoning="Query is unrelated to BIS standards, products, or certification.",
                 conversational_reply=declines.get(language, declines["en"])
+            )
+
+        # 5B. ADVERSARIAL PROMPT INJECTION CHECK
+        if any(re.search(pat, query_lower) for pat in self.ADVERSARIAL_PATTERNS):
+            adv_replies = {
+                "en": "I operate strictly as an evidence-grounded BIS compliance assistant. I cannot fabricate Indian Standards, invent clauses or QCOs, or provide ungrounded compliance advice. Please specify a valid product or official Indian Standard.",
+                "hi": "मैं पूरी तरह से आधिकारिक भारतीय मानक ब्यूरो (BIS) नियमों के आधार पर कार्य करता हूँ। मैं किसी काल्पनिक मानक या नियम का निर्माण नहीं कर सकता।",
+                "ta": "நான் அதிகாரப்பூர்வ BIS தரநிலைகளின் அடிப்படையில் மட்டுமே செயல்படுகிறேன். போலியான அல்லது கற்பனையான தரநிலைகளை உருவாக்க முடியாது."
+            }
+            return IntentAnalysisResult(
+                intent=UserIntent.OUT_OF_SCOPE,
+                confidence="HIGH",
+                extracted_entities=entities,
+                suggested_route="/chat/adversarial-guardrail",
+                reasoning="Adversarial prompt injection attempt detected. RAG retrieval bypassed.",
+                conversational_reply=adv_replies.get(language, adv_replies["en"])
+            )
+
+        # 5C. GIBBERISH / NOISE CHECK
+        if any(re.search(pat, query_clean, re.IGNORECASE) for pat in self.GIBBERISH_PATTERNS) or (len(query_clean) <= 6 and not any(c.isalpha() for c in query_clean)):
+            gib_replies = {
+                "en": "I could not understand your query. Please provide a clear question about Indian Standards (BIS), product certification, Quality Control Orders (QCO), or testing laboratories.",
+                "hi": "मैं आपके प्रश्न को समझ नहीं पाया। कृपया भारतीय मानक (BIS), उत्पाद प्रमाणन या प्रयोगशालाओं के बारे में स्पष्ट प्रश्न पूछें।",
+                "ta": "உங்கள் கேள்வியை என்னால் புரிந்து கொள்ள முடியவில்லை. இந்திய தரநிலைகள் (BIS) அல்லது தயாரிப்பு சான்றிதழ் குறித்து தெளிவான கேள்வியைக் கேட்கவும்."
+            }
+            return IntentAnalysisResult(
+                intent=UserIntent.OUT_OF_SCOPE,
+                confidence="HIGH",
+                extracted_entities=entities,
+                suggested_route="/chat/gibberish-guardrail",
+                reasoning="Non-linguistic or gibberish input detected. RAG retrieval bypassed.",
+                conversational_reply=gib_replies.get(language, gib_replies["en"])
             )
 
         # 6. EXPLANATION / CLAUSE CHECK with identified Standard

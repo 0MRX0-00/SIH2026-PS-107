@@ -55,7 +55,7 @@ class Settings(BaseSettings):
 
     # RAG & Context Configuration (Phase 3)
     RAG_TOP_K: int = 4
-    RAG_MIN_RELEVANCE_SCORE: float = 0.25
+    RAG_MIN_RELEVANCE_SCORE: float = 0.55
     RAG_MAX_CONTEXT_TOKENS: int = 3000
     MAX_CHAT_MESSAGE_LENGTH: int = 1000
     MAX_CONVERSATION_HISTORY_TURNS: int = 6

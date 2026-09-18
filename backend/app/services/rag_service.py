@@ -97,35 +97,66 @@ class RAGService:
             ]):
                 is_pending_clarification = True
 
-        # Case A: Handling pending clarification
+        # Case A: Handling pending clarification or numeric / ordinal selections
+        # 1. Natural Language Ordinal / Numeric selection
+        ordinal_map = {
+            "1": 0, "option 1": 0, "i choose option 1": 0, "the first option": 0, "first": 0, "one": 0,
+            "number 1": 0, "1.": 0, "option number 1": 0, "#1": 0, "1st": 0,
+            "2": 1, "option 2": 1, "i choose option 2": 1, "the second option": 1, "second": 1, "two": 1,
+            "number 2": 1, "2.": 1, "option number 2": 1, "#2": 1, "2nd": 1,
+            "3": 2, "option 3": 2, "i choose option 3": 2, "the third option": 2, "third": 2, "three": 2,
+            "number 3": 2, "3.": 2, "option number 3": 2, "#3": 2, "3rd": 2,
+            "4": 3, "option 4": 3, "i choose option 4": 3, "the fourth option": 3, "fourth": 3, "four": 3,
+            "number 4": 3, "4.": 3, "option number 4": 3, "#4": 3, "4th": 3,
+            "5": 4, "option 5": 4, "i choose option 5": 4, "the fifth option": 4, "fifth": 4, "five": 4,
+            "number 5": 4, "5.": 4, "option number 5": 4, "#5": 4, "5th": 4,
+        }
+
+        # Check if user input is an ordinal or numeric choice
+        matched_opt_idx = ordinal_map.get(norm_curr_lower.strip("."))
+        if matched_opt_idx is not None:
+            if pending_options and 0 <= matched_opt_idx < len(pending_options):
+                clean_opt = re.sub(r"^\d+\.\s*", "", pending_options[matched_opt_idx]).strip()
+                logger.info(f"Resolved ordinal clarification option {matched_opt_idx + 1}: '{clean_opt}'")
+                return clean_opt
+            elif is_pending_clarification:
+                # Clarification was active but options text not parsed directly
+                # Default fallback maps based on last product topic in user message
+                topic_str = (last_user_msg or "").lower()
+                if "fan" in topic_str:
+                    fan_opts = ["Electric ceiling type fans (IS 17803:2022)", "Table and pedestal fans (IS 555)", "Industrial exhaust fans (IS 2312)"]
+                    if matched_opt_idx < len(fan_opts):
+                        return fan_opts[matched_opt_idx]
+                elif "water" in topic_str or "bottle" in topic_str:
+                    bottle_opts = ["Packaged drinking water (IS 14543:2016)", "Plastic reusable water bottles (IS 17526 / IS 15410)", "Stainless steel water bottles (IS 17526:2021)"]
+                    if matched_opt_idx < len(bottle_opts):
+                        return bottle_opts[matched_opt_idx]
+                elif "battery" in topic_str or "batteries" in topic_str:
+                    batt_opts = [
+                        "Lithium-ion secondary cells and batteries for portable electronics (IS 16046 / Scheme-II CRS)",
+                        "Lithium-ion traction battery packs for Electric Vehicles (AIS 038 / IS 16046-2)",
+                        "Lead-acid storage batteries for motor vehicles (IS 7372 / IS 14257)",
+                        "Inverter and solar stationary lead-acid batteries (IS 13369 / IS 1651)"
+                    ]
+                    if matched_opt_idx < len(batt_opts):
+                        return batt_opts[matched_opt_idx]
+
         if is_pending_clarification:
-            # Check if current input is a direct topic switch (e.g. user abandons clarification and asks something new)
+            # Check if current input is a direct topic switch
             topic_switch_starters = [
                 "what is", "what bis", "which standard", "how to", "tell me about", "where is",
-                "actually", "never mind", "cancel", "hello", "hi", "namaste", "vanakkam", "help"
+                "actually", "never mind", "cancel", "hello", "hi", "namaste", "vanakkam", "help",
+                "forget that", "i want to", "we want to"
             ]
             has_independent_intent = any(norm_curr_lower.startswith(starter) for starter in topic_switch_starters)
-            if has_independent_intent and not any(f"option {i}" in norm_curr_lower or norm_curr_lower.startswith(f"{i}") for i in range(1, 10)):
-                # Topic switch detected: discard old clarification and process current query independently
+            if has_independent_intent and matched_opt_idx is None:
                 logger.info(f"Topic switch detected during clarification: '{norm_curr}'. Discarding old clarification.")
                 return norm_curr
-
-            # 1. Numeric selection: e.g. "1", "2", "3", "4", "option 3", "#3", "3.", "3. Lead-acid..."
-            import re
-            num_match = re.match(r"^(?:option\s+|#)?(\d+)(?:\.|\b|\s)", norm_curr_lower)
-            if num_match:
-                opt_idx = int(num_match.group(1)) - 1
-                if pending_options and 0 <= opt_idx < len(pending_options):
-                    selected_text = pending_options[opt_idx]
-                    clean_opt = re.sub(r"^\d+\.\s*", "", selected_text).strip()
-                    logger.info(f"Resolved numeric clarification option {opt_idx + 1}: '{clean_opt}'")
-                    return clean_opt
 
             # 2. Text keyword match against pending options
             if pending_options:
                 for opt in pending_options:
                     clean_opt = re.sub(r"^\d+\.\s*", "", opt).strip().lower()
-                    # Check if user query matches key segments of the option
                     opt_words = [w for w in re.findall(r'\b\w+\b', clean_opt) if len(w) > 3]
                     matched_words = [w for w in opt_words if w in norm_curr_lower]
                     if len(matched_words) >= 2 or (len(opt_words) > 0 and len(matched_words) == len(opt_words)):
@@ -134,7 +165,6 @@ class RAGService:
 
             # 3. Known domain keyword match when options were presented
             domain_specific_mappings = {
-                # Battery subtypes
                 "lithium": "Lithium-ion secondary cells and batteries for portable electronics (IS 16046 / Scheme-II CRS)",
                 "ev": "Lithium-ion traction battery packs for Electric Vehicles (AIS 038 / IS 16046-2)",
                 "lead acid": "Lead-acid storage batteries for motor vehicles (IS 7372 / IS 14257)",
@@ -142,12 +172,10 @@ class RAGService:
                 "automotive": "Lead-acid storage batteries for motor vehicles (IS 7372 / IS 14257)",
                 "inverter": "Inverter and solar stationary lead-acid batteries (IS 13369 / IS 1651)",
                 "solar": "Inverter and solar stationary lead-acid batteries (IS 13369 / IS 1651)",
-                # Fan subtypes
                 "ceiling": "Electric ceiling type fans (IS 17803:2022)",
                 "bldc": "BLDC energy-efficient ceiling fans (IS 17803:2022)",
                 "table": "Table and pedestal fans (IS 555)",
                 "exhaust": "Industrial exhaust fans (IS 2312)",
-                # Water bottle subtypes
                 "packaged": "Packaged drinking water (IS 14543:2016)",
                 "drinking water": "Packaged drinking water (IS 14543:2016)",
                 "stainless steel": "Stainless steel water bottles and vacuum flasks (IS 17526:2021)",
@@ -159,8 +187,7 @@ class RAGService:
                     logger.info(f"Resolved clarification keyword '{kw}' to '{resolved_spec}'")
                     return resolved_spec
 
-            # If short sub-specification without matching preset options, combine with user topic
-            if len(norm_curr.split()) <= 6 and last_user_msg:
+            if len(norm_curr.split()) <= 6 and last_user_msg and not last_user_msg.isdigit() and len(last_user_msg.split()) > 2:
                 return f"{last_user_msg} - {norm_curr}"
 
         # Case B: No pending clarification
@@ -169,29 +196,28 @@ class RAGService:
             "what standard applies to my product", "what standard applies", "which standard applies",
             "what documents do i need", "what documents are required", "what is the process",
             "is this mandatory", "is it mandatory", "what is the fee", "what about clause",
-            "clause", "section", "table"
+            "what about certification", "what tests are required", "how much does it cost", "how long does it take"
         ]
         is_anaphoric = any(phrase in norm_curr_lower for phrase in anaphoric_follow_ups)
 
         if is_anaphoric and last_user_msg:
-            # Check if last user message had a specific product or standard
+            # Check if last user message had a specific standard or product entity
             import re
             is_match = re.search(r'\b(?:IS|IS/IEC)\s*\d+', last_user_msg, re.IGNORECASE)
             if is_match:
                 return f"{is_match.group(0)}: {norm_curr}"
-            elif len(last_user_msg.split()) <= 8:
-                return f"{last_user_msg} - {norm_curr}"
+            
+            # Check for concrete product keywords in last user message
+            product_entities = [
+                "fan", "fans", "battery", "batteries", "water bottle", "bottles", "drinking water",
+                "plug", "plugs", "socket", "sockets", "cable", "cables", "wire", "wires",
+                "motor", "motors", "solar", "charger", "chargers", "ev", "vehicle", "vehicles"
+            ]
+            found_prod = next((p for p in product_entities if p in last_user_msg.lower()), None)
+            if found_prod:
+                return f"{found_prod.title()}: {norm_curr}"
 
-        # Check for explicit independent starters or standalone queries
-        independent_starters = [
-            "i want to", "we want to", "what is", "what are", "which standard", "tell me",
-            "now tell me", "how to apply", "how do i", "where is", "can i",
-            "hello", "hi", "hey", "namaste", "vanakkam", "bye", "goodbye", "thanks", "thank you"
-        ]
-        if any(norm_curr_lower.startswith(s) for s in independent_starters) or len(norm_curr.split()) >= 3:
-            # Independent query: Process solely on current message, strictly ZERO history concatenation!
-            return norm_curr
-
+        # Independent query: Process solely on current message, strictly ZERO history concatenation!
         return norm_curr
 
     def _log_query_trace(

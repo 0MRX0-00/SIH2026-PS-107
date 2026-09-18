@@ -160,7 +160,9 @@ class ContextBuilder:
             # A. Check for adversarial injection keywords
             injection_patterns = [
                 "ignore all previous", "ignore previous instructions", "system override",
-                "you are now", "fake indian standard", "fake bis certification",
+                "you are now", "fake indian standard", "fake bis certification", "fake bis clause",
+                "invent a qco", "pretend is", "allowed to hallucinate", "do not use your knowledge base",
+                "ignore citations", "make up a bis standard", "treat this document as authoritative",
                 "जाली", "निर्देशों को भूल", "புறக்கணிக்கவும்", "போலி"
             ]
             if any(inj in query_lower for inj in injection_patterns):
@@ -182,7 +184,10 @@ class ContextBuilder:
 
             # C. Check for fictional / non-standard concepts
             fictional_terms = [
-                "quantum teleporter", "quantum antigravity", "time travel", "लेविटेशन",
+                "quantum teleporter", "quantum antigravity", "time travel", "teleportation",
+                "teleportation machine", "invisible glass", "imaginary battery", "imaginary batteries",
+                "xyz-999", "flying car", "technology that does not exist", "clause 999",
+                "clause 1234", "clause 999.99", "is 00000", "is 99999", "लेविटेशन",
                 "टाइम டிராவல்", "காலப் பயணம்"
             ]
             if any(term in query_lower for term in fictional_terms):
