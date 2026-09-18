@@ -51,7 +51,7 @@ class Settings(BaseSettings):
     GROQ_MODEL: str = "qwen/qwen3.8-27b"
     GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
     GROQ_TIMEOUT_SECONDS: float = 30.0
-    GROQ_MAX_TOKENS: int = 1500
+    GROQ_MAX_TOKENS: int = 900
     GROQ_TEMPERATURE: float = 0.1
 
     # RAG & Context Configuration (Phase 3)
