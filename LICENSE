@@ -1,0 +1,1424 @@
+# MASTER PROMPT — e-BIS Sahayak Full Product Transformation
+
+You are working on my existing project **e-BIS Sahayak**.
+
+This is NOT a request for a small UI cleanup.
+
+I want you to transform the CURRENT PROJECT into a **complete, polished, production-style end-user product**.
+
+The most important requirement is:
+
+> **REMOVE ALL INTERNAL / DEVELOPER / SIH / DEVELOPMENT / TECHNICAL DEBUG TEXT FROM THE PUBLIC USER INTERFACE.**
+
+The previous cleanup was insufficient. This time you MUST inspect the actual repository, trace every visible string to its source, modify the relevant files/components, run the application, inspect the rendered pages, and verify that the unwanted content is actually gone.
+
+Do NOT simply tell me what should be changed.
+
+**YOU MUST IMPLEMENT THE CHANGES IN THE CODEBASE.**
+
+---
+
+# 1. FIRST — FULL REPOSITORY INSPECTION
+
+Before modifying anything:
+
+1. Inspect the COMPLETE repository.
+2. Identify:
+
+   * frontend
+   * backend
+   * routes
+   * pages
+   * layouts
+   * components
+   * navigation
+   * API responses
+   * database models
+   * seed data
+   * configuration
+   * environment handling
+   * error messages
+   * loading states
+   * empty states
+   * hardcoded text
+   * mock/demo data
+   * developer/debug components
+   * admin components
+3. Search the ENTIRE repository for user-visible strings related to:
+
+   * SIH
+   * Smart India Hackathon
+   * PS
+   * PS ID
+   * Problem Statement
+   * Phase 1
+   * Phase 2
+   * Phase 3
+   * Phase 4
+   * Phase 5
+   * Phase 6
+   * Phase 7
+   * backend
+   * backend health
+   * API health
+   * health check
+   * database
+   * PostgreSQL
+   * Qdrant
+   * vector database
+   * vector count
+   * embeddings
+   * embedding model
+   * Groq
+   * Groq API
+   * LLM
+   * RAG
+   * retrieval
+   * retrieval score
+   * similarity score
+   * top K
+   * chunks
+   * context chunks
+   * prompt
+   * prompt injection
+   * developer
+   * development
+   * developer tools
+   * debug
+   * debugger
+   * logs
+   * latency
+   * API response
+   * JSON
+   * endpoint
+   * localhost
+   * Docker
+   * container
+   * prototype
+   * demo
+   * demo mode
+   * test mode
+   * mock
+   * dummy
+   * placeholder
+   * TODO
+   * FIXME
+   * internal IDs
+   * technical status
+   * system status
+   * service status
+   * connection status
+
+Also search for equivalent terminology in:
+
+* English
+* Hindi
+* Tamil
+
+Do NOT assume the text is directly written in the page.
+
+Trace:
+**API → backend response → frontend state → component → rendered UI**
+
+If a technical message is being injected from the backend, fix the backend/frontend contract instead of merely hiding it with CSS.
+
+---
+
+# 2. CRITICAL RULE — PUBLIC USER VS ADMIN/DEVELOPER
+
+Create a strict separation.
+
+## PUBLIC USER
+
+A normal user must NEVER see:
+
+* backend health check
+* API health check
+* database connection
+* PostgreSQL status
+* Qdrant status
+* vector count
+* embedding status
+* Groq status
+* model name
+* RAG terminology
+* retrieval scores
+* similarity scores
+* chunk counts
+* top-K values
+* latency
+* API endpoints
+* raw JSON
+* developer errors
+* stack traces
+* technical IDs
+* internal database IDs
+* internal document IDs
+* internal standard IDs unless they are legitimate BIS identifiers
+* SIH references
+* problem statement numbers
+* phase numbers
+* development notes
+* prototype labels
+* demo labels
+* developer tools
+* debug information
+
+## ADMIN / INTERNAL
+
+Technical information MAY exist inside an authenticated admin/internal area.
+
+Create or preserve a clearly separated admin area for:
+
+* system health
+* knowledge base
+* documents
+* ingestion
+* indexing
+* vector database
+* AI configuration
+* evaluation
+* feedback
+* logs
+* system diagnostics
+
+But these MUST NOT leak into the public product.
+
+---
+
+# 3. REMOVE SIH/DEVELOPMENT LANGUAGE FROM THE PRODUCT
+
+The application should NOT feel like a hackathon prototype.
+
+Remove from the PUBLIC UI:
+
+* "SIH 2026"
+* "Smart India Hackathon"
+* "SIH26107"
+* "Problem Statement 107"
+* "PS107"
+* "Phase 1"
+* "Phase 2"
+* "Phase 3"
+* "Phase 4"
+* "Phase 5"
+* "Phase 6"
+* "Phase 7"
+* "Hackathon Project"
+* "Prototype"
+* "Demo"
+* "Development Build"
+* "Testing Build"
+* "Student Project"
+
+Do NOT delete these from project documentation if they are useful for our submission.
+
+The requirement is:
+
+**REMOVE THEM FROM THE ACTUAL END-USER PRODUCT EXPERIENCE.**
+
+---
+
+# 4. PRODUCT IDENTITY
+
+The product should consistently be presented as:
+
+# e-BIS Sahayak
+
+Use a professional product description such as:
+
+**"Your intelligent assistant for Indian Standards, BIS services, certification and laboratory information."**
+
+Do not repeatedly use technical descriptions like:
+
+"AI-powered RAG chatbot"
+
+"Groq-powered RAG system"
+
+"Vector search assistant"
+
+Those are implementation details, not user-facing product messaging.
+
+---
+
+# 5. REDESIGN THE PUBLIC NAVIGATION
+
+The public navigation should feel like a real government/service platform.
+
+Use a clean structure such as:
+
+* Home
+* Assistant
+* Standards
+* Certification
+* Laboratories
+* About
+
+Optional:
+
+* Saved
+* Help
+
+Do NOT expose:
+
+* Backend
+* API
+* Database
+* Qdrant
+* Developer
+* Debug
+* Evaluation
+* Ingestion
+* System Health
+
+in public navigation.
+
+---
+
+# 6. HOME PAGE — MAKE IT A REAL PRODUCT
+
+Completely redesign the public home page if necessary.
+
+Hero:
+
+**e-BIS Sahayak**
+
+**Understand Indian Standards. Navigate BIS services with confidence.**
+
+Supporting text:
+
+"Find relevant standards, understand certification requirements, explore laboratory information, and get evidence-backed answers from BIS sources."
+
+Primary CTA:
+
+**Ask e-BIS Sahayak**
+
+Secondary CTA:
+
+**Explore Standards**
+
+Additional actions:
+
+**Certification Guidance**
+
+**Find a Laboratory**
+
+---
+
+# 7. HOME PAGE SHOULD EXPLAIN WHAT USERS CAN DO
+
+Create four polished service cards.
+
+### Ask the Assistant
+
+"Get answers about Indian Standards, BIS services, certification and testing."
+
+### Find a Standard
+
+"Discover standards relevant to your product, material or industry."
+
+### Certification Guidance
+
+"Understand the certification journey, requirements and next steps."
+
+### Find a Laboratory
+
+"Explore laboratories and testing information relevant to your needs."
+
+These should be actual functional navigation/actions.
+
+Do not create fake buttons.
+
+---
+
+# 8. ASSISTANT PAGE — COMPLETE USER EXPERIENCE
+
+The assistant is the main feature.
+
+The user should see:
+
+**Ask e-BIS Sahayak**
+
+Example prompts:
+
+* "Which Indian Standard applies to cement?"
+* "What standard should I look for for this product?"
+* "How can I understand BIS certification requirements?"
+* "What testing information is available for this product?"
+* "Find standards related to electrical safety."
+
+Do NOT show:
+
+* RAG
+* retrieval
+* chunks
+* embeddings
+* vector search
+* Groq
+* model name
+* similarity score
+* context window
+* latency
+
+---
+
+# 9. ANSWER UI
+
+Every answer should have a clean structure:
+
+### Answer
+
+Human-readable answer.
+
+### Sources
+
+Show trustworthy source references.
+
+Where available, show:
+
+* Standard name/number
+* Document title
+* Clause
+* Section
+* Page
+* Source
+
+Use expandable evidence.
+
+Example:
+
+**Source: IS XXXXX**
+
+**Section: XXXXX**
+
+**Page: XX**
+
+**Evidence**
+
+Relevant source passage.
+
+The user should understand:
+
+"Why should I trust this answer?"
+
+without seeing technical RAG internals.
+
+---
+
+# 10. IMPORTANT — DO NOT REMOVE LEGITIMATE BIS INFORMATION
+
+Do NOT remove:
+
+* IS numbers
+* standard numbers
+* clauses
+* sections
+* publication information
+* document titles
+* BIS references
+* source citations
+* official source information
+
+These are valuable product information.
+
+Remove only INTERNAL technical implementation details.
+
+---
+
+# 11. HALLUCINATION / NO-EVIDENCE UX
+
+If the system cannot find sufficient evidence, NEVER invent an answer.
+
+Create a professional message such as:
+
+**"I couldn't find sufficient information in the available BIS sources to answer this confidently."**
+
+Then provide:
+
+**"Try asking about a specific standard, product, certification service, or testing requirement."**
+
+Do not display:
+
+* retrieval score
+* chunk count
+* similarity score
+* model failure
+* vector search failure
+
+---
+
+# 12. STANDARDS EXPLORER
+
+Build/polish a real Standards section.
+
+Users should be able to:
+
+* search standards
+* browse standards
+* open standard details
+* understand what the standard relates to
+* ask questions about a standard
+
+Standard cards should contain useful information such as:
+
+* Standard number
+* Title
+* Relevant category
+* Description
+* Status if verified from source data
+
+Do not show internal database IDs.
+
+---
+
+# 13. STANDARD DETAILS PAGE
+
+Create a professional standard detail experience.
+
+Show:
+
+**Standard Number**
+
+**Title**
+
+**Description**
+
+**Relevant information**
+
+**Source**
+
+**Available sections/clauses**
+
+Primary action:
+
+### Ask about this standard
+
+Clicking this should open the assistant with the selected standard as context.
+
+This should be an actual working feature.
+
+---
+
+# 14. PRODUCT → STANDARD INTELLIGENCE
+
+This should become one of the major features.
+
+Create a page/action:
+
+# Find Standards for My Product
+
+User inputs:
+
+* Product name
+* Material
+* Purpose
+* Industry
+* Optional description
+
+Example:
+
+Product:
+"Electrical cable"
+
+Material:
+"Copper"
+
+Purpose:
+"Residential electrical installation"
+
+Then the system should return potentially relevant standards.
+
+Each result should explain:
+
+### Why this standard may be relevant
+
+with evidence-backed reasoning.
+
+Do not make unsupported claims.
+
+Use wording such as:
+
+**"Potentially relevant based on the available BIS source information."**
+
+---
+
+# 15. CERTIFICATION SECTION
+
+Create a polished certification guidance experience.
+
+Possible flow:
+
+### 1. Identify your product
+
+### 2. Find applicable requirements
+
+### 3. Understand testing needs
+
+### 4. Identify relevant BIS process
+
+### 5. Review official information
+
+Do NOT claim:
+
+* "You are certified"
+* "BIS will approve you"
+* "Guaranteed certification"
+* "This is official approval"
+
+unless the underlying official data explicitly supports it.
+
+Clearly distinguish:
+
+**Information and guidance**
+
+from
+
+**Official BIS decisions/processes.**
+
+---
+
+# 16. LABORATORY SECTION
+
+Create a useful laboratory discovery experience.
+
+Allow searching by:
+
+* Laboratory name
+* Location
+* Testing capability
+* Product/category
+
+Cards can show:
+
+* Laboratory name
+* Location
+* Relevant capability
+* Available verified information
+* Source
+
+Do not expose database IDs.
+
+Do not fabricate laboratory information.
+
+If real data is unavailable, clearly design the empty state rather than inventing laboratories.
+
+---
+
+# 17. MULTILINGUAL EXPERIENCE
+
+Support:
+
+* English
+* Hindi
+* Tamil
+
+Language selector should be professional.
+
+Users should be able to switch languages.
+
+The interface should not expose technical terms such as:
+
+"Language detection model"
+
+"translation pipeline"
+
+"multilingual retrieval"
+
+Simply present:
+
+**English | हिन्दी | தமிழ்**
+
+Answers should be returned in the selected language where supported.
+
+Preserve important technical identifiers such as:
+
+* IS numbers
+* standard numbers
+* clause numbers
+* official terminology
+
+Do not blindly translate identifiers.
+
+---
+
+# 18. ERROR HANDLING
+
+This is extremely important.
+
+NEVER expose raw errors.
+
+Bad:
+
+"AxiosError: Request failed with status code 500"
+
+Bad:
+
+"Failed to fetch http://localhost:8000/api/..."
+
+Bad:
+
+"Qdrant connection refused"
+
+Bad:
+
+"Groq API error"
+
+Bad:
+
+"PostgreSQL connection error"
+
+Instead show:
+
+**"Something went wrong while processing your request. Please try again."**
+
+Optional:
+
+**Try again**
+
+Log technical information internally.
+
+---
+
+# 19. LOADING STATES
+
+Replace technical loading messages.
+
+Bad:
+
+"Running RAG..."
+
+"Searching vector database..."
+
+"Generating embeddings..."
+
+"Calling Groq..."
+
+Use:
+
+**"Finding relevant information..."**
+
+**"Preparing your answer..."**
+
+**"Checking available sources..."**
+
+Keep animations polished and subtle.
+
+---
+
+# 20. EMPTY STATES
+
+Create polished empty states.
+
+Example:
+
+No standards:
+
+**"No standards found."**
+
+"Try a different product, category or search term."
+
+No laboratories:
+
+**"No matching laboratories found."**
+
+"Try another location or testing capability."
+
+No conversation:
+
+**"How can e-BIS Sahayak help you today?"**
+
+---
+
+# 21. REMOVE TECHNICAL DASHBOARDS FROM PUBLIC UI
+
+If you currently have cards such as:
+
+* Backend Health
+* Database Health
+* API Health
+* Qdrant
+* Groq
+* PostgreSQL
+* Vector Count
+* Embedding Status
+* System Status
+
+REMOVE THEM FROM PUBLIC PAGES.
+
+Do not simply set:
+
+display:none
+
+Instead:
+
+* remove the public component
+* remove unnecessary imports
+* clean related frontend state
+* clean unnecessary API calls
+* move technical monitoring into Admin if needed
+
+---
+
+# 22. ADMIN DASHBOARD
+
+If an admin dashboard already exists, preserve useful technical monitoring there.
+
+Create a clearly protected:
+
+**Administration**
+
+area.
+
+Possible sections:
+
+* Overview
+* Knowledge Base
+* Documents
+* Standards Data
+* Laboratory Data
+* Certification Data
+* Feedback
+* System Health
+* Evaluation
+
+Only authenticated administrators should access this.
+
+Public users must never see these sections.
+
+---
+
+# 23. TECHNICAL DATA MUST STAY BACKEND-SIDE
+
+The backend may still use:
+
+* Groq
+* Qdrant
+* PostgreSQL
+* embeddings
+* RAG
+* retrieval
+* similarity scores
+
+DO NOT remove working backend architecture just because the terminology is technical.
+
+The objective is:
+
+**Hide implementation details from users, NOT break the implementation.**
+
+---
+
+# 24. FRONTEND SEARCH
+
+Search all frontend files for visible technical strings.
+
+Use repository-wide searches.
+
+Do NOT stop after checking the main page.
+
+Search:
+
+* `.tsx`
+* `.ts`
+* `.jsx`
+* `.js`
+* `.css`
+* localization files
+* JSON
+* configuration
+* API response mapping
+* error handlers
+
+If a string is generated dynamically, trace its source.
+
+---
+
+# 25. BACKEND SEARCH
+
+Search backend code for responses that directly expose internal information to users.
+
+Check:
+
+* FastAPI routes
+* schemas
+* response models
+* exception handlers
+* service classes
+* RAG service
+* retrieval service
+* AI service
+* database service
+
+Return user-friendly messages from the API.
+
+Keep detailed errors in logs.
+
+---
+
+# 26. REMOVE MOCK / DUMMY CONTENT FROM PUBLIC PRODUCT
+
+Search for:
+
+* dummy
+* mock
+* fake
+* sample
+* example
+* placeholder
+* lorem ipsum
+
+If fake data is visible to users:
+
+REMOVE IT.
+
+Do not invent BIS information.
+
+If there is no verified data:
+
+create a proper empty state.
+
+---
+
+# 27. DESIGN QUALITY
+
+Make the interface feel:
+
+* modern
+* trustworthy
+* professional
+* clean
+* government/service oriented
+* accessible
+* responsive
+* premium but not flashy
+
+Avoid excessive gradients.
+
+Avoid unnecessary animations.
+
+Avoid huge decorative elements.
+
+Prioritize:
+
+* typography
+* spacing
+* hierarchy
+* readability
+* accessibility
+* responsive layout
+* consistent cards
+* clear CTAs
+* useful information density
+
+---
+
+# 28. RESPONSIVE DESIGN
+
+Test:
+
+* desktop
+* laptop
+* tablet
+* mobile
+
+The UI must not overflow horizontally.
+
+Chat interface must work properly on mobile.
+
+Navigation must collapse correctly.
+
+Cards must resize correctly.
+
+Tables must remain usable.
+
+---
+
+# 29. ACCESSIBILITY
+
+Check:
+
+* keyboard navigation
+* focus states
+* button labels
+* semantic HTML
+* color contrast
+* form labels
+* screen-reader-friendly controls
+* accessible dialogs
+* accessible dropdowns
+
+Do not rely only on color to communicate state.
+
+---
+
+# 30. TRUST / ABOUT PAGE
+
+Create an About page explaining the product in user-friendly language.
+
+Suggested content:
+
+**About e-BIS Sahayak**
+
+"e-BIS Sahayak is an intelligent information assistant designed to help users understand Indian Standards, BIS-related services, certification information and laboratory resources through a conversational experience."
+
+Explain:
+
+* what it helps with
+* how users can use it
+* sources
+* evidence
+* limitations
+
+Add a clear note:
+
+**"Information provided by e-BIS Sahayak is intended for guidance and should be verified against the latest official BIS information where required."**
+
+Do not make false claims about official BIS ownership or endorsement.
+
+---
+
+# 31. PRODUCT-WIDE COPY CLEANUP
+
+Go through EVERY public page and rewrite awkward developer-oriented text.
+
+The product should speak to:
+
+* consumers
+* manufacturers
+* students
+* businesses
+* industry professionals
+* people seeking standards/certification information
+
+NOT developers.
+
+---
+
+# 32. REMOVE INTERNAL IDs FROM UI
+
+Hide things like:
+
+* UUIDs
+* database primary keys
+* document UUID
+* vector IDs
+* internal chunk IDs
+* API request IDs
+* internal filenames where inappropriate
+
+Exception:
+
+Official BIS document/standard identifiers should remain visible when useful.
+
+---
+
+# 33. REMOVE DEBUG LOGGING FROM BROWSER UI
+
+Search for:
+
+* console.log
+* console.error displayed through UI
+* debug panels
+* development banners
+* test banners
+* raw API responses
+
+Remove unnecessary browser debug output.
+
+Do NOT remove useful server-side logging needed for maintenance.
+
+---
+
+# 34. NO CSS-ONLY HIDING
+
+This is critical.
+
+DO NOT solve the problem with:
+
+```css
+display: none;
+visibility: hidden;
+opacity: 0;
+```
+
+if the component itself should not exist in the public experience.
+
+Actually refactor/remove the component from the public page.
+
+---
+
+# 35. ROUTING CLEANUP
+
+Review all routes.
+
+Public:
+
+* `/`
+* `/assistant`
+* `/standards`
+* `/standards/[id]`
+* `/certification`
+* `/laboratories`
+* `/about`
+
+Admin/internal:
+
+* `/admin`
+* `/admin/knowledge`
+* `/admin/documents`
+* `/admin/health`
+* `/admin/evaluation`
+
+Adapt route names to the existing architecture where necessary.
+
+Do not break existing functionality.
+
+---
+
+# 36. SEO / METADATA
+
+Set professional metadata.
+
+Title:
+
+**e-BIS Sahayak | Indian Standards & BIS Information Assistant**
+
+Description:
+
+**"Explore Indian Standards, BIS services, certification information and laboratory resources with e-BIS Sahayak."**
+
+Remove hackathon/development terminology from:
+
+* page titles
+* metadata
+* browser titles
+* OpenGraph metadata
+* descriptions
+
+---
+
+# 37. FAVICON / BRANDING
+
+If the project already has branding, make it consistent.
+
+If branding is incomplete, create a simple professional identity around:
+
+**e-BIS Sahayak**
+
+Do not use:
+
+* SIH logo
+* hackathon branding
+* developer placeholder branding
+
+unless specifically required in a private presentation/document.
+
+---
+
+# 38. USER JOURNEY
+
+After implementation, verify these complete flows:
+
+### FLOW 1 — General Question
+
+Home → Assistant → ask question → answer → sources
+
+### FLOW 2 — Find Standard
+
+Home → Standards → search → open standard → Ask about this standard
+
+### FLOW 3 — Product Intelligence
+
+Home → Find Standards → enter product information → results → evidence
+
+### FLOW 4 — Certification
+
+Home → Certification → understand process → relevant information → sources
+
+### FLOW 5 — Laboratory
+
+Home → Laboratories → search → results → details
+
+### FLOW 6 — Language
+
+English → Hindi → Tamil → assistant answer
+
+### FLOW 7 — No Evidence
+
+Ask unsupported question → friendly insufficient-information response
+
+### FLOW 8 — API Failure
+
+Backend unavailable → friendly error → retry
+
+---
+
+# 39. VERY IMPORTANT — VERIFY RENDERED UI
+
+After implementation:
+
+1. Start the frontend.
+2. Start the backend.
+3. Open every public route.
+4. Inspect the ACTUAL rendered interface.
+5. Do not rely only on source code inspection.
+
+Check visually for any remaining:
+
+* SIH
+* PS
+* Phase
+* Backend Health
+* API Health
+* Database
+* Qdrant
+* Groq
+* RAG
+* Embedding
+* Vector
+* Retrieval
+* Debug
+* Developer
+* Prototype
+* Demo
+* Development
+* Mock
+* Dummy
+* Placeholder
+* technical IDs
+
+If any unwanted text remains, FIND ITS SOURCE AND REMOVE IT.
+
+---
+
+# 40. AUTOMATED REPOSITORY SEARCH AFTER CLEANUP
+
+After editing, run repository-wide searches for the following terms:
+
+SIH
+SIH26107
+Problem Statement
+Smart India Hackathon
+Phase 1
+Phase 2
+Phase 3
+Phase 4
+Phase 5
+Phase 6
+Phase 7
+Backend Health
+API Health
+Health Check
+Qdrant
+Groq
+PostgreSQL
+Embedding
+Embeddings
+Vector
+Retrieval
+RAG
+Similarity Score
+Top K
+Chunks
+Context Chunks
+Developer Tools
+Debug
+Prototype
+Demo Mode
+Development Mode
+Mock
+Dummy
+Placeholder
+TODO
+FIXME
+
+For every match:
+
+* determine whether it is public UI
+* determine whether it is backend/internal
+* determine whether it is documentation
+* remove it from public UI if inappropriate
+* preserve it if legitimately required internally
+
+---
+
+# 41. DO NOT BREAK THE EXISTING AI SYSTEM
+
+Do NOT replace the current architecture unnecessarily.
+
+Preserve the working:
+
+* Groq integration
+* RAG pipeline
+* Qdrant
+* PostgreSQL
+* FastAPI
+* Next.js
+* multilingual capabilities
+* citation system
+* standards intelligence
+* certification intelligence
+* laboratory intelligence
+
+Only improve them where necessary for product quality.
+
+---
+
+# 42. DO NOT FABRICATE DATA
+
+This is extremely important.
+
+Never create fake:
+
+* BIS standards
+* standard numbers
+* clauses
+* laboratories
+* certification requirements
+* official claims
+* citations
+
+If data is unavailable:
+
+say that the information is unavailable.
+
+---
+
+# 43. SECURITY
+
+Ensure:
+
+* admin routes are protected
+* secrets are not exposed to frontend
+* Groq API key remains backend-only
+* database credentials remain server-side
+* Qdrant credentials remain server-side
+* environment variables are not exposed
+* raw exceptions are not sent to users
+* user input is sanitized appropriately
+
+---
+
+# 44. FINAL PRODUCT STANDARD
+
+When finished, ask yourself:
+
+"If I showed this application to a normal consumer who knows nothing about programming, would they think this is a real information/service platform?"
+
+If the answer is no:
+
+KEEP IMPROVING THE UI.
+
+The user should NOT need to know what:
+
+* RAG
+* embeddings
+* vector databases
+* Groq
+* APIs
+* PostgreSQL
+* Qdrant
+
+are.
+
+They should simply understand:
+
+**"I can ask about Indian Standards and BIS-related information and get an answer backed by sources."**
+
+---
+
+# 45. FINAL IMPLEMENTATION REQUIREMENT
+
+Do NOT just provide a report.
+
+Do NOT just list recommendations.
+
+Do NOT stop after identifying problems.
+
+Actually modify the repository.
+
+For every major change:
+
+1. inspect
+2. implement
+3. run
+4. verify
+5. fix errors
+6. re-run
+7. inspect rendered UI again
+
+---
+
+# 46. FINAL REPORT
+
+Only AFTER all implementation is complete, provide a concise report containing:
+
+### Completed
+
+List what was actually changed.
+
+### Removed From Public UI
+
+List the categories of internal text removed.
+
+### Preserved
+
+List important functionality that was intentionally preserved.
+
+### New Product Experience
+
+List the user-facing features now available.
+
+### Remaining Issues
+
+Only list genuine unresolved issues.
+
+### Verification
+
+Tell me which routes were tested.
+
+### Build Status
+
+Confirm whether:
+
+* frontend builds
+* backend starts
+* tests pass
+* no major runtime errors remain
+
+### Final Product Structure
+
+Show the final public navigation.
+
+---
+
+# FINAL INSTRUCTION
+
+**DO NOT GIVE ME THE NEXT PROMPT.**
+
+**DO NOT JUST EXPLAIN WHAT YOU WOULD DO.**
+
+**DO NOT ASK ME FOR PERMISSION TO PERFORM THE CLEANUP.**
+
+**WORK DIRECTLY ON THE EXISTING PROJECT.**
+
+**THIS IS A FULL PRODUCT TRANSFORMATION + PUBLIC UI CLEANUP.**
+
+The final result should look like a complete product called:
+
+# e-BIS Sahayak
+
+and NOT like:
+
+* an SIH project
+* a student project
+* a development dashboard
+* an AI/RAG demo
+* a backend testing interface
+
+The technical architecture should remain underneath the product.
+
+**PUBLIC EXPERIENCE = SIMPLE, TRUSTWORTHY, PROFESSIONAL.**
+
+**INTERNAL SYSTEM = TECHNICAL, OBSERVABLE, MAINTAINABLE.**
+
+Start by inspecting the entire repository and then implement the transformation.

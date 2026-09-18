@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ebis-sahayak-backend"
+version = "0.1.0"
+description = "FastAPI Backend for e-BIS Sahayak (SIH 2026 SIH26107)"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "e-BIS Sahayak Team" }
+]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q"
+testpaths = [
+    "tests",
+]
+pythonpath = [
+    ".",
+    "app"
+]
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
