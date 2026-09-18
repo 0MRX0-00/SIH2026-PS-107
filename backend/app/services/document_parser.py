@@ -1,7 +1,6 @@
 import re
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-from pypdf import PdfReader
 
 
 class DocumentParserError(Exception):
@@ -40,6 +39,10 @@ class DocumentParser:
 
     @classmethod
     def parse_pdf(cls, filepath: Path) -> List[ExtractedPage]:
+        try:
+            from pypdf import PdfReader
+        except ImportError:
+            raise DocumentParserError("pypdf is required to parse PDF files. Please install pypdf.")
         """Extracts text per page from PDF using pypdf, detecting scanned pages."""
         try:
             reader = PdfReader(str(filepath))

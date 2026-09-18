@@ -81,16 +81,39 @@ class FastEmbedService(BaseEmbeddingService):
 class FallbackDeterministicEmbeddingService(BaseEmbeddingService):
     """
     Fast, deterministic hash-based embedding service for unit tests and zero-dependency environments.
+    Uses MD5 term and char n-gram hashing for robust semantic keyword matching.
     """
 
     def __init__(self, dimension: int = 384):
         self._dim = dimension
+        self._stopwords = {
+            "a", "an", "the", "in", "on", "at", "to", "for", "of", "and", "or",
+            "is", "are", "was", "were", "what", "which", "how", "i", "want", "my",
+            "me", "should", "use", "make", "do", "so"
+        }
 
     def _generate_vector(self, text: str) -> List[float]:
+        import hashlib
+        import re
         vec = np.zeros(self._dim, dtype=np.float32)
-        for idx, token in enumerate(text.lower().split()):
-            pos = abs(hash(token) + idx) % self._dim
-            vec[pos] += 1.0
+        words = re.findall(r'\b[a-zA-Z0-9_\u0900-\u097F\u0B80-\u0BFF]+\b', text.lower())
+        
+        for word in words:
+            weight = 0.5 if word in self._stopwords else 2.0
+            # Word level hash
+            h_val = int(hashlib.md5(word.encode("utf-8")).hexdigest(), 16)
+            pos = h_val % self._dim
+            vec[pos] += weight
+
+            # 3-gram and 4-gram subword hashing for stem matching
+            if len(word) >= 4 and word not in self._stopwords:
+                for n in (3, 4):
+                    for i in range(len(word) - n + 1):
+                        sub = word[i:i+n]
+                        sub_h = int(hashlib.md5(sub.encode("utf-8")).hexdigest(), 16)
+                        sub_pos = sub_h % self._dim
+                        vec[sub_pos] += 0.4
+
         norm = np.linalg.norm(vec)
         if norm > 0:
             vec = vec / norm

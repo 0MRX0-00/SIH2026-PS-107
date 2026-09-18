@@ -122,6 +122,70 @@ VERIFIED_STANDARDS: List[Dict[str, Any]] = [
                 "page_number": 1
             }
         ]
+    },
+    {
+        "id": "std-17526",
+        "standard_number": "IS 17526:2021",
+        "title": "Stainless Steel Vacuum Flasks / Insulated Flasks and Containers - Specification",
+        "division": "Mechanical Engineering & Consumer Products",
+        "year": 2021,
+        "status": "ACTIVE",
+        "is_qco_mandatory": True,
+        "qco_order_number": "Insulated Flasks, Bottles and Containers for Domestic Use (Quality Control) Order, 2023",
+        "scope_summary": "Specifies manufacturing, material, and performance requirements for domestic and commercial stainless steel insulated flasks, water bottles, and beverage containers.",
+        "related_standards": ["IS 6911", "IS 10252"],
+        "sections": [
+            {
+                "clause_number": "1.1",
+                "clause_title": "Scope and Applicability",
+                "content": "This standard specifies requirements for stainless steel vacuum flasks, single-wall and double-wall insulated stainless steel water bottles, and portable beverage containers used for household, school, travel, and office purposes.",
+                "page_number": 1
+            },
+            {
+                "clause_number": "4.1",
+                "clause_title": "Material & Grade Specifications",
+                "content": "All stainless steel components in direct contact with liquids/food shall be manufactured using food-grade austenitic stainless steel conforming to IS 6911 (Grade 304 / SS 304, designated as X6CrNi18-10, or Grade 316 for enhanced chemical resistance). Toxic heavy metal leaching into water shall strictly conform to BIS food-contact migration limits.",
+                "page_number": 3
+            },
+            {
+                "clause_number": "5.1",
+                "clause_title": "Mandatory Certification and Marking",
+                "content": "Every stainless steel water bottle and vacuum flask manufactured, imported, or sold in India MUST carry the Standard Mark (ISI mark) under BIS Scheme-I with the manufacturer's unique CM/L license number. Manufacturing or selling without ISI mark is a punishable offense under the BIS Act, 2016.",
+                "page_number": 5
+            },
+            {
+                "clause_number": "6.2",
+                "clause_title": "Performance & Leakage Testing",
+                "content": "Bottles must successfully pass the thermal insulation retention test (minimum temperature holding after 6/12/24 hours), pressure resistance test, 1.2-meter drop/impact test onto a concrete floor without fracture or leak, and seal gasket durability test.",
+                "page_number": 7
+            }
+        ]
+    },
+    {
+        "id": "std-6911",
+        "standard_number": "IS 6911:2017",
+        "title": "Stainless Steel Plate, Sheet and Strip - Specification (First Revision)",
+        "division": "Metallurgical Engineering",
+        "year": 2017,
+        "status": "ACTIVE",
+        "is_qco_mandatory": True,
+        "qco_order_number": "Stainless Steel Products (Quality Control) Order, 2020",
+        "scope_summary": "Prescribes chemical composition, mechanical properties, and finish requirements for stainless steel plate, sheet, and strip used for food utensils, water containers, and industrial fabrication.",
+        "related_standards": ["IS 17526", "IS 14756"],
+        "sections": [
+            {
+                "clause_number": "1.1",
+                "clause_title": "Scope",
+                "content": "Covers hot-rolled and cold-rolled stainless steel plates, sheets, and coils intended for fabrication of utensils, water bottles, and food storage equipment.",
+                "page_number": 1
+            },
+            {
+                "clause_number": "7.1",
+                "clause_title": "Food Grade Material Grades",
+                "content": "For food and drinking water contact utensils and bottles, austenitic Grade 304 (nominal 18% Chromium, 8% Nickel) or Grade 316 (containing Molybdenum) shall be used to ensure corrosion resistance and zero toxic leaching.",
+                "page_number": 8
+            }
+        ]
     }
 ]
 

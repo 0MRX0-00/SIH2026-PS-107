@@ -88,7 +88,7 @@ class RAGService:
 
         raw_answer = groq_json.get("answer", "")
         raw_citations = groq_json.get("citations", [])
-        insufficient_evidence = groq_json.get("insufficient_evidence", False) or not context.has_sufficient_evidence
+        insufficient_evidence = groq_json.get("insufficient_evidence", False)
 
         # 6. Validate and enrich citations against real retrieved chunks
         clean_answer, validated_citations, rejected_citations = self.citation_engine.validate_and_enrich(
@@ -97,12 +97,15 @@ class RAGService:
             evidence_chunks=context.evidence_chunks,
         )
 
+        if not clean_answer or not clean_answer.strip():
+            insufficient_evidence = True
+
         total_latency_ms = (time.time() - start_time) * 1000
 
         return ChatResponse(
             answer=clean_answer,
             citations=validated_citations,
-            sources_used=len(context.evidence_chunks) if not insufficient_evidence else 0,
+            sources_used=len(validated_citations) if validated_citations else len(context.evidence_chunks),
             insufficient_evidence=insufficient_evidence,
             conversation_id=request.conversation_id,
             model=self.groq_service.model,
@@ -150,13 +153,16 @@ class RAGService:
 
         raw_answer = groq_json.get("answer", "")
         raw_citations = groq_json.get("citations", [])
-        insufficient_evidence = groq_json.get("insufficient_evidence", False) or not context.has_sufficient_evidence
+        insufficient_evidence = groq_json.get("insufficient_evidence", False)
 
         clean_answer, validated_citations, rejected_citations = self.citation_engine.validate_and_enrich(
             raw_answer=raw_answer,
             raw_citations=raw_citations,
             evidence_chunks=context.evidence_chunks,
         )
+
+        if not clean_answer or not clean_answer.strip():
+            insufficient_evidence = True
 
         total_latency_ms = (time.time() - start_time) * 1000
 
