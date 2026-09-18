@@ -88,6 +88,10 @@ export interface ChatResponse {
   citations: CitationItem[];
   sources_used: number;
   insufficient_evidence: boolean;
+  intent?: string;
+  clarification_needed?: boolean;
+  clarification_options?: string[];
+  retrieval_triggered?: boolean;
   conversation_id?: string;
   model: string;
   processing_time_ms: number;

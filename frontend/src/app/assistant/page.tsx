@@ -35,6 +35,10 @@ interface Message {
   citations?: CitationItem[];
   sources_used?: number;
   insufficient_evidence?: boolean;
+  intent?: string;
+  clarification_needed?: boolean;
+  clarification_options?: string[];
+  retrieval_triggered?: boolean;
   processing_time_ms?: number;
   model?: string;
   created_at: Date;
@@ -176,6 +180,10 @@ function AssistantContent() {
         citations: res.citations,
         sources_used: res.sources_used,
         insufficient_evidence: res.insufficient_evidence,
+        intent: res.intent,
+        clarification_needed: res.clarification_needed,
+        clarification_options: res.clarification_options,
+        retrieval_triggered: res.retrieval_triggered,
         processing_time_ms: res.processing_time_ms,
         model: res.model,
         created_at: new Date(),
@@ -184,6 +192,8 @@ function AssistantContent() {
       setMessages((prev) => [...prev, assistantMessage]);
       if (res.citations && res.citations.length > 0) {
         setSelectedCitation(res.citations[0]);
+      } else {
+        setSelectedCitation(null);
       }
     } catch (err: any) {
       console.error("Chat error:", err);
@@ -289,6 +299,27 @@ function AssistantContent() {
                     })}
                   </div>
 
+                  {/* Interactive Clarification Options */}
+                  {msg.clarification_needed && msg.clarification_options && msg.clarification_options.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
+                      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider flex items-center space-x-1">
+                        <HelpCircle className="w-3 h-3 text-bis-blue" />
+                        <span>Select a product option:</span>
+                      </p>
+                      <div className="flex flex-col gap-1.5">
+                        {msg.clarification_options.map((opt, oIdx) => (
+                          <button
+                            key={oIdx}
+                            onClick={() => handleSendMessage(opt)}
+                            className="text-left text-[11px] px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 transition-all font-medium"
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Insufficient Evidence Warning Banner */}
                   {msg.insufficient_evidence && (
                     <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-[11px] text-amber-900 flex items-start space-x-2">
@@ -303,7 +334,7 @@ function AssistantContent() {
                   )}
 
                   {/* Citations Pill Bar */}
-                  {msg.citations && msg.citations.length > 0 && (
+                  {msg.retrieval_triggered !== false && msg.citations && msg.citations.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
                       <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider flex items-center space-x-1">
                         <BookOpen className="w-3 h-3 text-bis-blue" />
@@ -335,7 +366,11 @@ function AssistantContent() {
                     <div className="mt-2.5 pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between text-[10px] text-slate-400 gap-2">
                       <span className="flex items-center space-x-1">
                         <Clock className="w-3 h-3" />
-                        <span>{msg.processing_time_ms ? `${msg.processing_time_ms}ms` : t("assistant.grounded_badge", "Grounded")}</span>
+                        <span>
+                          {msg.retrieval_triggered === false
+                            ? "Instant Intent Reply"
+                            : (msg.processing_time_ms ? `${msg.processing_time_ms}ms` : t("assistant.grounded_badge", "Grounded"))}
+                        </span>
                       </span>
 
                       {msg.id !== "welcome-1" && (

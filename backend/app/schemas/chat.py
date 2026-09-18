@@ -36,11 +36,15 @@ class ChatResponse(BaseModel):
     """Complete RAG grounded response with validated citations."""
     answer: str = Field(..., description="Grounded answer synthesized from verified BIS evidence")
     citations: List[CitationItem] = Field(default=[], description="List of validated citation sources")
-    sources_used: int = Field(..., description="Number of evidence chunks utilized")
+    sources_used: int = Field(0, description="Number of evidence chunks utilized")
     insufficient_evidence: bool = Field(
         False, 
         description="True if query cannot be answered authoritatively from available BIS knowledge"
     )
+    intent: Optional[str] = Field("GENERAL_BIS_QUERY", description="Classified user intent (e.g. GREETING, CLARIFICATION_REQUIRED, STANDARD_SEARCH)")
+    clarification_needed: bool = Field(False, description="True if query is ambiguous and requires user clarification")
+    clarification_options: List[str] = Field(default=[], description="Selectable clarification options for ambiguous product queries")
+    retrieval_triggered: bool = Field(True, description="False if RAG retrieval was bypassed (e.g. for greetings or small talk)")
     conversation_id: Optional[uuid.UUID] = Field(None, description="Conversation session ID")
     model: str = Field(..., description="Groq model identifier used for inference")
     processing_time_ms: float = Field(..., description="Total end-to-end processing latency in milliseconds")
