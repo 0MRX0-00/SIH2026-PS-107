@@ -1,9 +1,14 @@
 import uuid
-from typing import List, Optional, Any
+from typing import List, Optional, Any, TYPE_CHECKING
 from sqlalchemy import String, Text, ForeignKey, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, TimestampMixin
+
+if TYPE_CHECKING:
+    from app.models.user import User
+    from app.models.citation import Citation
+    from app.models.feedback import Feedback
 
 
 class Conversation(Base, TimestampMixin):

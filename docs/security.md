@@ -33,7 +33,7 @@ Incoming Request
                                │
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ 6. ContextBuilder Injection Defense & Citation Verifier     │
+│ 6. IntentRouter Injection Defense & Evidence Gatekeeper     │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -43,8 +43,8 @@ Incoming Request
 
 ### 2.1 Prompt Injection Defense (Direct & Indirect / RAG Poisoning)
 - **Data Isolation:** Retrieved document text is treated strictly as passive data inside delimited `[EVIDENCE X] ... [END EVIDENCE X]` envelopes.
-- **Instruction Boundary Hardening:** The system prompt instructs the Groq LPU to treat any command found within evidence chunks as inert content.
-- **Pre-Processing Pattern Filter:** `ContextBuilder` intercepts adversarial keywords (`"ignore all previous instructions"`, `"system override"`, `"You are now DAN"`, `"जाली"`, `"போலி"`) and immediately suppresses evidence synthesis to prevent jailbreaking.
+- **Instruction Boundary Hardening:** The system prompt instructs the Groq LPU to treat any command found within evidence passages as inert content.
+- **Pre-Processing Pattern Filter:** `IntentRouter` (`app/services/intent_router.py`) intercepts adversarial keywords (`"ignore all previous instructions"`, `"system override"`, `"You are now DAN"`, `"जाली"`, `"போலி"`) and classifies them under `ADVERSARIAL_INJECTION` or `GARBAGE_INPUT` intents to prevent jailbreaking.
 
 ### 2.2 API Security & Rate Limiting
 - **In-Memory Sliding Window Rate Limiter:** Protects expensive AI endpoints (`/api/v1/chat`, `/api/v1/discovery`) with a default limit of 40 requests/min and general endpoints with 120 requests/min.
@@ -60,5 +60,7 @@ Incoming Request
 - All relational database interactions use asynchronous SQLAlchemy ORM parameterized queries.
 - No direct shell or system command execution is exposed to API clients.
 
-### 2.5 Security Test Fixtures
-- Malicious prompt payloads and poisoned document fixtures are quarantined in `data/security/` and strictly excluded from the production vector knowledge base.
+### 2.5 Security & Adversarial Input Handling
+- Adversarial prompt injections and out-of-scope garbage inputs are deterministically routed at the gateway by `IntentRouter` (`app/services/intent_router.py`) to `ADVERSARIAL_INJECTION` and `GARBAGE_INPUT` intent handlers.
+- Rather than invoking the LLM or querying evidence, these requests immediately trigger controlled safety responses or explicit abstentions.
+- Comprehensive adversarial test cases and prompt injection verification tests live in `backend/tests/test_brutal_qa_remediation.py` and `backend/tests/test_capability_and_relevance_gate.py`.

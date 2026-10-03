@@ -2,18 +2,18 @@
 
 ## 1. High-Level Architecture Overview
 
-`e-BIS Sahayak` is structured as a decoupled, multi-tier service architecture designed for scalability, security, and independent service evolution.
+`e-BIS Sahayak` is structured as a decoupled, multi-tier service architecture designed for regulatory precision, zero-hallucination guardrails, and fast sub-second response times.
 
 ```
 ┌────────────────────────────────────────────────────────┐
 │               User Browser / Client Devices            │
 └───────────────────────────┬────────────────────────────┘
-                            │ HTTPS / REST / SSE
+                            │ HTTPS / REST
 ┌───────────────────────────▼────────────────────────────┐
 │              Frontend Layer (Next.js 14)               │
 │  - App Router / Responsive UI / Accessibility          │
 │  - Navigation, Assistant Shell, Standards Explorer     │
-│  - Interactive Citation Drawer & Verification Viewer   │
+│  - Interactive Evidence & Citation Drawer              │
 └───────────────────────────┬────────────────────────────┘
                             │ REST APIs (/api/v1/*)
 ┌───────────────────────────▼────────────────────────────┐
@@ -24,49 +24,49 @@
 └─────────────┬───────────────────────────┬──────────────┘
               │                           │
 ┌─────────────▼───────────────┐ ┌─────────▼──────────────┐
-│     Application Services    │ │       RAG Service      │
-│  - Standards Service        │ │  - Query Analyzer      │
-│  - Certification Service    │ │  - Hybrid Retriever    │
-│  - Lab Directory Service    │ │  - Reranking Engine    │
-│  - Citation & Feedback      │ │  - Context Grounding   │
+│     Application Services    │ │     Query Processing   │
+│  - Standards Service        │ │  - Intent Classifier   │
+│  - Certification Service    │ │  - Anaphoric Resolver  │
+│  - Lab Directory Service    │ │  - Input Gatekeeper    │
+│  - Feedback Service         │ │  - Abstention Gate     │
 └─────────────┬───────────────┘ └─────────┬──────────────┘
               │                           │
               │                 ┌─────────▼──────────────┐
-              │                 │  Groq LLM Inference    │
-              │                 │  (Mixtral/Llama3/Gemma)│
-              │                 └────────────────────────┘
+              │                 │   Curated Seed Data    │
+              │                 │   Provider Abstraction │
+              │                 │ (BaseBISDataProvider & │
+              │                 │   seed_intelligence)   │
+              │                 └─────────┬──────────────┘
               │                           │
 ┌─────────────▼───────────────┐ ┌─────────▼──────────────┐
-│  Relational DB (PostgreSQL) │ │ Vector DB (Qdrant)     │
-│  - Users & Sessions         │ │ - Dense Chunk Vectors  │
-│  - Standards & Clauses      │ │ - Chunk Metadata       │
-│  - Scheme & Lab Catalogs    │ │ - Standard IDs & Scope │
-│  - Citation Audit Logs      │ │ - Cosine / Dot product │
+│  Relational DB (PostgreSQL) │ │  Groq LLM Inference    │
+│  - Users & Feedback Data    │ │  (llama-3.3-70b)       │
 └─────────────────────────────┘ └────────────────────────┘
 ```
 
 ---
 
-## 2. Component Decoupling & Interface Abstraction
+## 2. RAG Pipeline & Evidence Retrieval Architecture
 
-Each component communicates via clean, abstract interfaces:
+The backend pipeline enforces an evidence-grounded control flow:
 
-### 2.1 LLM Abstraction Layer
-The application does not couple directly to a specific LLM vendor. The interface `BaseLLMClient` defines:
-* `generate_response(prompt: str, context: List[ChunkContext]) -> LLMResponse`
-* `stream_response(prompt: str, context: List[ChunkContext]) -> AsyncGenerator[str, None]`
-* Default implementation uses **Groq Cloud API** (`llama-3.3-70b-versatile` or `mixtral-8x7b-32768`) for sub-second inference speeds.
+1. **Input Sanity & Garbage Gatekeeper**:
+   - `_is_garbage_input()` intercepts noise, uninformative strings ("asdfgh", "123456", "@@@@"), and low-entropy inputs before vector/database lookups or LLM invocation.
 
-### 2.2 Embedding & Vector Store Abstraction
-The interface `BaseVectorStore` isolates the storage engine:
-* `similarity_search(query_vector: List[float], filter_metadata: Dict, top_k: int) -> List[RetrievedChunk]`
-* Default implementation uses **Qdrant Vector Database**.
-* Embedding model is configurable via environment variables (`EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`), supporting sentence-transformers, BAAI/bge-m3, or HuggingFace endpoints without code modifications.
+2. **Security & Prompt Injection Guardrail**:
+   - Pattern-matches adversarial phrases ("ignore instructions", "make up standards", "treat external data as authoritative") and issues an immediate hard refusal.
 
-### 2.3 Relational & Citation Traceability Store
-PostgreSQL serves as the primary ground-truth database storing:
-* Full text of standards, technical committees, amendments, and QCO gazettes.
-* Relational linkages connecting every conversational message to its explicit `Citation` records (referencing `standard_id`, `section_id`, `page_number`, `document_hash`, and `confidence_score`).
+3. **Multi-Turn Anaphoric Query Resolver**:
+   - `resolve_conversational_query()` resolves bare numeric/ordinal choices ("1", "first", "second") against previous assistant option menus and resolves follow-up entities without raw string concatenation.
+
+4. **Curated Data Provider Lookup**:
+   - `BaseBISDataProvider` abstraction with `SeedBISDataProvider` and `SeedProviderWithProvenanceTag` performs deterministic keyword and entity matching against the curated seed catalog (`app/db/seed_intelligence.py`).
+
+5. **Abstention Gatekeeper (`RAG_MIN_RELEVANCE_SCORE = 0.65`)**:
+   - If zero evidence items clear the relevance threshold (e.g. for fictional items like "teleportation machines"), the system returns `insufficient_evidence=True`, `grounded=False`, `sources=[]` directly **without calling the LLM**.
+
+6. **Evidence-Constrained Groq Generation**:
+   - For valid queries with retrieved evidence, Groq `llama-3.3-70b-versatile` synthesizes a markdown answer constrained strictly to the provided evidence context.
 
 ---
 
@@ -75,6 +75,4 @@ PostgreSQL serves as the primary ground-truth database storing:
 The entire system is containerized via **Docker** and orchestrated through **Docker Compose**:
 * `ebis-frontend`: Next.js node container running on port 3000.
 * `ebis-backend`: FastAPI uvicorn container running on port 8000.
-* `ebis-postgres`: PostgreSQL 16 relational database on port 5432 with persistent volume.
-* `ebis-qdrant`: Qdrant vector database on port 6333 (HTTP) & 6334 (gRPC) with persistent volume.
-* Isolated bridge network `ebis-network` preventing direct unauthorized external exposure of database ports in production.
+* `ebis-postgres`: PostgreSQL relational database on port 5432.

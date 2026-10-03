@@ -105,9 +105,34 @@ class LanguageService:
         }
     }
 
+    # Hinglish (Romanized Hindi) vocabulary mapping for cross-lingual vector retrieval
+    HINGLISH_TO_EN_TERMS = {
+        "kaise": "how to",
+        "karein": "apply process",
+        "karna": "apply process",
+        "liye": "for",
+        "kon": "which",
+        "kaun": "which",
+        "sa": "which",
+        "chahiye": "required mandatory",
+        "batao": "tell explain",
+        "bataiye": "tell explain",
+        "par": "on",
+        "milega": "get obtain",
+        "kab": "when",
+        "kaha": "where",
+        "kahan": "where",
+        "pankha": "ceiling fan",
+        "botle": "water bottle",
+        "botel": "water bottle",
+        "paani": "drinking water",
+        "pani": "drinking water",
+        "pramanan": "certification",
+    }
+
     def detect_language(self, text: str) -> Tuple[str, float, str]:
         """
-        Fast and deterministic language detection based on Unicode script distribution.
+        Fast and deterministic language detection based on Unicode script distribution and Hinglish markers.
         Returns: (language_code, confidence, script_name)
         """
         if not text or not text.strip():
@@ -128,7 +153,7 @@ class LanguageService:
             elif 0x0B80 <= code <= 0x0BFF:
                 tamil_count += 1
                 total_letters += 1
-            # Latin (English)
+            # Latin (English / Hinglish)
             elif (0x0041 <= code <= 0x005A) or (0x0061 <= code <= 0x007A):
                 latin_count += 1
                 total_letters += 1
@@ -144,6 +169,10 @@ class LanguageService:
             conf = round(tamil_count / total_letters, 2)
             return "ta", max(conf, 0.9), "Tamil"
         elif latin_count > 0:
+            words = [w.lower().strip("?,.!") for w in text.split()]
+            hinglish_tokens = {"kaise", "kya", "karein", "karna", "hai", "liye", "kon", "kaun", "sa", "chahiye", "batao", "bataiye", "milega", "kab", "kahan", "kaha", "pani", "paani", "pramanan"}
+            if any(w in hinglish_tokens for w in words):
+                return "hi", 0.9, "Latin (Hinglish)"
             conf = round(latin_count / total_letters, 2)
             return "en", max(conf, 0.95), "Latin"
 
@@ -151,12 +180,9 @@ class LanguageService:
 
     def normalize_and_translate_for_retrieval(self, query: str, detected_lang: str) -> str:
         """
-        Transforms Hindi or Tamil query terms into English search keywords for vector retrieval,
+        Transforms Hindi, Tamil, or Hinglish query terms into English search keywords for vector retrieval,
         preserving standard numbers (e.g. IS 1293:2019) and clause markers untouched.
         """
-        if detected_lang == "en":
-            return query
-
         query_lower = query.lower()
         translated_terms = []
 
@@ -164,11 +190,21 @@ class LanguageService:
             for hi_term, en_term in self.HINDI_TO_EN_TERMS.items():
                 if hi_term in query:
                     translated_terms.append(en_term)
+            for h_term, en_term in self.HINGLISH_TO_EN_TERMS.items():
+                if re.search(r'\b' + re.escape(h_term) + r'\b', query_lower):
+                    if en_term:
+                        translated_terms.append(en_term)
 
         elif detected_lang == "ta":
             for ta_term, en_term in self.TAMIL_TO_EN_TERMS.items():
                 if ta_term in query:
                     translated_terms.append(en_term)
+
+        elif detected_lang == "en":
+            for h_term, en_term in self.HINGLISH_TO_EN_TERMS.items():
+                if re.search(r'\b' + re.escape(h_term) + r'\b', query_lower):
+                    if en_term:
+                        translated_terms.append(en_term)
 
         # Extract any standard codes (e.g. IS 1293)
         is_matches = re.findall(r'\b(?:IS|is)\s*\d+', query, re.IGNORECASE)
@@ -184,3 +220,6 @@ class LanguageService:
             languages=self.SUPPORTED_LANGUAGES,
             default_language="en"
         )
+
+
+language_service = LanguageService()

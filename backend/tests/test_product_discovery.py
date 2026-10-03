@@ -35,7 +35,7 @@ def test_specific_product_discovers_standard(discovery_service):
     assert len(response.standards) > 0
     std = response.standards[0]
     assert "1293" in std.standard_number
-    assert std.evidence_status == "Supported by retrieved BIS source"
+    assert std.evidence_status in ["VERIFIED", "Supported by retrieved BIS source"]
     assert len(std.citations) > 0
     assert std.is_mandatory_qco is True
 

@@ -27,16 +27,16 @@ class AdminOverviewResponse(BaseModel):
     total_schemes: int
     total_laboratories: int
     languages_supported: List[str]
-    vector_store_status: str
-    vector_collection: str
-    total_vectors: int
+    evidence_provider_status: str
+    evidence_catalog_name: str
+    relevance_threshold: float
     groq_model: str
     demo_mode: bool
 
 
 class AdminReindexRequest(BaseModel):
     document_id: Optional[str] = Field(None, description="Specific document ID to reindex, or null for all")
-    force: bool = Field(True, description="Force re-chunking and re-embedding")
+    force: bool = Field(True, description="Force metadata refresh and seed catalog synchronization")
 
 
 class AdminReindexResponse(BaseModel):
@@ -50,9 +50,9 @@ class AdminReindexResponse(BaseModel):
 class AdminSystemStatusResponse(BaseModel):
     app_status: str
     database_status: str
-    qdrant_status: str
+    evidence_provider_status: str
     groq_status: str
-    embedding_status: str
+    relevance_gatekeeper_status: str
     rate_limiter_active: bool
     demo_mode: bool
     uptime_seconds: float

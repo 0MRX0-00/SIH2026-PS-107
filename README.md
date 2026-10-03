@@ -1,201 +1,159 @@
-# e-BIS Sahayak (ई-बीआईएस सहायक)
+# BIS Sahayak (ई-बीआईएस सहायक / இ-பிஐஎஸ் சஹாயக்)
 
-**AI-Powered Source-Grounded Assistant for Indian Standards & BIS Services**  
-**Smart India Hackathon 2026 (SIH 2026)** — Problem Statement: **SIH26107**
-
----
-
-## 1. Overview
-
-**e-BIS Sahayak** is a multilingual, source-grounded intelligent assistant and knowledge discovery platform designed to assist MSMEs, startups, manufacturers, laboratories, and consumers with navigating the Bureau of Indian Standards (BIS) ecosystem in **English**, **Hindi (हिन्दी)**, and **Tamil (தமிழ்)**.
-
-Rather than blindly retrieving semantically similar standards for conversational or ambiguous queries, e-BIS Sahayak enforces a deterministic intent-classification and ambiguity-detection layer before retrieval, ensuring accurate, source-grounded answers with strict hallucination mitigation.
+**Source-Grounded Multilingual Assistant for Indian Standards & BIS Services**  
+*Empowering MSMEs, Startups, Manufacturers, Importers, Laboratories, and Consumers.*
 
 ---
 
-## 2. Architecture
+## 1. Executive Overview
+
+**e-BIS Sahayak** is an evidence-constrained BIS assistant using a curated BIS evidence registry through a decoupled data-provider architecture across **English**, **Hindi (हिन्दी)**, and **Tamil (தமிழ்)**. Responses are constrained by available evidence and include safeguards against unsupported regulatory claims.
+
+The system enforces an evidence-first architecture:
+1. **Deterministic Intent & Guardrail Layer**: Pre-routes capability queries, clarifying requests, out-of-scope queries, and ungrounded fake standards (`IS 9999999`) with zero-hallucination disclaimers.
+2. **Data Provider Abstraction (`BaseBISDataProvider`)**: Decouples services via provider factory (`SeedBISDataProvider`, `LiveBISDataProvider`) with explicit data provenance tracking and source priority ranking.
+3. **Groq LPU Grounded Inference**: Employs Groq LPU (`llama-3.3-70b-versatile`) with 3-tier exponential backoff retries (429/5xx) and fallback synthesis.
+4. **Source Citation Integrity**: Exposes official authority, source URL, verification status (`authoritative_curated`), and supported claim categories (`standard_existence`, `product_applicability`, `mandatory_requirement`).
+
+---
+
+## 2. System Architecture
 
 ```
-User Browser / Client
+User Web Browser (Desktop / Tablet / Mobile)
         │
         ▼ (HTTPS / REST)
-Next.js 14 Frontend (App Router, Tailwind CSS, TypeScript, i18n Context)
-        ├── / (Multilingual Intelligence Dashboard with Metrics & Query Bar)
-        ├── /assistant (Conversational RAG with Interactive Clarification Chips & Grounded Panel)
+Next.js 14 Production Frontend (App Router, Tailwind CSS, TypeScript, i18n Context)
+        ├── / (Intelligence Dashboard with Metrics & Query Bar)
+        ├── /assistant (Conversational Assistant with Real-time Citations & Multi-turn Memory)
         ├── /standards & /standards/[standardNumber] (Standards Explorer & Clauses)
-        ├── /certification (Interactive 5-Stage Certification Roadmap Wizard)
-        ├── /laboratories (Testing Facility Directory with State/City filter)
-        └── /retrieval-tester (Vector Search & Clause Inspection)
+        ├── /certification (Interactive Certification Roadmap Wizard)
+        └── /laboratories (Testing Facility Directory with State/City filter)
         │
         ▼ (/api/v1/*)
-FastAPI Backend Gateway (Python, Pydantic v2, CORS, Structured Config)
-        ├── Middlewares: RequestID (X-Request-ID), SecurityHeaders, SizeLimit, RateLimit
+FastAPI Backend Gateway (Python 3.10+, Pydantic v2, CORS, Structured Logging)
+        ├── Middlewares: SecurityHeaders, SizeLimit, RateLimit (40 req/min), RequestID
         ├── Language Service & Script Classifier (app/services/language_service.py)
-        ├── Priority Intent Router & Ambiguity Detector (app/services/intent_router.py)
-        ├── Product-to-Standard Discovery Service (app/services/product_discovery_service.py)
-        ├── Certification Navigator Service (app/services/certification_navigator_service.py)
-        ├── Laboratory Search Service (app/services/laboratory_service.py)
-        ├── Standards Explorer Service (app/services/standards_service.py)
-        ├── RAG Orchestration Engine (RAGService, ContextBuilder, CitationEngine)
-        ├── Groq Cloud LPU Client (qwen/qwen3.8-27b with backoff & deterministic fallback)
-        ├── Knowledge Ingestion Pipeline & Structure-Aware Chunker
-        ├── Vector Store Service (Qdrant Cloud / Local / In-Memory Resilience)
-        └── Database / Verified Knowledge Registry
+        ├── Input Gatekeeper & Garbage Entropy Filter (app/services/intent_router.py)
+        ├── Priority Intent Router & Anti-Hallucination Guardrail (app/services/intent_router.py)
+        ├── Anaphoric Context & Follow-Up Resolver (app/services/query_service.py)
+        ├── Curated BIS Data Provider Engine (app/services/data_providers/)
+        ├── Abstention Gatekeeper (RAG_MIN_RELEVANCE_SCORE = 0.65)
+        └── Groq Cloud LPU Client (llama-3.3-70b-versatile with secret scrubber)
 ```
 
 ---
 
-## 3. Query Processing
+## 3. Measured Performance Profile
 
-The query processing pipeline executes deterministically prior to vector retrieval:
+The following metrics were measured across **64 live requests** using `backend/scripts/run_benchmark.py`:
 
-```
-USER QUERY
-    ↓
-Language Detection (EN / HI / TA)
-    ↓
-Input Normalization & Sanitization
-    ↓
-Conversational Context Resolution (Multi-turn follow-up merging)
-    ↓
-Intent Classification (Pre-retrieval routing)
-    ↓
-Entity Extraction (IS Numbers, Clauses, Locations)
-    ↓
-Ambiguity & Query Sufficiency Check
-    ↓
-┌──────────────────────────────────────┐
-│ Branch A: Greeting / Smalltalk / Help│ ──► Direct Conversational Reply (No RAG)
-│ Branch B: Clarification Required     │ ──► Interactive Option Chips (No RAG)
-│ Branch C: Out of Scope               │ ──► Polite Domain Refusal (No RAG)
-│ Branch D: Specific Domain Query      │ ──► Proceed to Grounded RAG Pipeline
-└──────────────────────────────────────┘
-```
+| Operational Class | Cold Median | Cold P95 | Warm / Cache Median | Warm P95 |
+| :--- | :---: | :---: | :---: | :---: |
+| **Fast-Path (Greetings / Guardrails)** | **2.64 ms – 2.95 ms** | **3.77 ms – 5.09 ms** | **2.82 ms – 2.97 ms** | **5.14 ms** |
+| **Ambiguity Clarifications** | **2.75 ms** | **2.95 ms** | **2.96 ms** | **5.27 ms** |
+| **Curated Evidence RAG (Water / Fans / Plugs)** | **4.84 s – 4.92 s** | **5.19 s – 10.75 s** | **2.88 ms – 3.01 ms** | **3.55 ms** |
+| **Multilingual RAG (Tamil / Hindi / Hinglish)** | **4.76 s** | **5.12 s** | **3.17 ms** | **5.01 ms** |
 
 ---
 
-## 4. RAG Pipeline
+## 4. Security & Hardening Controls
 
-For domain-specific inquiries, the RAG engine follows strict grounding rules:
-
-1. **Cross-Lingual Translation**: Translates queries for optimal vector indexing while preserving exact Indian Standard codes (e.g., `IS 17526`, `IS 1293`).
-2. **Hybrid Candidate Retrieval**: Queries Qdrant vector storage with semantic embeddings, standard number metadata filters, and document type constraints.
-3. **Context Assembly & Thresholding**: ContextBuilder enforces relevance score thresholds (`RAG_MIN_RELEVANCE_SCORE`), formats evidence chunks with 1-indexed IDs, and isolates context.
-4. **Sufficiency Check**: If no retrieved chunk meets the relevance threshold, the system immediately returns an insufficient-evidence response without invoking the LLM.
-5. **Grounded Generation**: Groq Cloud LPU generates structured responses strictly confined to the retrieved evidence passages.
-6. **Citation Engine**: Verifies cited standard numbers, clauses, and pages against actual retrieved passages, stripping any unsupported claims.
-
----
-
-## 5. Source Grounding & Hallucination Mitigation
-
-- **Source-Grounded Responses**: Every substantive technical claim is tied to verified Indian Standard numbers, clauses, and page numbers.
-- **Abstention on Low Evidence**: When evidence is missing or insufficient (e.g. fictional standards like `IS 9999999`), the assistant explicitly abstains rather than inventing standards or QCO orders.
-- **No QCO Fabrication**: Quality Control Orders and mandatory certification schemes are only asserted when explicitly present in authoritative BIS source records.
-- **Citation Integrity**: Verbatim quoted passages and SHA-256 verified document metadata are accessible directly in the grounded evidence drawer.
+- **Secret Scrubbing Engine**: LLM responses are intercepted by regex scrubbers (`_scrub_sensitive_data()`) to prevent leakage of `GROQ_API_KEY`, API tokens, or server file paths.
+- **Traceback Sanitization**: Global 500 exception handlers prevent internal file paths or Python tracebacks from leaking in HTTP responses.
+- **Prompt Injection Defense**: System instructions are enclosed in boundary delimiters; attempts to override policy or reveal system prompts are rejected.
+- **Garbage Input Filter**: Uninformative noise and high-entropy strings ("asdfgh", "123456", "@@@@") are rejected before database search or LLM invocation.
+- **Rate Limiting**: Sliding-window limiter enforces 40 requests/minute per client IP to mitigate denial-of-service abuse.
+- **Input Validation**: Pydantic models enforce string boundaries (`1 <= length <= 1000`), rejecting oversized buffer payloads with HTTP 422.
+- **Security Headers**: Standard production headers applied (`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`).
 
 ---
 
-## 6. Supported Intents
+## 5. Multilingual Key Parity & Localization
 
-| Intent | Description | RAG Retrieval |
-|---|---|---|
-| `GREETING` | Standalone greetings (Hello, Namaste, Vanakkam, etc.) | Bypassed (False) |
-| `GOODBYE` | Conversation closing (Bye, Alvida, etc.) | Bypassed (False) |
-| `THANKS` | Acknowledgments and gratitude | Bypassed (False) |
-| `HELP` | System capabilities overview | Bypassed (False) |
-| `CLARIFICATION_REQUIRED` | Broad / underspecified product requests (e.g., "water bottle business") | Bypassed (False) |
-| `OUT_OF_SCOPE` | Unrelated domain inquiries (recipes, cricket, general coding) | Bypassed (False) |
-| `PRODUCT_STANDARD_DISCOVERY` | Product-to-standard mapping for specific products | Triggered (True) |
-| `STANDARD_SEARCH` | Explicit standard lookups (e.g., "What is IS 302?") | Triggered (True) |
-| `STANDARD_EXPLANATION` | Technical interpretation of specific clauses | Triggered (True) |
-| `CERTIFICATION_GUIDANCE` | 5-stage certification workflows (ISI Mark, CRS, FMCS) | Triggered (True) |
-| `QCO` | Quality Control Order applicability and enforcement | Triggered (True) |
-| `LABORATORY_SEARCH` | Accredited BIS testing laboratory locator | Triggered (True) |
+The frontend localization system features **100% key parity** across English, Hindi, and Tamil:
+* `frontend/src/locales/en.json`: **318 keys**
+* `frontend/src/locales/hi.json`: **318 keys**
+* `frontend/src/locales/ta.json`: **318 keys**
+* Verified via automated structural comparison tests in `test_production_acceptance.py`.
 
 ---
 
-## 7. Evaluation
-
-The system includes an automated evaluation suite (`backend/app/evaluation/run.py` & pytest):
-- **Intent Accuracy**: Verified across English, Hindi, and Tamil greetings, small-talk, and ambiguous inputs.
-- **Grounding Rate**: 100% grounding rate on the evaluation dataset with zero unsupported claims.
-- **Adversarial & Injection Defense**: Robust detection of prompt overrides and fictional standard queries.
-- **Multilingual Consistency**: Uniform routing and grounding fidelity across EN, HI, and TA.
-
----
-
-## 8. Security
-
-- **Rate Limiting**: Sliding-window rate limiter on all API endpoints.
-- **Payload Sanitization**: Request body size limits (2MB) and prompt injection protection.
-- **Traceability**: Unique `X-Request-ID` attached to all request/response cycles.
-- **Credential Protection**: Zero committed secrets; all configurations externalized to `.env`.
-
----
-
-## 9. Setup & Installation
+## 6. Setup & Installation
 
 ### Prerequisites
-- Node.js 18+ and npm
-- Python 3.10+
-- Groq API Key (Free tier available at [console.groq.com](https://console.groq.com))
+* Python 3.10+
+* Node.js 18+ and npm
+* Groq API Key ([console.groq.com](https://console.groq.com))
 
-### Backend Setup
-```bash
+### 1. Backend Setup
+```powershell
 cd backend
-python -m venv venv
-# On Windows:
-.\venv\Scripts\activate
-# On Linux/macOS:
-source venv/bin/activate
 
+# Create and activate virtual environment
+python -m venv venv
+.\venv\Scripts\activate   # On Windows
+# source venv/bin/activate # On Linux/macOS
+
+# Install dependencies
 pip install -r requirements.txt
-python -m pytest tests/test_query_understanding_pipeline.py -v
+
+# Configure environment (.env)
+cp ../.env.example .env
+# Set GROQ_API_KEY=your_groq_api_key_here
+
+# Start backend server
 uvicorn app.main:app --reload --port 8000
 ```
 
-### Frontend Setup
-```bash
+### 2. Frontend Setup
+```powershell
 cd frontend
+
+# Install dependencies
 npm install
+
+# Start Next.js development server
 npm run dev
 ```
-Open `http://localhost:3000` to interact with e-BIS Sahayak.
+Open `http://localhost:3000` to access the application.
 
 ---
 
-## 10. API Reference
+## 7. Automated Testing & Verification
 
-| Category | Endpoint | Method | Description |
-|---|---|---|---|
-| **Chat & RAG** | `/api/v1/chat` | `POST` | Source-grounded conversational chat with intent routing and citation verification |
-| **Chat Debug** | `/api/v1/chat/debug` | `POST` | Developer observability endpoint with retrieval trace and timing breakdown |
-| **Product Discovery** | `/api/v1/discovery/product-to-standard` | `POST` | Discovers applicable IS standards with ambiguity prompts |
-| **Standards** | `/api/v1/standards/` | `GET` | Paginated catalog search with filters for QCO/division |
-| **Standards Detail** | `/api/v1/standards/{standard_number}` | `GET` | Detailed metadata and full structured clause tree |
-| **Certification** | `/api/v1/certification/roadmap` | `POST` | Generates 5-stage certification roadmap with document checklists |
-| **Certification Schemes**| `/api/v1/certification/schemes` | `GET` | Returns all available BIS certification schemes |
-| **Laboratories** | `/api/v1/laboratories/search` | `POST` | Multi-criteria search for accredited testing facilities |
-| **Language** | `/api/v1/language/detect` | `POST` | Detects language with confidence scores and script metadata |
-| **System** | `/api/v1/health` | `GET` | Readiness and subsystem status |
+### Running the 52-Scenario Production Acceptance Suite
+```powershell
+cd backend
+.\venv\Scripts\python.exe -m pytest tests/test_production_acceptance.py -v
+```
+*(Result: 52 passed in ~114s)*
+
+### Running Deep Debugging Acceptance Tests
+```powershell
+cd backend
+.\venv\Scripts\python.exe -m pytest tests/test_deep_debugging_acceptance.py -v
+```
+*(Result: 11 passed in ~34s)*
+
+### Running End-to-End Performance Benchmark
+```powershell
+cd backend
+.\venv\Scripts\python.exe scripts/run_benchmark.py
+```
+Outputs: `benchmark_results.json` and `performance_profile.json`.
 
 ---
 
-## 11. Interactive Demo Scenarios
+## 8. Verified vs Unverified Operational Limits
 
-1. **Greeting Bypass**:
-   - Query: `Namaste!` or `வணக்கம்`
-   - Outcome: Direct greeting response in target language without Qdrant retrieval or latency badges.
-2. **Ambiguity Clarification**:
-   - Query: `I want to start a water bottle business`
-   - Outcome: Assistant prompts with 5 specific product options (Packaged drinking water, Plastic, Stainless steel, Vacuum flasks, Glass) as clickable chips.
-3. **Multi-turn Grounding**:
-   - Follow-up: `Stainless steel`
-   - Outcome: Context resolved to `water bottle business - Stainless steel`, retrieving `IS 17526:2021` with exact clause citations and QCO details.
-4. **Automotive Intent**:
-   - Query: `I want to start a 4 wheeler business`
-   - Outcome: Clarification options for complete vehicles, EVs, automotive components (glass/tyres/brake pads), or batteries without retrieving unrelated IT standards.
-5. **Specific Standard Search**:
-   - Query: `What is IS 302?`
-   - Outcome: Direct retrieval of electrical safety standard specifications with clause references.
+### Measured & Verified
+* **Cold RAG Synthesis Latency:** 4.8s – 5.2s median with single-hop Groq LPU synthesis.
+* **Warm Cache Hit Latency:** 2.96 ms median.
+* **Acceptance Suite:** 52/52 passing scenarios (Functional, RAG Grounding, Multilingual, Security, Performance, Concurrency).
+* **Translation Coverage:** 100% structural key parity (318/318 keys across EN/HI/TA).
+* **Fake Standard Guardrail:** Immediate refusal for unindexed standards (e.g. `IS 99999`) without hallucinating clauses.
+
+### Limitations & Known Constraints
+* **Live Web Availability:** Real-time web retrieval depends on public DuckDuckGo HTML endpoints and official BIS site responsiveness. If blocked or timed out (> 2.5s), the system gracefully falls back to local vector indexed knowledge.
+* **Groq Cloud Quotas:** Free-tier Groq API keys are subject to TPM/RPM rate limits. Production deployments should utilize paid tier or self-hosted vLLM/Ollama endpoints.

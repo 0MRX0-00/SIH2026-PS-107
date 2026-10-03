@@ -1,7 +1,10 @@
 # Knowledge Base & Document Ingestion: e-BIS Sahayak
 
-**Phase:** Phase 2 — Document Ingestion & Vector Retrieval  
-**Objective:** Deterministic, structure-aware ingestion pipeline and high-performance vector retrieval before LLM generation is introduced.
+> [!NOTE]
+> **Architecture & Roadmap Specification**: Current production execution uses a deterministic intent router (`IntentRouter`) and high-precision seed catalog (`SeedBISDataProvider` in `app/db/seed_intelligence.py`) covering core standards. This document serves as the technical specification for the planned full-scale vector ingestion pipeline (Qdrant + FastEmbed) when scaling beyond the seed catalog to 21,000+ standards.
+
+**Phase:** Phase 2 — Document Ingestion & Vector Retrieval Specification  
+**Objective:** Deterministic, structure-aware ingestion pipeline and high-performance vector retrieval specification.
 
 ---
 

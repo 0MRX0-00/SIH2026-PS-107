@@ -27,8 +27,8 @@ The system ensures that users across India—ranging from small-scale rural manu
                                   │
                                   ▼
    ┌─────────────────────────────────────────────────────────────┐
-   │           Dense Vector Retrieval in Qdrant                  │
-   │  - FastEmbed BAAI/bge-small-en-v1.5                         │
+   │           Evidence Lookup in Curated Seed Catalog                  │
+   │  - SeedBISDataProvider & QueryService                         │
    │  - Fast & accurate retrieval against English BIS repository │
    └──────────────────────────────┬──────────────────────────────┘
                                   │
@@ -59,10 +59,10 @@ The system ensures that users across India—ranging from small-scale rural manu
   - Latin (`\u0020-\u007F`) ➔ `en`
 - **Fallback & Manual Override**: Session preferences take precedence when explicitly selected by the user.
 
-### 2.2 Cross-Lingual Vector Retrieval
+### 2.2 Cross-Lingual Knowledge Retrieval
 - Authoritative Indian Standards documents are indexed in English.
-- The `LanguageService` translates domain-specific keywords from Hindi/Tamil into English search queries (e.g., "प्रेशर कुकर" ➔ "pressure cooker", "மின்விசிறி" ➔ "ceiling fan").
-- The enriched query performs dense embedding and cosine similarity search in **Qdrant Vector DB**, retrieving relevant clauses and tables without modifying document metadata.
+- The `LanguageService` translates domain-specific keywords from Hindi/Tamil into English search terms (e.g., "प्रेशर कुकर" ➔ "pressure cooker", "மின்விசிறி" ➔ "ceiling fan").
+- The normalized search query performs keyword and standard-number evidence lookup against the seed catalog (`SeedBISDataProvider`), retrieving exact clauses and tables without modifying document metadata. (Scale-out vector search via Qdrant is reserved for future large-scale document collections).
 
 ### 2.3 Strict Terminology Preservation Rules
 When synthesizing responses in Hindi or Tamil, the Groq LPU model follows strict preservation constraints:

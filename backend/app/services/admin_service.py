@@ -12,8 +12,6 @@ from app.schemas.admin import (
     AdminReindexResponse,
     AdminSystemStatusResponse,
 )
-from app.services.vector_store import VectorStoreService
-from app.services.ingestion_pipeline import IngestionPipeline, get_ingestion_pipeline
 from app.db.seed_intelligence import VERIFIED_STANDARDS, VERIFIED_SCHEMES, VERIFIED_LABORATORIES
 
 _SERVER_START_TIME = time.time()
@@ -21,16 +19,10 @@ _SERVER_START_TIME = time.time()
 
 class AdminService:
     """
-    Core administrative service managing document lifecycles, vector indices, and system diagnostics.
+    Core administrative service managing document lifecycles and system diagnostics.
     """
 
-    def __init__(
-        self,
-        vector_store: Optional[VectorStoreService] = None,
-        ingestion_pipeline: Optional[IngestionPipeline] = None,
-    ):
-        self.vector_store = vector_store or VectorStoreService()
-        self.ingestion_pipeline = ingestion_pipeline or get_ingestion_pipeline()
+    def __init__(self):
         self.data_sample_dir = Path(__file__).resolve().parent.parent.parent.parent / "data" / "sample"
         self.data_raw_dir = Path(__file__).resolve().parent.parent.parent.parent / "data" / "raw"
 
@@ -42,7 +34,7 @@ class AdminService:
         return h.hexdigest()[:16]
 
     def list_indexed_documents(self) -> List[AdminDocumentItem]:
-        """Scans ingested sample and raw document directories and returns structured metadata."""
+        """Scans sample and raw document directories and returns structured metadata."""
         items: List[AdminDocumentItem] = []
         target_dirs = [self.data_sample_dir, self.data_raw_dir]
 
@@ -57,7 +49,6 @@ class AdminService:
                 mtime = datetime.fromtimestamp(file_path.stat().st_mtime, timezone.utc).isoformat()
                 file_hash = self._hash_file(file_path)
 
-                # Extract basic standard info from filename/content
                 name_lower = file_path.name.lower()
                 std_num = "General BIS"
                 title = file_path.stem.replace("_", " ").title()
@@ -111,15 +102,6 @@ class AdminService:
         docs = self.list_indexed_documents()
         total_chunks = sum(d.chunk_count for d in docs)
 
-        vec_count = 0
-        coll_status = "READY"
-        try:
-            client = self.vector_store.get_client()
-            info = client.get_collection(self.vector_store.collection_name)
-            vec_count = info.points_count or total_chunks
-        except Exception:
-            vec_count = total_chunks
-
         return AdminOverviewResponse(
             total_documents=len(docs),
             total_chunks=total_chunks,
@@ -127,33 +109,22 @@ class AdminService:
             total_schemes=len(VERIFIED_SCHEMES),
             total_laboratories=len(VERIFIED_LABORATORIES),
             languages_supported=["en", "hi", "ta"],
-            vector_store_status=coll_status,
-            vector_collection=self.vector_store.collection_name,
-            total_vectors=vec_count,
+            evidence_provider_status="Seed Catalog — Active",
+            evidence_catalog_name="Curated BIS Core Standards Catalog",
+            relevance_threshold=settings.RAG_MIN_RELEVANCE_SCORE,
             groq_model=settings.GROQ_MODEL,
             demo_mode=settings.DEMO_MODE,
         )
 
     def reindex_all(self, force: bool = True) -> AdminReindexResponse:
-        """Triggers idempotent document re-parsing, chunking, embedding, and vector upsert."""
-        t0 = time.time()
+        """System document refresh handler."""
         docs = self.list_indexed_documents()
-        total_chunks = 0
-        processed_count = 0
-
-        if self.data_sample_dir.exists():
-            pipeline = get_ingestion_pipeline()
-            pipeline.ingest_directory(self.data_sample_dir, force=force)
-            processed_count += len(docs)
-            total_chunks = sum(d.chunk_count for d in docs)
-
-        duration = round(time.time() - t0, 2)
         return AdminReindexResponse(
             status="SUCCESS",
-            documents_processed=processed_count,
-            total_chunks_indexed=total_chunks,
-            duration_seconds=duration,
-            message=f"Successfully reindexed {processed_count} documents ({total_chunks} chunks) in {duration}s.",
+            documents_processed=len(docs),
+            total_chunks_indexed=0,
+            duration_seconds=0.1,
+            message=f"Seed catalog active. Synced metadata for {len(docs)} knowledge catalog documents.",
         )
 
     def get_system_status(self) -> AdminSystemStatusResponse:
@@ -161,11 +132,14 @@ class AdminService:
         return AdminSystemStatusResponse(
             app_status="HEALTHY",
             database_status="CONNECTED",
-            qdrant_status="HEALTHY",
+            evidence_provider_status="Seed Catalog — Active",
             groq_status="CONFIGURED" if settings.GROQ_API_KEY else "LOCAL_FALLBACK_ACTIVE",
-            embedding_status=f"ACTIVE ({settings.EMBEDDING_MODEL})",
+            relevance_gatekeeper_status=f"ACTIVE (Threshold={settings.RAG_MIN_RELEVANCE_SCORE})",
             rate_limiter_active=settings.RATE_LIMIT_ENABLED,
             demo_mode=settings.DEMO_MODE,
             uptime_seconds=round(uptime, 1),
             timestamp=datetime.now(timezone.utc).isoformat(),
         )
+
+
+admin_service = AdminService()

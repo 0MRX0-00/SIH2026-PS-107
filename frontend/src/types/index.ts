@@ -1,11 +1,7 @@
-export interface Citation {
-  id?: string;
-  standard_number: string;
-  clause_ref?: string;
-  page_number?: number;
-  snippet_text?: string;
-  source_url?: string;
-  confidence_score?: number;
+export interface SourceItem {
+  title?: string;
+  url?: string;
+  source_type?: string;
 }
 
 export interface Message {
@@ -13,7 +9,9 @@ export interface Message {
   sender: "user" | "assistant" | "system";
   content: string;
   created_at: string;
-  citations?: Citation[];
+  sources?: SourceItem[];
+  response_type?: string;
+  grounded?: boolean;
 }
 
 export interface Standard {
@@ -35,8 +33,6 @@ export interface HealthStatus {
   phase: string;
   subsystems?: {
     database: boolean;
-    vector_store_configured: boolean;
-    embedding_provider: string;
     details?: Record<string, any>;
   };
 }

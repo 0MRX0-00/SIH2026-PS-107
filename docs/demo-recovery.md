@@ -25,17 +25,12 @@ This runbook provides 30-second troubleshooting steps if any subsystem experienc
 
 ---
 
-### 2. If Qdrant Vector DB Service Disconnects
-**Symptom**: Vector retrieval timeout warning.
+### 2. If Query Relevance Score is Below Threshold (Abstention Gatekeeper)
+**Symptom**: Chat response returns `insufficient_evidence: true` with an explicit notice stating that no authoritative verified BIS evidence was found.
 
 **Recovery Action**:
-1. **Built-in Resilience**: The e-BIS Sahayak backend automatically initializes an in-memory local Qdrant instance upon timeout, ensuring semantic search and RAG synthesis continue without disruption.
-2. **Service Restart**:
-   ```bash
-   docker restart ebis-qdrant
-   # Or locally:
-   docker run -d -p 6333:6333 -p 6334:6334 qdrant/qdrant:v1.7.4
-   ```
+1. **Expected System Behavior**: This is not a failure; it is the zero-hallucination **Abstention Gatekeeper** (`RAG_MIN_RELEVANCE_SCORE = 0.65`) preventing speculative answers for out-of-scope or fictional queries.
+2. **Refined Query Prompting**: If testing core standards during a demo, ensure the query includes target keywords or IS standard numbers (e.g., "IS 1293 plug ratings", "IS 13252 safety requirements", "IS 17803 fan performance").
 
 ---
 

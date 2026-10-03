@@ -1,13 +1,17 @@
+import logging
 from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, status
 from app.schemas.intelligence import CertificationRoadmapRequest, CertificationRoadmapResponse
 from app.services.certification_navigator_service import CertificationNavigatorService
 from app.db.seed_intelligence import get_localized_all_schemes
 
+logger = logging.getLogger("ebis_sahayak.certification_api")
 router = APIRouter()
+
 
 def get_certification_service() -> CertificationNavigatorService:
     return CertificationNavigatorService()
+
 
 @router.post("/roadmap", response_model=CertificationRoadmapResponse)
 def generate_certification_roadmap(
@@ -20,7 +24,12 @@ def generate_certification_roadmap(
     try:
         return service.generate_roadmap(request)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Roadmap generation failed: {str(e)}")
+        logger.exception(f"Roadmap generation error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to generate certification roadmap. Please verify your query parameters."
+        )
+
 
 @router.get("/schemes", response_model=List[Dict[str, Any]])
 def list_certification_schemes(

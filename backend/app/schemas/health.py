@@ -11,8 +11,7 @@ class RootHealthResponse(BaseModel):
 
 class SubsystemStatus(BaseModel):
     database: bool = Field(..., description="PostgreSQL database connectivity")
-    vector_store_configured: bool = Field(..., description="Qdrant vector store connection status")
-    embedding_provider: str = Field(..., description="Configured embedding engine")
+    groq_configured: bool = Field(..., description="Groq API client configured status")
     details: Optional[Dict[str, Any]] = None
 
 

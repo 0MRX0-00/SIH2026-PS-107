@@ -64,8 +64,11 @@ async def test_chat_debug_endpoint():
         assert response.status_code == 200
         data = response.json()
         assert "request_query" in data
-        assert "retrieval_count" in data
-        assert "evidence_chunks" in data
-        assert "assembled_context" in data
-        assert "timing" in data
-        assert "retrieval_ms" in data["timing"]
+        assert "normalized_query" in data
+        assert "intent" in data
+        assert "response_type" in data
+        assert "system_prompt" in data
+        assert "assembled_messages" in data
+        assert "raw_llm_response" in data
+        assert "final_answer" in data
+        assert "timing_ms" in data

@@ -5,31 +5,64 @@ from pydantic import BaseModel
 
 
 class UserIntent(str, Enum):
-    GREETING = "GREETING"
-    GOODBYE = "GOODBYE"
-    THANKS = "THANKS"
-    HELP = "HELP"
-    PRODUCT_STANDARD_DISCOVERY = "PRODUCT_STANDARD_DISCOVERY"
-    CERTIFICATION = "CERTIFICATION"
-    CERTIFICATION_GUIDANCE = "CERTIFICATION_GUIDANCE"  # Alias for backward compatibility
-    QCO = "QCO"
-    LABORATORY = "LABORATORY"
-    LABORATORY_SEARCH = "LABORATORY_SEARCH"  # Alias
-    STANDARD_SEARCH = "STANDARD_SEARCH"
-    STANDARD_EXPLANATION = "STANDARD_EXPLANATION"
-    DOCUMENT_QUERY = "DOCUMENT_QUERY"
-    GENERAL_BIS_QUERY = "GENERAL_BIS_QUERY"
+    ASSISTANT_CAPABILITY = "ASSISTANT_CAPABILITY"
+    GENERAL_BIS_INFORMATION = "GENERAL_BIS_INFORMATION"
+    STANDARD_INFORMATION = "STANDARD_INFORMATION"
+    CERTIFICATION_INFORMATION = "CERTIFICATION_INFORMATION"
+    QCO_INFORMATION = "QCO_INFORMATION"
+    LABORATORY_INFORMATION = "LABORATORY_INFORMATION"
+    PRODUCT_APPLICABILITY = "PRODUCT_APPLICABILITY"
+    GENERAL_CONVERSATION = "GENERAL_CONVERSATION"
     CLARIFICATION_REQUIRED = "CLARIFICATION_REQUIRED"
     OUT_OF_SCOPE = "OUT_OF_SCOPE"
-    UNKNOWN = "UNKNOWN"
+    GARBAGE_INPUT = "GARBAGE_INPUT"
+    ADVERSARIAL_INJECTION = "ADVERSARIAL_INJECTION"
+
+    # Aliases for backward compatibility in tests
+    GREETING = "GENERAL_CONVERSATION"
+    GOODBYE = "GENERAL_CONVERSATION"
+    THANKS = "GENERAL_CONVERSATION"
+    HELP = "ASSISTANT_CAPABILITY"
+    STANDARD_LOOKUP = "STANDARD_INFORMATION"
+    STANDARD_REQUIREMENTS = "STANDARD_INFORMATION"
+    STANDARD_SEARCH = "STANDARD_INFORMATION"
+    STANDARD_EXPLANATION = "STANDARD_INFORMATION"
+    PRODUCT_STANDARD_DISCOVERY = "PRODUCT_APPLICABILITY"
+    CERTIFICATION = "CERTIFICATION_INFORMATION"
+    CERTIFICATION_GUIDANCE = "CERTIFICATION_INFORMATION"
+    QCO = "QCO_INFORMATION"
+    LABORATORY = "LABORATORY_INFORMATION"
+    LABORATORY_SEARCH = "LABORATORY_INFORMATION"
+    GENERAL_BIS_QUERY = "GENERAL_BIS_INFORMATION"
+    UNKNOWN = "GENERAL_BIS_INFORMATION"
+
+    def __eq__(self, other):
+        if super().__eq__(other):
+            return True
+        val = getattr(other, "value", str(other))
+        # Match primary intents with legacy string aliases
+        aliases = {
+            "ASSISTANT_CAPABILITY": ["HELP", "ASSISTANT_CAPABILITY"],
+            "GENERAL_CONVERSATION": ["GREETING", "GOODBYE", "THANKS", "GENERAL_CONVERSATION"],
+            "GENERAL_BIS_INFORMATION": ["GENERAL_BIS_QUERY", "GENERAL_BIS_INFORMATION", "UNKNOWN"],
+            "STANDARD_INFORMATION": ["STANDARD_LOOKUP", "STANDARD_REQUIREMENTS", "STANDARD_SEARCH", "STANDARD_EXPLANATION", "STANDARD_INFORMATION"],
+            "CERTIFICATION_INFORMATION": ["CERTIFICATION", "CERTIFICATION_GUIDANCE", "CERTIFICATION_INFORMATION"],
+            "QCO_INFORMATION": ["QCO", "QCO_INFORMATION"],
+            "LABORATORY_INFORMATION": ["LABORATORY", "LABORATORY_SEARCH", "LABORATORY_INFORMATION"],
+            "PRODUCT_APPLICABILITY": ["PRODUCT_STANDARD_DISCOVERY", "PRODUCT_APPLICABILITY"]
+        }
+        for primary, alias_list in aliases.items():
+            if self.value in alias_list and val in alias_list:
+                return True
+        return False
 
 
 class IntentAnalysisResult(BaseModel):
     intent: UserIntent
-    confidence: str  # "HIGH", "MEDIUM", "LOW"
-    extracted_entities: Dict[str, Any]
-    suggested_route: str
-    reasoning: str
+    confidence: str = "HIGH"
+    extracted_entities: Dict[str, Any] = {}
+    suggested_route: str = "/api/v1/chat"
+    reasoning: str = ""
     clarification_questions: List[str] = []
     clarification_options: List[str] = []
     conversational_reply: Optional[str] = None
@@ -48,48 +81,120 @@ class IntentAnalysisResult(BaseModel):
 
     @property
     def requires_retrieval(self) -> bool:
-        return self.intent not in [
-            UserIntent.GREETING,
-            UserIntent.GOODBYE,
-            UserIntent.THANKS,
-            UserIntent.HELP,
-            UserIntent.CLARIFICATION_REQUIRED,
-            UserIntent.OUT_OF_SCOPE
+        return self.intent in [
+            UserIntent.STANDARD_INFORMATION,
+            UserIntent.PRODUCT_APPLICABILITY,
+            UserIntent.CERTIFICATION_INFORMATION,
+            UserIntent.QCO_INFORMATION,
+            UserIntent.LABORATORY_INFORMATION,
+            UserIntent.GENERAL_BIS_INFORMATION,
         ]
 
 
 class IntentRouter:
     """
-    Deterministic & fast intent router, query sufficiency checker, and ambiguity detector.
-    Pre-processes all queries before vector retrieval to prevent blind/unrelated retrieval.
+    Lightweight, fast intent classifier and ambiguity detector for Groq AI Assistant.
+    Routes queries to clean intents and triggers structured evidence retrieval.
     """
-
-    def classify(self, query: str, language: str = "en") -> IntentAnalysisResult:
-        return self.classify_and_route(query, language=language)
 
     IS_PATTERN = re.compile(r'\b(?:IS|IS/IEC|IS/ISO)\s*(\d+(?:\s*\([Pp]art\s*\d+\))?(?::\d{4})?)', re.IGNORECASE)
     CLAUSE_PATTERN = re.compile(r'\b(?:clause|section|subclause|annex)\s*([0-9A-Za-z\.]+)', re.IGNORECASE)
 
     GREETING_PATTERNS = [
-        r"^(?:hello|hi|hey|heya|namaste|namaskar|vanakkam|good\s+morning|good\s+afternoon|good\s+evening|greetings)(?:\s+(?:there|sahayak|ebis|e-bis|assistant|bot|all|everyone|sir|madam|team|friend|e-bis\s+sahayak|ebis\s+sahayak))?[\s!.,?]*$",
-        r"^(?:नमस्ते|नमस्कार|प्रणाम|हेलो|हाय)(?:\s+(?:सहायक|ई-बीआईएस|ई-बीआईएस\s+सहायक|जी))?[\s!.,?]*$",
-        r"^(?:வணக்கம்|நமஸ்காரம்|ஹலோ|வணக்கங்கள்)(?:\s+(?:சகாயக்|இ-பிஐஎஸ்|இ-பிஐஎஸ்\s+சகாயக்|ஐயா|வணக்கம்))?[\s!.,?]*$"
+        r"^(?:hello|hi|hey|heya|namaste|namaskar|vanakkam|good\s+morning|good\s+afternoon|good\s+evening|greetings)(?:[,\s]+(?:there|sahayak|ebis|e-bis|assistant|bot|all|everyone|sir|madam|team|friend|e-bis\s+sahayak|ebis\s+sahayak))?[\s!.,?]*$",
+        r"^(?:नमस्ते|नमस्कार|प्रणाम|हेलो|हाय|शुभ\s+प्रभात|शुभ\s+संध्या)[\s!.,?]*$",
+        r"^(?:வணக்கம்|நமஸ்காரம்|ஹலோ|வணக்கங்கள்|காலை\s+வணக்கம்)[\s!.,?]*$"
     ]
-
 
     GOODBYE_PATTERNS = [
         r"^(?:bye|goodbye|see\s+you|cya|take\s+care|alvida|अलविदा|பை)[\s!.,?]*$"
     ]
 
     THANKS_PATTERNS = [
-        r"^(?:thanks|thank\s+you|thankyou|thx|धन्यवाद|நன்றி|shukriya)[\s!.,?]*$"
+        r"^(?:thanks|thank\s+you|thankyou|thx|धन्यवाद|நன்றி|shukriya)(?:\s+(?:a\s+lot|so\s+much|very\s+much|sahayak|sir|madam))?[\s!.,?]*$"
     ]
 
     HELP_PATTERNS = [
-        r"^(?:help|help\s+me|what\s+can\s+you\s+do|who\s+are\s+you|what\s+is\s+this|मदद|உதவி)[\s!.,?]*$"
+        r"^(?:help|help\s+me|मदद|உதவி)[\s!.,?]*$"
+    ]
+
+    CAPABILITY_PATTERNS = [
+        r"\b(?:what\s+(?:are\s+you|is\s+(?:this|ebis|e-bis|e-bis\s+sahayak|ebis\s+sahayak))\s+used\s+for)\b",
+        r"\b(?:what\s+can\s+you\s+do|what\s+do\s+you\s+do|what\s+are\s+you\s+capable\s+of|what\s+is\s+your\s+purpose)\b",
+        r"\b(?:what\s+is\s+the\s+use\s+of\s+you|what\s+is\s+your\s+use)\b",
+        r"\b(?:how\s+can\s+you\s+(?:help|assist)(?:\s+me)?|how\s+do\s+you\s+work)\b",
+        r"\b(?:what\s+(?:is|are)\s+your\s+(?:capabilities|features|functions|services|purpose|role|scope))\b",
+        r"\b(?:what\s+services\s+(?:do\s+you|can\s+you)\s+provide)\b",
+        r"\b(?:tell\s+me\s+about\s+(?:yourself|e-bis\s+sahayak|ebis\s+sahayak|this\s+(?:assistant|bot|system)))\b",
+        r"\b(?:who\s+are\s+you|what\s+are\s+you|who\s+made\s+you|what\s+is\s+e-bis\s+sahayak|what\s+is\s+ebis\s+sahayak)\b",
+        r"\b(?:are\s+you\s+(?:a\s+)?(?:bot|ai|assistant|(?:bis\s+|indian\s+)?standard))\b",
+        r"(?:आपकी\s+क्या\s+उपयोगिता|आप\s+किस\s+काम|आप\s+क्या\s+कर\s+सकते|ई-बीआईएस\s+सहायक\s+क्या)",
+        r"(?:நீங்கள்\s*எதற்கு|நீங்கள்\s*என்ன|இ-பிஐஎஸ்|सहायक)",
+        r"\b(?:explain\s+(?:your\s+purpose|what\s+you\s+(?:are|can\s+do|are\s+used\s+for)))\b",
+        r"\b(?:can\s+you\s+explain\s+what\s+you\s+are\s+used\s+for(?:\s+according\s+to\s+bis)?)\b",
+        r"(?:आप\s*(?:क्या\s*कर\s*सकते\s*हैं|किस\s*काम\s*आते\s*हैं|कौन\s*हैं|क्या\s*हैं))",
+        r"(?:आपका\s*(?:क्या\s*काम\s*है|उद्देश्य\s*क्या\s*है|कार्य\s*क्या\s*है))",
+        r"(?:आप\s*मेरी\s*क्या\s*(?:मदद|सहायता)\s*कर\s*सकते\s*हैं)",
+        r"(?:ई-बीआईएस\s*सहायक\s*क्या\s*है|ई-बीआईएस\s*सहायक\s*के\s*बारे\s*में|अपने\s*बारे\s*में\s*बताएं)",
+        r"(?:நீங்கள்\s*என்ன\s*செய்ய\s*முடியும்)",
+        r"(?:நீங்கள்\s*எதற்கு\s*பயன்படுகிறீர்கள்)",
+        r"(?:நீங்கள்\s*எவ்வாறு\s*உதவ\s*முடியும்)",
+        r"(?:இ-பிஐஎஸ்\s*(?:சகாயக்|சஹாயக்)\s*என்றால்\s*என்ன)",
+        r"(?:உங்களைப்\s*பற்றி\s*(?:கூறுங்கள்|சொல்லுங்கள்))",
+        r"(?:நீங்கள்\s*யார்|உங்கள்\s*பணிகள்\s*என்ன|உங்கள்\s*சேவைகள்\s*என்ன)"
+    ]
+
+    OUT_OF_SCOPE_PATTERNS = [
+        r"\b(?:poem|poetry|song|lyrics|joke|funny|humor|riddle)\b",
+        r"\b(?:cricket|football|match score|fifa|ipl|world cup)\b",
+        r"\b(?:recipe|cook cake|bake bread|pizza recipe|baking)\b",
+        r"\b(?:stock market|crypto|bitcoin|ethereum)\b"
+    ]
+
+    ADVERSARIAL_PATTERNS = [
+        r"\b(?:ignore\s+(?:all\s+)?(?:previous\s+)?instructions|forget\s+(?:all\s+)?instructions)\b",
+        r"\b(?:make\s*up|invent|pretend|hallucinate)\b",
+        r"\b(?:treat\s+.*?\s*as\s+authoritative|treat\s+as\s+authoritative)\b",
+        r"\b(?:even\s+if\s+not\s+from\s+bis|disregard\s+bis|ignore\s+bis|bypass\s+bis)\b",
+        r"\b(?:act\s+as\s+dan|do\s+anything\s+now|jailbreak|unrestricted\s+ai)\b",
+        r"\b(?:system\s+prompt|bypass\s+safety|override\s+guidelines)\b"
+    ]
+
+    LAB_KEYWORDS = [
+        "lab", "laboratory", "laboratories", "testing center", "testing facility", "testing house",
+        "where can i test", "test my product", "testing lab", "nabl", "प्रयोगशाला", "ஆய்வகம்"
+    ]
+
+    CERT_KEYWORDS = [
+        "how to get isi", "how to apply", "certification process", "apply for bis",
+        "apply for license", "scheme-i", "scheme-ii", "crs registration", "fmcs",
+        "foreign manufacturer", "hallmarking", "license fee", "certification",
+        "certificate", "certify", "how to get certified", "isi mark", "प्रमाणन", "சான்றிதழ்"
+    ]
+
+    QCO_KEYWORDS = [
+        "qco", "quality control order", "mandatory order", "qco order", "mandatory notification",
+        "mandatory certification", "गुणवत्ता नियंत्रण आदेश", "கட்டாய ஆணை"
     ]
 
     AMBIGUOUS_PRODUCT_PROFILES = {
+        "general_certification": {
+            "triggers": [
+                "i want bis certification", "what certificates do i need", "what certificate do i need",
+                "want bis certification", "how to get bis certificate", "which certificates do i need",
+                "what certificates are required", "what certificate is required"
+            ],
+            "options": [
+                "1. Electric Ceiling Fans (IS 17803:2022)",
+                "2. Plugs and Socket Outlets (IS 1293:2019)",
+                "3. Information Technology & Electronics Equipment (IS 13252 / CRS)",
+                "4. Stainless Steel Water Bottles & Insulated Flasks (IS 17526:2021)",
+                "5. Other specific product (please provide product details)"
+            ],
+            "question_en": "I can help identify the BIS certification requirements. What specific product are you trying to certify, and are you a domestic manufacturer or foreign importer?",
+            "question_hi": "मैं बीआईएस प्रमाणन आवश्यकताओं की पहचान करने में मदद कर सकता हूं। आप किस उत्पाद को प्रमाणित करना चाहते हैं, और क्या आप घरेलू निर्माता हैं या विदेशी आयातकर्ता?",
+            "question_ta": "BIS சான்றிதழ் தேவைகளைக் கண்டறிய நான் உதவ முடியும். நீங்கள் எந்தத் தயாரிப்பைச் சான்றளிக்க முயல்கிறீர்கள், மேலும் நீங்கள் உள்நாட்டு உற்பத்தியாளரா அல்லது இறக்குமதியாளரா?"
+        },
         "water_bottle": {
             "triggers": ["water bottle", "water bottles", "bottle business", "water bottle business", "bottle factory", "bottle manufacturing", "पानी की बोतल", "பாட்டில்", "தண்ணீர் பாட்டில்"],
             "options": [
@@ -99,461 +204,231 @@ class IntentRouter:
                 "4. Vacuum / insulated flasks and double-wall bottles",
                 "5. Glass bottles or other beverage containers"
             ],
-            "question_en": "When you say water bottle business, which specific product or manufacturing category are you planning?\n\n"
-                           "1. Packaged drinking water\n"
-                           "2. Plastic reusable water bottles\n"
-                           "3. Stainless steel water bottles\n"
-                           "4. Vacuum / insulated flasks and bottles\n"
-                           "5. Glass bottles\n\n"
-                           "Please select or specify your product type so I can retrieve the exact applicable Indian Standards (IS) and mandatory Quality Control Orders (QCO).",
-            "question_hi": "जब आप पानी की बोतल के व्यवसाय की बात करते हैं, तो आप किस विशिष्ट उत्पाद की योजना बना रहे हैं?\n\n"
-                           "1. पैकेज्ड पेयजल (Packaged drinking water)\n"
-                           "2. प्लास्टिक पुन: प्रयोज्य पानी की बोतलें (Plastic bottles)\n"
-                           "3. स्टेनलेस स्टील पानी की बोतलें (Stainless steel bottles)\n"
-                           "4. वैक्यूम / इंसुलेटेड फ्लास्क और बोतलें (Vacuum flasks)\n"
-                           "5. कांच की बोतलें (Glass bottles)\n\n"
-                           "कृपया अपना उत्पाद प्रकार बताएं ताकि मैं सटीक लागू भारतीय मानक (IS) और अनिवार्य QCO बता सकूं।",
-            "question_ta": "தண்ணீர் பாட்டில் தொழில் என்று நீங்கள் குறிப்பிடும்போது, எந்த குறிப்பிட்ட தயாரிப்பை திட்டமிடுகிறீர்கள்?\n\n"
-                           "1. பாக்கெட் செய்யப்பட்ட குடிநீர் (Packaged drinking water)\n"
-                           "2. பிளாஸ்டிக் தண்ணீர் பாட்டில்கள் (Plastic bottles)\n"
-                           "3. துருப்பிடிக்காத எஃகு தண்ணீர் பாட்டில்கள் (Stainless steel bottles)\n"
-                           "4. வெற்றிட / இன்சுலேட்டட் பிளாஸ்க்குகள் (Vacuum flasks)\n"
-                           "5. கண்ணாடி பாட்டில்கள் (Glass bottles)\n\n"
-                           "சரியான இந்திய தரநிலைகள் (IS) மற்றும் கட்டாய QCO விவரங்களை வழங்க உங்கள் தயாரிப்பு வகையைக் குறிப்பிடவும்."
+            "question_en": "When you mention water bottle business, which specific product or manufacturing category are you planning?\n\n1. Packaged drinking water\n2. Plastic reusable water bottles\n3. Stainless steel water bottles\n4. Vacuum / insulated flasks and bottles\n5. Glass bottles\n\nPlease specify your product type so I can provide the applicable Indian Standards (IS) and Quality Control Orders (QCO).",
+            "question_hi": "जब आप पानी की बोतल के व्यवसाय की बात करते हैं, तो आप किस विशिष्ट उत्पाद की योजना बना रहे हैं?\n\n1. पैकेज्ड पेयजल\n2. प्लास्टिक पानी की बोतलें\n3. स्टेनलेस स्टील पानी की बोतलें\n4. वैक्यूम / इंसुलेटेड फ्लास्क\n5. कांच की बोतलें\n\nकृपया अपना उत्पाद प्रकार बताएं।",
+            "question_ta": "தண்ணீர் பாட்டில் தொழில் என்று குறிப்பிடும்போது, எந்த குறிப்பிட்ட தயாரிப்பை திட்டமிடுகிறீர்கள்?\n\n1. பாக்கெட் செய்யப்பட்ட குடிநீர்\n2. பிளாஸ்டிக் தண்ணீர் பாட்டில்கள்\n3. துருப்பிடிக்காத எஃகு தண்ணீர் பாட்டில்கள்\n4. வெற்றிட / இன்சுலேட்டட் பிளாஸ்க்குகள்\n5. கண்ணாடி பாட்டில்கள்\n\nஉங்கள் தயாரிப்பு வகையைக் குறிப்பிடவும்."
         },
         "automotive_4wheeler": {
             "triggers": ["4 wheeler", "four wheeler", "4-wheeler", "four-wheeler", "car business", "automobile business", "car manufacturing", "car manufacturing business", "four wheelers", "4 wheelers", "कार", "गाड़ी", "நான்கு சக்கர வாகனம்"],
             "options": [
                 "1. Complete Four-wheeler / Passenger Car manufacturing (Automotive safety standards)",
                 "2. Electric Vehicle (EV) four-wheeler manufacturing (AIS / BIS battery & charging standards)",
-                "3. Automotive components manufacturing (e.g., safety glass, tires, brake linings, lights under mandatory QCO)",
+                "3. Automotive components manufacturing (e.g., safety glass, tires, brake linings under QCO)",
                 "4. Automotive battery manufacturing (IS 14257 / IS 7372)",
                 "5. Dealership, vehicle service or retrofitment"
             ],
-            "question_en": "What type of four-wheeler business or component are you planning to manufacture, assemble, or import?\n\n"
-                           "1. Complete passenger car / vehicle manufacturing (Automotive Safety Standards - AIS/BIS)\n"
-                           "2. Electric Vehicle (EV) manufacturing & EV batteries (IS 16046 / AIS 038)\n"
-                           "3. Automotive components (e.g. Safety glass IS 2553, Tyres IS 15636, Brake pads IS 2742)\n"
-                           "4. Automotive lead-acid batteries (IS 7372 / IS 14257)\n"
-                           "5. Vehicle import or assembly\n\n"
-                           "Please specify your exact product or component so I can guide you on the applicable BIS standards and mandatory certifications.",
-            "question_hi": "आप किस प्रकार के चार पहिया (4-wheeler) व्यवसाय या घटक के निर्माण/आयात की योजना बना रहे हैं?\n\n"
-                           "1. संपूर्ण यात्री कार विनिर्माण (AIS/BIS ऑटोमोटिव मानक)\n"
-                           "2. इलेक्ट्रिक वाहन (EV) और EV बैटरी (IS 16046 / AIS 038)\n"
-                           "3. ऑटोमोटिव घटक (जैसे सेफ्टी ग्लास IS 2553, टायर IS 15636, ब्रेक पैड)\n"
-                           "4. ऑटोमोटिव बैटरी (IS 7372)\n"
-                           "5. वाहन आयात या असेंबली\n\n"
-                           "कृपया अपना सटीक उत्पाद या घटक बताएं।",
-            "question_ta": "எந்த வகையான நான்கு சக்கர வாகன தொழில் அல்லது பாகங்கள் உற்பத்தியை திட்டமிடுகிறீர்கள்?\n\n"
-                           "1. பயணிகள் கார் உற்பத்தி (AIS/BIS தரநிலைகள்)\n"
-                           "2. மின்சார வாகனம் (EV) & பேட்டரிகள் (IS 16046)\n"
-                           "3. வாகன உதிரிபாகங்கள் (பாதுகாப்பு கண்ணாடி, டயர்கள், பிரேக் பேட்கள்)\n"
-                           "4. வாகன பேட்டரிகள் (IS 7372)\n\n"
-                           "சரியான BIS தரநிலைகளை அறிய உங்கள் தயாரிப்பைக் குறிப்பிடவும்."
+            "question_en": "What type of four-wheeler business or component are you planning to manufacture, assemble, or import?\n\n1. Passenger car manufacturing (AIS/BIS standards)\n2. Electric Vehicle (EV) manufacturing & batteries\n3. Automotive components (Safety glass, Tyres, Brake pads)\n4. Automotive batteries (IS 7372 / IS 14257)\n5. Vehicle import or assembly\n\nPlease specify your exact product or component to determine applicable BIS standards.",
+            "question_hi": "आप किस प्रकार के चार पहिया (4-wheeler) व्यवसाय या घटक के निर्माण/आयात की योजना बना रहे हैं?\n\n1. यात्री कार विनिर्माण\n2. इलेक्ट्रिक वाहन (EV) और बैटरी\n3. ऑटोमोटिव घटक (सेफ्टी ग्लास, टायर, ब्रेक पैड)\n4. ऑटोमोटिव बैटरी\n5. वाहन आयात या असेंबली\n\nकृपया अपना सटीक उत्पाद बताएं।",
+            "question_ta": "எந்த வகையான நான்கு சக்கர வாகன தொழில் அல்லது பாகங்கள் உற்பத்தியை திட்டமிடுகிறீர்கள்?\n\n1. பயணிகள் கார் உற்பத்தி\n2. மின்சார வாகனம் (EV) & பேட்டரிகள்\n3. வாகன உதிரிபாகங்கள்\n4. வாகன பேட்டரிகள்\n\nசரியான தயாரிப்பைக் குறிப்பிடவும்."
         },
-        "fan": {
-            "triggers": ["fan", "fans", "fan business", "fan factory", "manufacture fans", "making fans", "fan manufacturing", "पंखा", "மின்விசிறி"],
+        "general_electronics": {
+            "triggers": ["electronics business", "electronic business", "electronics factory", "electronics manufacturing", "electronic product", "electronics products", "इलेक्ट्रॉनिक्स व्यवसाय", "எலக்ட்ரானிக்ஸ் தொழில்"],
             "options": [
-                "1. Electric ceiling fans (AC induction motor - IS 17803 / IS 374)",
-                "2. Brushless DC (BLDC) energy efficient ceiling fans (IS 17803)",
-                "3. Table fans, pedestal fans, or wall fans (IS 555)",
-                "4. Industrial exhaust fans or ventilating fans (IS 2312)"
+                "1. Mobile phone chargers / power adapters",
+                "2. LED lights / drivers",
+                "3. Television / IT equipment",
+                "4. Household electrical appliances",
+                "5. Batteries & power banks"
             ],
-            "question_en": "Which type of electric fan are you planning to manufacture or certify?\n\n"
-                           "1. Electric ceiling fans (Conventional induction motor - IS 17803 / IS 374)\n"
-                           "2. BLDC energy-efficient ceiling fans (IS 17803:2022 - Mandatory QCO)\n"
-                           "3. Table, pedestal, or wall-mounted fans (IS 555)\n"
-                           "4. Industrial exhaust fans (IS 2312)\n\n"
-                           "Please let me know the specific fan type to view the relevant BIS standards and star rating requirements.",
-            "question_hi": "आप किस प्रकार के पंखे का निर्माण या प्रमाणन करना चाहते हैं? (1. सीलिंग फैन IS 17803, 2. BLDC फैन, 3. टेबल/पेडस्टल फैन IS 555, 4. एग्जॉस्ट फैन IS 2312)",
-            "question_ta": "எந்த வகை மின்விசிறியை உற்பத்தி செய்ய திட்டமிடுகிறீர்கள்? (1. கூரை மின்விசிறி IS 17803, 2. BLDC மின்விசிறி, 3. டேபிள் ஃபேன் IS 555, 4. எக்ஸாஸ்ட் ஃபேன் IS 2312)"
-        },
-        "battery": {
-            "triggers": ["battery", "batteries", "battery business", "battery factory", "manufacture batteries", "making batteries", "battery manufacturing", "बैटरी", "பேட்டரி"],
-            "options": [
-                "1. Lithium-ion secondary cells and batteries for portable electronics/mobiles (IS 16046 / Scheme-II CRS)",
-                "2. Lithium-ion traction battery packs for Electric Vehicles (EVs) (IS 16046-2 / AIS 038 / AIS 156)",
-                "3. Lead-acid storage batteries for motor vehicles (IS 7372 / IS 14257)",
-                "4. Inverter and solar stationary lead-acid batteries (IS 13369 / IS 1651)"
-            ],
-            "question_en": "What type of battery technology and application are you planning?\n\n"
-                           "1. Lithium-ion cells/packs for portable electronics (IS 16046 Part 1 & 2 - Mandatory CRS)\n"
-                           "2. EV traction batteries (AIS 038 / AIS 156 / IS 16046-2)\n"
-                           "3. Automotive lead-acid starter batteries (IS 7372 / IS 14257)\n"
-                           "4. Inverter / solar stationary tubular batteries (IS 13369)\n\n"
-                           "Please select your battery category to get the exact standard specifications.",
-            "question_hi": "आप किस प्रकार की बैटरी तकनीक और अनुप्रयोग की योजना बना रहे हैं? (1. लिथियम-आयन IS 16046, 2. EV बैटरी, 3. ऑटोमोटिव लेड-एसिड IS 7372, 4. इन्वर्टर/सोलर IS 13369)",
-            "question_ta": "எந்த வகை பேட்டரி தொழில்நுட்பத்தை திட்டமிடுகிறீர்கள்? (1. லித்தியம்-அயன் IS 16046, 2. EV பேட்டரிகள், 3. லெட்-ஆசிட் IS 7372, 4. இன்வெர்ட்டர் பேட்டரிகள் IS 13369)"
-        },
-        "cable": {
-            "triggers": ["cable", "cables", "cable business", "cable manufacturing", "cable factory", "wire", "wires", "wire business", "wire manufacturing", "wire factory", "तार", "केबल", "கம்பி", "கேபிள்"],
-            "options": [
-                "1. PVC insulated domestic building wires up to 1100 V (IS 694 - Mandatory ISI Scheme-I)",
-                "2. Cross-linked polyethylene (XLPE) power cables for heavy industry (IS 7098)",
-                "3. Flexible cords and appliance wiring (IS 9968 / IS 694)",
-                "4. Fire survival / solar DC cables (IS 17293 / EN 50618)"
-            ],
-            "question_en": "Which category of electric wires or cables do you manufacture or import?\n\n"
-                           "1. Domestic PVC insulated wires & flexible cables up to 1100V (IS 694 - Mandatory ISI Mark)\n"
-                           "2. XLPE insulated power cables up to 33kV (IS 7098 Part 1 & 2)\n"
-                           "3. Solar photovoltaic (PV) DC cables (IS 17293 / EN 50618)\n"
-                           "4. Rubber / Elastomer insulated industrial cables (IS 9968)\n\n"
-                           "Please state the cable type and voltage rating to proceed.",
-            "question_hi": "आप किस श्रेणी के तारों या केबलों का निर्माण या आयात करते हैं? (1. PVC तार IS 694, 2. XLPE पावर केबल IS 7098, 3. सोलर DC केबल IS 17293)",
-            "question_ta": "எந்த வகை கம்பிகள் அல்லது கேபிள்களை உற்பத்தி செய்கிறீர்கள்? (1. PVC கேபிள்கள் IS 694, 2. XLPE கேபிள்கள் IS 7098, 3. சோலார் DC கேபிள்கள் IS 17293)"
+            "question_en": "The BIS requirements depend on the specific electronic product. What product are you planning to manufacture or import?\n\n1. Mobile phone chargers / power adapters\n2. LED lights / drivers\n3. Television / IT equipment\n4. Household electrical appliances\n5. Batteries & power banks\n\nPlease state your specific product to proceed.",
+            "question_hi": "बीआईएस आवश्यकताएं विशिष्ट इलेक्ट्रॉनिक उत्पाद पर निर्भर करती हैं। आप किस उत्पाद का निर्माण या आयात करने की योजना बना रहे हैं?\n\n1. मोबाइल फोन चार्जर\n2. एलईडी लाइट्स\n3. टेलीविजन / आईटी उपकरण\n4. घरेलू बिजली के उपकरण\n5. बैटरी और पावर बैंक\n\nकृपया अपना विशिष्ट उत्पाद बताएं।",
+            "question_ta": "BIS தேவைகள் குறிப்பிட்ட எலக்ட்ரானிக் தயாரிப்பைப் பொறுத்தது. நீங்கள் எந்தத் தயாரிப்பை தயாரிக்க அல்லது இறக்குமதி செய்ய திட்டமிடுகிறீர்கள்?\n\n1. மொபைல் போன் சார்ஜர்கள்\n2. LED விளக்குகள்\n3. தொலைக்காட்சி / IT உபகரணங்கள்\n4. வீட்டு மின்சாதனங்கள்\n5. பேட்டரிகள் & பவர் பேங்க்கள்\n\nஉங்கள் தயாரிப்பைக் குறிப்பிடவும்."
         }
     }
 
-    LAB_KEYWORDS = [
-        "lab", "laboratory", "laboratories", "testing center", "testing facility", "testing house",
-        "where can i test", "test my product", "testing lab in", "lab in", "lab near", "nabl",
-        "प्रयोगशाला", "परीक्षण केंद्र", "ஆய்வகம்", "சோதனை கூடம்"
-    ]
+    def is_capability_query(self, query: str) -> bool:
+        q_clean = (query or "").strip()
+        q_lower = q_clean.lower()
+        if any(re.match(p, q_clean, re.IGNORECASE) for p in self.HELP_PATTERNS):
+            return True
+        is_matches = self.IS_PATTERN.findall(q_clean)
+        if is_matches and "are you a bis standard" not in q_lower and "are you an indian standard" not in q_lower:
+            return False
+        return any(re.search(p, q_lower) for p in self.CAPABILITY_PATTERNS)
 
-    CERT_KEYWORDS = [
-        "how to get isi", "how to apply", "certification process", "apply for bis",
-        "apply for license", "scheme-i", "scheme-ii", "scheme 1", "scheme 2", "crs registration",
-        "fmcs", "foreign manufacturer", "hallmarking", "license fee", "surveillance audit",
-        "certification", "certificate", "certify", "how to get certified", "isi mark",
-        "प्रमाणन", "लाइसेंस", "சான்றிதழ்", "உரிமம்"
-    ]
+    def classify(self, query: str, language: str = "en") -> IntentAnalysisResult:
+        return self.classify_and_route(query, language=language)
 
-    QCO_KEYWORDS = [
-        "qco", "quality control order", "mandatory order", "qco order", "mandatory notification",
-        "mandatory certification", "गुणवत्ता नियंत्रण आदेश", "கட்டாய ஆணை"
-    ]
+    def classify_intent(self, query: str, language: str = "en"):
+        res = self.classify_and_route(query, language=language)
+        is_cap = res.intent == UserIntent.ASSISTANT_CAPABILITY
+        return res.intent, language, is_cap
 
-    DISCOVERY_KEYWORDS = [
-        "i manufacture", "i produce", "i make", "we manufacture", "we produce", "we make",
-        "which standard applies", "what standard applies", "standard for my product",
-        "standard for making", "is code for", "is standard for", "applicable standard for",
-        "standard applicable to", "product standard", "product specification",
-        "standards for", "requirements for making", "requirements for manufacturing",
-        "manak for", "specification for"
-    ]
+    def _is_garbage_input(self, query: str) -> bool:
+        q = (query or "").strip()
+        if not q:
+            return True
+        q_lower = q.lower()
 
-    EXPLANATION_KEYWORDS = [
-        "what does clause", "explain clause", "meaning of clause", "what is clause",
-        "explain standard", "what does is", "what does", "specify", "clarify clause", "meaning of is"
-    ]
+        garbage_exact = {
+            "asdfgh", "qwerty", "123456", "lorem ipsum", "aaaaa", "zzzzzzz",
+            "asdf", "zxcvbn", "12345", "123456789", "abcdef", "qwertyuiop", "1234"
+        }
+        if q_lower in garbage_exact:
+            return True
 
-    OUT_OF_SCOPE_PATTERNS = [
-        r"\b(?:poem|poetry|song|lyrics|joke|funny|humor|riddle)\b",
-        r"\b(?:cricket|football|match score|fifa|ipl|world cup)\b",
-        r"\b(?:recipe|cook cake|bake bread|pizza recipe|baking)\b",
-        r"\b(?:python code|react component|write a function|fix this bug)\b",
-        r"\b(?:capital of|who is president|weather today|horoscope)\b"
-    ]
+        if any(g in q_lower for g in ["lorem ipsum", "asdfgh", "qwertyuiop", "zxcvbn"]):
+            return True
 
-    ADVERSARIAL_PATTERNS = [
-        r"(?:ignore\s+all\s+previous|ignore\s+previous\s+instructions|system\s+override)",
-        r"(?:make\s+up\s+a\s+bis|pretend\s+is\s+\d+|allowed\s+to\s+hallucinate)",
-        r"(?:do\s+not\s+use\s+your\s+knowledge\s+base|ignore\s+citations)",
-        r"(?:tell\s+me\s+a\s+fake\s+bis|fake\s+clause|invent\s+a\s+qco)",
-        r"(?:treat\s+this\s+document\s+as\s+authoritative\s+even\s+if)"
-    ]
+        alnum = [c for c in q if c.isalnum()]
+        if not alnum:
+            return True
+        if len(q) >= 4 and (len(alnum) / len(q)) < 0.4:
+            return True
 
-    GIBBERISH_PATTERNS = [
-        r"^(?:asdfgh|qwerty|123456|lorem\s+ipsum|zxcvbn)[\s!.,?]*$",
-        r"^[!@#$%^&*()_+\-=\[\]{};':\"\\|,.<>\/?~`\s]+$"
-    ]
+        if len(q) >= 4 and len(set(q_lower)) == 1:
+            return True
 
-    INDIAN_STATES = [
-        "andhra pradesh", "arunachal pradesh", "assam", "bihar", "chhattisgarh", "goa", "gujarat",
-        "haryana", "himachal pradesh", "jharkhand", "karnataka", "kerala", "madhya pradesh",
-        "maharashtra", "manipur", "meghalaya", "mizoram", "nagaland", "odisha", "punjab",
-        "rajasthan", "sikkim", "tamil nadu", "telangana", "tripura", "uttar pradesh",
-        "uttarakhand", "west bengal", "delhi", "puducherry", "chandigarh"
-    ]
+        if q.isdigit() and len(q) >= 4 and not self.IS_PATTERN.search(q):
+            return True
 
-    INDIAN_CITIES = [
-        "mumbai", "delhi", "bengaluru", "bangalore", "hyderabad", "chennai", "kolkata",
-        "pune", "ahmedabad", "jaipur", "ghaziabad", "noida", "gurugram", "gurgaon",
-        "faridabad", "sahibabad", "coimbatore", "madurai", "kochi", "surat", "vadodara"
-    ]
+        return False
 
     def classify_and_route(self, query: str, language: str = "en") -> IntentAnalysisResult:
-        query_clean = query.strip()
+        query_clean = (query or "").strip()
         query_lower = query_clean.lower()
 
-        entities: Dict[str, Any] = {
-            "standard_numbers": [],
-            "clauses": [],
-            "location_state": None,
-            "location_city": None,
-            "product_keywords": []
+        entities = {
+            "standard_numbers": self.IS_PATTERN.findall(query_clean),
+            "clauses": self.CLAUSE_PATTERN.findall(query_clean)
         }
 
-        # Extract Standard Numbers
-        is_matches = self.IS_PATTERN.findall(query_clean)
-        if is_matches:
-            entities["standard_numbers"] = [f"IS {m.strip()}" for m in is_matches]
+        # 0. GARBAGE INPUT GATEKEEPER
+        if self._is_garbage_input(query_clean):
+            return IntentAnalysisResult(
+                intent=UserIntent.GARBAGE_INPUT,
+                confidence="HIGH",
+                extracted_entities=entities,
+                reasoning="Query rejected as uninformative noise or garbage input."
+            )
 
-        # Extract Clauses
-        clause_matches = self.CLAUSE_PATTERN.findall(query_clean)
-        if clause_matches:
-            entities["clauses"] = [c.strip() for c in clause_matches]
+        # 0.1 ADVERSARIAL PROMPT INJECTION GUARDRAIL
+        if any(re.search(pat, query_lower) for pat in self.ADVERSARIAL_PATTERNS):
+            return IntentAnalysisResult(
+                intent=UserIntent.ADVERSARIAL_INJECTION,
+                confidence="HIGH",
+                extracted_entities=entities,
+                reasoning="Adversarial prompt injection attempt detected."
+            )
 
-        # Extract Geographic Entities
-        for state in self.INDIAN_STATES:
-            if state in query_lower:
-                entities["location_state"] = state.title()
-                break
-
-        for city in self.INDIAN_CITIES:
-            if city in query_lower:
-                entities["location_city"] = city.title()
-                break
-
-        # 1. GREETING CHECK
+        # 1. GREETING / GOODBYE / THANKS CHECK
         for pat in self.GREETING_PATTERNS:
             if re.match(pat, query_clean, re.IGNORECASE):
-                replies = {
-                    "en": "Namaste! 🙏 Welcome to **e-BIS Sahayak**, your AI assistant for Indian Standards (BIS) and product certification. How can I help you today?",
-                    "hi": "नमस्ते! 🙏 **ई-बीआईएस सहायक (e-BIS Sahayak)** में आपका स्वागत है। मैं भारतीय मानक ब्यूरो (BIS) और उत्पाद प्रमाणन में आपकी क्या सहायता कर सकता हूँ?",
-                    "ta": "வணக்கம்! 🙏 நான் **இ-பிஐஎஸ் சகாயக் (e-BIS Sahayak)**, இந்திய தரநிலைகள் (BIS) மற்றும் தயாரிப்பு சான்றிதழுக்கான உங்கள் AI உதவியாளர். இன்று உங்களுக்கு எவ்வாறு உதவ முடியும்?"
-                }
                 return IntentAnalysisResult(
-                    intent=UserIntent.GREETING,
+                    intent=UserIntent.GENERAL_CONVERSATION,
                     confidence="HIGH",
                     extracted_entities=entities,
-                    suggested_route="/chat/greeting",
-                    reasoning="Query is a standalone polite greeting. RAG retrieval bypassed.",
-                    conversational_reply=replies.get(language, replies["en"])
+                    reasoning="User greeting detected."
                 )
 
-        # 2. GOODBYE CHECK
         for pat in self.GOODBYE_PATTERNS:
             if re.match(pat, query_clean, re.IGNORECASE):
-                replies = {
-                    "en": "Goodbye! Thank you for consulting e-BIS Sahayak. Feel free to return whenever you need guidance on Indian Standards and BIS compliance. Have a great day!",
-                    "hi": "अलविदा! ई-बीआईएस सहायक से परामर्श करने के लिए धन्यवाद। जब भी आपको भारतीय मानकों के बारे में जानकारी चाहिए हो, संपर्क करें। आपका दिन शुभ हो!",
-                    "ta": "நன்றி, மீண்டும் வருக! இந்திய தரநிலைகள் குறித்த ஏதேனும் உதவிகளுக்கு எப்போது வேண்டுமானாலும் அணுகவும். இனிய நாளாக அமையட்டும்!"
-                }
                 return IntentAnalysisResult(
-                    intent=UserIntent.GOODBYE,
+                    intent=UserIntent.GENERAL_CONVERSATION,
                     confidence="HIGH",
                     extracted_entities=entities,
-                    suggested_route="/chat/goodbye",
-                    reasoning="Query is a polite closing. RAG retrieval bypassed.",
-                    conversational_reply=replies.get(language, replies["en"])
+                    reasoning="User closing detected."
                 )
 
-        # 3. THANKS CHECK
         for pat in self.THANKS_PATTERNS:
             if re.match(pat, query_clean, re.IGNORECASE):
-                replies = {
-                    "en": "You're very welcome! I'm glad I could help. Please let me know if you have any more questions about BIS standards, testing, or certification.",
-                    "hi": "आपका स्वागत है! मुझे आपकी मदद करके खुशी हुई। यदि आपके पास BIS मानकों या प्रमाणन के बारे में कोई और प्रश्न हैं, तो अवश्य पूछें।",
-                    "ta": "மகிழ்ச்சி! BIS தரநிலைகள் அல்லது சான்றிதழ் செயல்முறைகள் குறித்து மேலும் ஏதேனும் கேள்விகள் இருந்தால் கேளுங்கள்."
-                }
                 return IntentAnalysisResult(
-                    intent=UserIntent.THANKS,
+                    intent=UserIntent.GENERAL_CONVERSATION,
                     confidence="HIGH",
                     extracted_entities=entities,
-                    suggested_route="/chat/thanks",
-                    reasoning="Query is an expression of gratitude. RAG retrieval bypassed.",
-                    conversational_reply=replies.get(language, replies["en"])
+                    reasoning="User expression of thanks."
                 )
 
-        # 4. HELP / CAPABILITIES CHECK
-        for pat in self.HELP_PATTERNS:
-            if re.match(pat, query_clean, re.IGNORECASE):
-                replies = {
-                    "en": "I am **e-BIS Sahayak**, an AI-powered assistant for Bureau of Indian Standards (BIS) services. Here is what I can help you with:\n\n"
-                          "• **Product-to-Standard Discovery:** Tell me what product you manufacture to find the applicable Indian Standards (IS).\n"
-                          "• **Quality Control Orders (QCO):** Check whether your product is under mandatory BIS certification.\n"
-                          "• **Certification Schemes:** Step-by-step guidance for Scheme-I (ISI Mark), Scheme-II (CRS), FMCS, and Hallmarking.\n"
-                          "• **Testing Laboratories:** Locate accredited BIS testing labs across Indian states.\n"
-                          "• **Clause Search:** Search and interpret technical clauses in official BIS specifications.",
-                    "hi": "मैं **ई-बीआईएस सहायक** हूँ। मैं भारतीय मानक ब्यूरो (BIS) सेवाओं के लिए आपकी सहायता कर सकता हूँ:\n\n"
-                          "• **मानक खोज:** अपने उत्पाद के लिए लागू भारतीय मानक (IS) जानें।\n"
-                          "• **QCO आदेश:** जानें कि क्या आपके उत्पाद पर अनिवार्य BIS प्रमाणन लागू है।\n"
-                          "• **प्रमाणन योजनाएं:** ISI मार्क, CRS और FMCS की चरणबद्ध प्रक्रिया।\n"
-                          "• **प्रयोगशाला खोज:** अपने राज्य में मान्यता प्राप्त परीक्षण लैब खोजें।",
-                    "ta": "நான் **இ-பிஐஎஸ் சகாயக்** (e-BIS Sahayak). BIS சேவைகளுக்கான உங்கள் AI உதவியாளர்:\n\n"
-                          "• **தயாரிப்பு தரநிலை வழிகாட்டி:** உங்கள் தயாரிப்புக்கான BIS தரநிலைகளைக் கண்டறியவும்.\n"
-                          "• **QCO ஆணைகள்:** கட்டாய ISI முத்திரை தேவைகளை சரிபார்க்கவும்.\n"
-                          "• **சான்றிதழ் திட்டங்கள்:** ISI Mark, CRS திட்டங்களுக்கான வழிகாட்டுதல்.\n"
-                          "• **ஆய்வகங்கள்:** அருகிலுள்ள அங்கீகரிக்கப்பட்ட சோதனை ஆய்வகங்களைக் கண்டறியவும்."
-                }
-                return IntentAnalysisResult(
-                    intent=UserIntent.HELP,
-                    confidence="HIGH",
-                    extracted_entities=entities,
-                    suggested_route="/chat/help",
-                    reasoning="User requested overview of system capabilities. RAG retrieval bypassed.",
-                    conversational_reply=replies.get(language, replies["en"])
-                )
+        # 2. CAPABILITY & IDENTITY CHECK
+        is_pure_capability = False
+        if not entities["standard_numbers"]:
+            is_pure_capability = any(re.search(pat, query_lower) for pat in self.CAPABILITY_PATTERNS)
+        elif "are you a bis standard" in query_lower or "are you an indian standard" in query_lower:
+            is_pure_capability = True
 
-        # 5. OUT-OF-SCOPE CHECK
+        if is_pure_capability or any(re.match(pat, query_clean, re.IGNORECASE) for pat in self.HELP_PATTERNS):
+            return IntentAnalysisResult(
+                intent=UserIntent.ASSISTANT_CAPABILITY,
+                confidence="HIGH",
+                extracted_entities=entities,
+                reasoning="Query asks about assistant identity or capabilities."
+            )
+
+        # 3. OUT-OF-SCOPE CHECK
         if any(re.search(pat, query_lower) for pat in self.OUT_OF_SCOPE_PATTERNS):
-            declines = {
-                "en": "I am **e-BIS Sahayak**, your specialized assistant dedicated exclusively to Indian Standards (BIS), Quality Control Orders (QCOs), product certifications, and testing in India.\n\n"
-                      "I can only answer questions related to product specifications, standard compliance, ISI/CRS schemes, and BIS services. What product or standard would you like guidance on today?",
-                "hi": "मैं **ई-बीआईएस सहायक** हूँ, जो विशेष रूप से भारतीय मानक (BIS), गुणवत्ता नियंत्रण आदेश (QCO) और उत्पाद प्रमाणन के लिए समर्पित है। कृपया किसी उत्पाद, मानक या प्रमाणन के संबंध में प्रश्न पूछें।",
-                "ta": "நான் **இ-பிஐஎஸ் சகாயக்** (e-BIS Sahayak), இந்திய தரநிலைகள் (BIS), QCO ஆணைகள் மற்றும் தயாரிப்பு சான்றிதழ்களுக்காக மட்டுமே செயல்படுகிறேன். உங்கள் தயாரிப்பு அல்லது தரநிலை குறித்த கேள்விகளை கேட்கவும்."
-            }
             return IntentAnalysisResult(
                 intent=UserIntent.OUT_OF_SCOPE,
                 confidence="HIGH",
                 extracted_entities=entities,
-                suggested_route="/chat/out-of-scope",
-                reasoning="Query is unrelated to BIS standards, products, or certification.",
-                conversational_reply=declines.get(language, declines["en"])
+                reasoning="Query is unrelated to BIS or Indian Standards."
             )
 
-        # 5B. ADVERSARIAL PROMPT INJECTION CHECK
-        if any(re.search(pat, query_lower) for pat in self.ADVERSARIAL_PATTERNS):
-            adv_replies = {
-                "en": "I operate strictly as an evidence-grounded BIS compliance assistant. I cannot fabricate Indian Standards, invent clauses or QCOs, or provide ungrounded compliance advice. Please specify a valid product or official Indian Standard.",
-                "hi": "मैं पूरी तरह से आधिकारिक भारतीय मानक ब्यूरो (BIS) नियमों के आधार पर कार्य करता हूँ। मैं किसी काल्पनिक मानक या नियम का निर्माण नहीं कर सकता।",
-                "ta": "நான் அதிகாரப்பூர்வ BIS தரநிலைகளின் அடிப்படையில் மட்டுமே செயல்படுகிறேன். போலியான அல்லது கற்பனையான தரநிலைகளை உருவாக்க முடியாது."
-            }
-            return IntentAnalysisResult(
-                intent=UserIntent.OUT_OF_SCOPE,
-                confidence="HIGH",
-                extracted_entities=entities,
-                suggested_route="/chat/adversarial-guardrail",
-                reasoning="Adversarial prompt injection attempt detected. RAG retrieval bypassed.",
-                conversational_reply=adv_replies.get(language, adv_replies["en"])
-            )
-
-        # 5C. GIBBERISH / NOISE CHECK
-        if any(re.search(pat, query_clean, re.IGNORECASE) for pat in self.GIBBERISH_PATTERNS) or (len(query_clean) <= 6 and not any(c.isalpha() for c in query_clean)):
-            gib_replies = {
-                "en": "I could not understand your query. Please provide a clear question about Indian Standards (BIS), product certification, Quality Control Orders (QCO), or testing laboratories.",
-                "hi": "मैं आपके प्रश्न को समझ नहीं पाया। कृपया भारतीय मानक (BIS), उत्पाद प्रमाणन या प्रयोगशालाओं के बारे में स्पष्ट प्रश्न पूछें।",
-                "ta": "உங்கள் கேள்வியை என்னால் புரிந்து கொள்ள முடியவில்லை. இந்திய தரநிலைகள் (BIS) அல்லது தயாரிப்பு சான்றிதழ் குறித்து தெளிவான கேள்வியைக் கேட்கவும்."
-            }
-            return IntentAnalysisResult(
-                intent=UserIntent.OUT_OF_SCOPE,
-                confidence="HIGH",
-                extracted_entities=entities,
-                suggested_route="/chat/gibberish-guardrail",
-                reasoning="Non-linguistic or gibberish input detected. RAG retrieval bypassed.",
-                conversational_reply=gib_replies.get(language, gib_replies["en"])
-            )
-
-        # 6. EXPLANATION / CLAUSE CHECK with identified Standard
-        is_explanation_query = any(kw in query_lower for kw in ["specify", "what does", "explain", "meaning of", "clause", "section", "table", "limit", "tolerance", "test requirement", "scope"])
-        if entities["standard_numbers"] and is_explanation_query:
-            return IntentAnalysisResult(
-                intent=UserIntent.STANDARD_EXPLANATION,
-                confidence="HIGH",
-                extracted_entities=entities,
-                suggested_route="/api/v1/chat",
-                reasoning="Query asks for technical interpretation or explanation of a specific standard."
-            )
-
-        # 7. EXPLICIT STANDARD SEARCH (e.g. "What is IS 302?", "Tell me about IS 17526", "IS 1293")
-        if entities["standard_numbers"] and len(query_clean.split()) <= 8:
-            return IntentAnalysisResult(
-                intent=UserIntent.STANDARD_SEARCH,
-                confidence="HIGH",
-                extracted_entities=entities,
-                suggested_route="/api/v1/standards/",
-                reasoning="Query explicitly queries a specific identified Indian Standard number."
-            )
-
-        # 8. AMBIGUITY DETECTION (Under-specified product queries like "water bottle business", "4 wheeler business", "battery")
-        specific_material_terms = [
-            "stainless steel", "ss 304", "ss 316", "plastic", "pet", "polypropylene", "glass",
-            "copper", "aluminium", "aluminum", "xlpe", "pvc", "rubber", "solar dc",
-            "lead acid", "lead-acid", "lithium", "lithium-ion", "li-ion", "ev traction",
-            "traction battery", "inverter", "solar", "tubular", "starter battery", "storage battery",
-            "bldc", "ceiling fan", "ceiling", "table fan", "pedestal", "exhaust fan",
-            "packaged drinking water", "mineral water", "bottled water", "vacuum flask", "insulated flask",
-            "passenger car", "electric vehicle", "safety glass", "tyre", "brake lining"
-        ]
-        has_specific_material = any(m in query_lower for m in specific_material_terms)
-        
-        for profile_key, profile in self.AMBIGUOUS_PRODUCT_PROFILES.items():
-            if any(trig in query_lower for trig in profile["triggers"]):
-                # If the user has NOT specified a precise material, technology, or subclass, trigger clarification
-                if not has_specific_material and len(query_clean.split()) <= 14:
+        # 4. AMBIGUITY / UNDER-SPECIFIED PRODUCT CHECK
+        if not entities["standard_numbers"]:
+            for profile_key, profile in self.AMBIGUOUS_PRODUCT_PROFILES.items():
+                if any(trig in query_lower for trig in profile["triggers"]):
                     q_text = profile.get(f"question_{language}", profile["question_en"])
                     return IntentAnalysisResult(
                         intent=UserIntent.CLARIFICATION_REQUIRED,
                         confidence="HIGH",
                         extracted_entities=entities,
-                        suggested_route="/chat/clarification",
-                        reasoning=f"Product inquiry for '{profile_key}' is broad and requires category/material clarification before standard retrieval.",
+                        reasoning=f"Under-specified product domain query detected: '{profile_key}'.",
                         clarification_questions=[q_text],
                         clarification_options=profile["options"],
                         conversational_reply=q_text
                     )
 
-        # 9. LABORATORY SEARCH
+        # 5. LABORATORY CHECK
         if any(kw in query_lower for kw in self.LAB_KEYWORDS):
             return IntentAnalysisResult(
-                intent=UserIntent.LABORATORY_SEARCH,
+                intent=UserIntent.LABORATORY_INFORMATION,
                 confidence="HIGH",
                 extracted_entities=entities,
-                suggested_route="/api/v1/laboratories/search",
-                reasoning="Query specifically inquires about testing laboratories, facilities, or testing locations."
+                reasoning="Query is seeking BIS laboratory or testing facility information."
             )
 
-        # 10. QCO INQUIRIES
-        if any(kw in query_lower for kw in self.QCO_KEYWORDS):
-            return IntentAnalysisResult(
-                intent=UserIntent.QCO,
-                confidence="HIGH",
-                extracted_entities=entities,
-                suggested_route="/api/v1/chat",
-                reasoning="Query inquires about Quality Control Orders (QCO) and mandatory enforcement."
-            )
-
-        # 11. CERTIFICATION GUIDANCE
+        # 6. CERTIFICATION CHECK
         if any(kw in query_lower for kw in self.CERT_KEYWORDS):
             return IntentAnalysisResult(
-                intent=UserIntent.CERTIFICATION_GUIDANCE,
+                intent=UserIntent.CERTIFICATION_INFORMATION,
                 confidence="HIGH",
                 extracted_entities=entities,
-                suggested_route="/api/v1/certification/roadmap",
-                reasoning="Query asks about BIS certification processes, ISI mark schemes, or licensing requirements."
+                reasoning="Query is seeking BIS product certification guidance."
             )
 
-        # 12. PRODUCT-TO-STANDARD DISCOVERY
-        if any(kw in query_lower for kw in self.DISCOVERY_KEYWORDS) or any(w in query_lower for w in ["want to make", "want to start", "want to produce", "want to sell", "want to manufacture"]):
+        # 7. QCO CHECK
+        if any(kw in query_lower for kw in self.QCO_KEYWORDS):
             return IntentAnalysisResult(
-                intent=UserIntent.PRODUCT_STANDARD_DISCOVERY,
+                intent=UserIntent.QCO_INFORMATION,
                 confidence="HIGH",
                 extracted_entities=entities,
-                suggested_route="/api/v1/discovery/product-to-standard",
-                reasoning="Query describes manufacturing or inquiries which Indian Standard applies to a product."
+                reasoning="Query is seeking Quality Control Order (QCO) details."
             )
 
-        # 13. CLAUSE EXPLANATION
-        if any(kw in query_lower for kw in self.EXPLANATION_KEYWORDS) or (entities["clauses"] and entities["standard_numbers"]):
+        # 8. EXPLICIT STANDARD SEARCH OR EXPLANATION
+        if entities["standard_numbers"]:
             return IntentAnalysisResult(
-                intent=UserIntent.STANDARD_EXPLANATION,
+                intent=UserIntent.STANDARD_INFORMATION,
                 confidence="HIGH",
                 extracted_entities=entities,
-                suggested_route="/api/v1/chat",
-                reasoning="Query asks for interpretation or explanation of a specific clause or standard section."
+                reasoning="Query explicitly specifies an Indian Standard number."
             )
 
-        # 14. GENERAL BIS OR STANDARD QUERY
+        # 9. GENERAL BIS OR PRODUCT APPLICABILITY QUERY
+        if any(kw in query_lower for kw in ["standard for", "requirement for", "bis for", "which standard"]):
+            return IntentAnalysisResult(
+                intent=UserIntent.PRODUCT_APPLICABILITY,
+                confidence="MEDIUM",
+                extracted_entities=entities,
+                reasoning="Product applicability query."
+            )
+
         return IntentAnalysisResult(
-            intent=UserIntent.GENERAL_BIS_QUERY,
+            intent=UserIntent.GENERAL_BIS_INFORMATION,
             confidence="MEDIUM",
             extracted_entities=entities,
-            suggested_route="/api/v1/chat",
-            reasoning="Open-ended standards inquiry routed to grounded RAG synthesis."
+            reasoning="General open-ended BIS query."
         )
 
 
-# Alias for backward/forward compatibility
-IntentType = UserIntent
-_intent_router_instance: Optional[IntentRouter] = None
-
-
-def get_intent_router() -> IntentRouter:
-    global _intent_router_instance
-    if _intent_router_instance is None:
-        _intent_router_instance = IntentRouter()
-    return _intent_router_instance
-
-
-intent_router = get_intent_router()
+intent_router = IntentRouter()

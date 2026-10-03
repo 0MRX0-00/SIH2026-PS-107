@@ -117,7 +117,7 @@ Explicitly associates an AI message with the exact standard, clause, and chunk.
 * `standard_number`: VARCHAR(100)
 * `clause_ref`: VARCHAR(100)
 * `page_number`: INTEGER
-* `retrieved_chunk_id`: VARCHAR(255) (Qdrant point ID)
+* `retrieved_chunk_id`: VARCHAR(255) (Passage / Evidence point ID)
 * `snippet_text`: TEXT
 * `confidence_score`: FLOAT
 * `created_at`: TIMESTAMPTZ

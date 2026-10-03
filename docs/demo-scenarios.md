@@ -20,7 +20,7 @@ This document outlines five verified, end-to-end demonstration scenarios for **e
 * **Objective:** Demonstrate zero-hallucination conversational RAG with clause and page traceability.
 * **User Query:** `"What are the rated voltages and currents specified in IS 1293:2019 Clause 6?"`
 * **Workflow:**
-  1. Vector similarity search retrieves `[EVIDENCE 1]` from `is_1293_plugs_sample.md` (Section 6, Clause 6.1 & 6.2).
+  1. `QueryService` executes `_retrieve_bis_evidence()` via deterministic keyword and standard matching against `SeedBISDataProvider` (`app/db/seed_intelligence.py`), retrieving `[EVIDENCE 1]` for `IS 1293:2019` (Section 6, Clause 6.1 & 6.2).
   2. Groq LPU synthesizes a grounded technical response:
      - Standard rated voltage: **250 V a.c.**
      - Standard rated currents: **6 A, 16 A, and 25 A**

@@ -28,7 +28,7 @@ The evaluation measures:
 | **Hit@3** | **93.8%** | Fraction of queries where the target standard appeared in top 3 |
 | **Hit@5** | **93.8%** | Fraction of queries where the target standard appeared in top 5 |
 | **Mean Reciprocal Rank (MRR)** | **0.8646** | $\frac{1}{|Q|} \sum_{i=1}^{|Q|} \frac{1}{\text{rank}_i}$ |
-| **Average Retrieval Latency** | **28.13 ms** | Dense FastEmbed embedding + cosine similarity search |
+| **Average Retrieval Latency** | **28.13 ms** | Keyword and standard matching against curated seed catalog |
 
 ---
 

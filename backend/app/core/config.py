@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(".env", "../.env"),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore"
@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     PROJECT_NAME: str = "e-BIS Sahayak"
     VERSION: str = "0.1.0"
-    PHASE: str = "Production Grounded RAG & BIS Intelligence Engine"
+    PHASE: str = "Production Groq AI Assistant Engine"
     API_V1_STR: str = "/api/v1"
 
     # CORS Configuration
@@ -38,34 +38,20 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/ebis_sahayak"
     DATABASE_SYNC_URL: str = "postgresql://postgres:postgres@localhost:5432/ebis_sahayak"
 
-    # Qdrant Vector Database
-    QDRANT_HOST: str = "localhost"
-    QDRANT_PORT: int = 6333
-    QDRANT_GRPC_PORT: int = 6334
-    QDRANT_API_KEY: str = ""
-    QDRANT_COLLECTION_NAME: str = "bis_standards_collection"
-
-    # Groq LLM Configuration (Phase 3)
+    # Groq LLM Configuration
     GROQ_API_KEY: str = ""
-    GROQ_MODEL: str = "qwen/qwen3.8-27b"
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
     GROQ_BASE_URL: str = "https://api.groq.com/openai/v1"
     GROQ_TIMEOUT_SECONDS: float = 30.0
-    GROQ_MAX_TOKENS: int = 900
+    GROQ_MAX_TOKENS: int = 1500
     GROQ_TEMPERATURE: float = 0.1
 
-    # RAG & Context Configuration (Phase 3)
-    RAG_TOP_K: int = 4
-    RAG_MIN_RELEVANCE_SCORE: float = 0.55
-    RAG_MAX_CONTEXT_TOKENS: int = 3000
+    # Conversation Context & RAG Thresholds
     MAX_CHAT_MESSAGE_LENGTH: int = 1000
     MAX_CONVERSATION_HISTORY_TURNS: int = 6
+    RAG_MIN_RELEVANCE_SCORE: float = 0.65
 
-    # Embedding Configuration (Phase 2+)
-    EMBEDDING_PROVIDER: str = "sentence-transformers"
-    EMBEDDING_MODEL: str = "BAAI/bge-m3"
-    EMBEDDING_DIMENSION: int = 1024
-
-    # Security & Rate Limiting (Phase 6 & 7)
+    # Security & Rate Limiting
     ADMIN_API_KEY: str = "ebis-admin-secret-key-2026"
     DEMO_MODE: bool = False
     RATE_LIMIT_ENABLED: bool = True

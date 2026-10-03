@@ -6,25 +6,27 @@ import {
   User,
   Send,
   Sparkles,
-  Layers,
-  FileCheck2,
-  AlertCircle,
-  Clock,
-  BookOpen,
   ShieldCheck,
   RefreshCw,
   HelpCircle,
   Languages,
   ThumbsUp,
   ThumbsDown,
+  Copy,
+  Check,
+  AlertCircle,
+  Clock,
+  BookOpen,
+  ExternalLink,
+  FileText,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import {
   sendChatMessage,
   ChatMessageInput,
-  CitationItem,
   ChatResponse,
   submitFeedback,
+  SourceItem,
 } from "@/lib/api";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -32,13 +34,15 @@ interface Message {
   id: string;
   sender: "user" | "assistant";
   content: string;
-  citations?: CitationItem[];
-  sources_used?: number;
-  insufficient_evidence?: boolean;
+  sources?: SourceItem[];
   intent?: string;
+  response_type?: string;
   clarification_needed?: boolean;
   clarification_options?: string[];
-  retrieval_triggered?: boolean;
+  evidence_status?: string;
+  warnings?: string[];
+  needs_clarification?: boolean;
+  clarification_question?: string | null;
   processing_time_ms?: number;
   model?: string;
   created_at: Date;
@@ -46,29 +50,34 @@ interface Message {
 
 const SAMPLE_SUGGESTIONS: Record<string, string[]> = {
   en: [
-    "What are the rated voltages and currents in IS 1293:2019?",
-    "Is ISI mark certification mandatory for electrical plugs under QCO?",
-    "What documentation is required for electronics under CRS Scheme II?",
-    "What is the required creepage distance under IS 1293 Clause 12.1?",
+    "What are you used for?",
+    "What is BIS certification?",
+    "What certificates do I need to start an electronics business?",
+    "What is CRS?",
+    "What is IS 13252?",
+    "Find BIS laboratories.",
   ],
   hi: [
-    "IS 1293:2019 में रेटेड वोल्टेज और करंट क्या हैं?",
-    "क्या प्लग और सॉकेट के लिए ISI मार्क अनिवार्य है?",
-    "CRS योजना II के तहत इलेक्ट्रॉनिक्स के लिए क्या दस्तावेज़ आवश्यक हैं?",
-    "IS 1293 क्लॉज 12.1 के तहत क्रीपेज दूरी क्या है?",
+    "आप किस काम आते हैं?",
+    "बीआईएस प्रमाणन क्या है?",
+    "इलेक्ट्रॉनिक्स व्यवसाय के लिए क्या प्रमाण पत्र चाहिए?",
+    "CRS क्या है?",
+    "IS 13252 के बारे में बताएं।",
+    "बीआईएस मान्यता प्राप्त प्रयोगशालाएं खोजें।",
   ],
   ta: [
-    "IS 1293:2019 இன் கீழ் மின்னழுத்தம் மற்றும் மின்னோட்ட விவரங்கள் என்ன?",
-    "பிளக் மற்றும் சாக்கெட்டுகளுக்கு ISI மார்க் கட்டாயமா?",
-    "CRS திட்டம் II இன் கீழ் தேவையான ஆவணங்கள் என்ன?",
-    "IS 1293 பிரிவு 12.1 இன் கீழ் தேவையான creepage distance என்ன?",
+    "நீங்கள் என்ன செய்ய முடியும்?",
+    "BIS சான்றிதழ் என்றால் என்ன?",
+    "எலக்ட்ரானிக்ஸ் தொழிலுக்கு என்ன சான்றிதழ் தேவை?",
+    "CRS என்றால் என்ன?",
+    "IS 13252 பற்றி கூறுங்கள்.",
+    "BIS ஆய்வகங்களை கண்டறியவும்.",
   ],
 };
 
 function AssistantContent() {
   const { language, t } = useLanguage();
   const searchParams = useSearchParams();
-  const initialStandard = searchParams.get("standard") || "";
   const initialPrompt = searchParams.get("prompt") || "";
 
   const [messages, setMessages] = useState<Message[]>([
@@ -82,10 +91,16 @@ function AssistantContent() {
 
   const [inputQuery, setInputQuery] = useState(initialPrompt);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [selectedCitation, setSelectedCitation] = useState<CitationItem | null>(null);
-  const [activeStandardFilter, setActiveStandardFilter] = useState<string>(initialStandard);
   const [feedbackMap, setFeedbackMap] = useState<Record<string, "positive" | "negative">>({});
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopyMessage = (msgId: string, content: string) => {
+    navigator.clipboard.writeText(content);
+    setCopiedId(msgId);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   const handleFeedback = async (msgId: string, query: string, answer: string, isHelpful: boolean) => {
     setFeedbackMap((prev) => ({ ...prev, [msgId]: isHelpful ? "positive" : "negative" }));
@@ -104,7 +119,19 @@ function AssistantContent() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Update initial welcome message when language changes if it's the only message
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isLoading) {
+      setLoadingStep(0);
+      interval = setInterval(() => {
+        setLoadingStep((prev) => (prev < 2 ? prev + 1 : prev));
+      }, 1500);
+    } else {
+      setLoadingStep(0);
+    }
+    return () => clearInterval(interval);
+  }, [isLoading]);
+
   useEffect(() => {
     setMessages((prev) => {
       if (prev.length === 1 && prev[0].id === "welcome-1") {
@@ -122,13 +149,10 @@ function AssistantContent() {
   }, [language, t]);
 
   useEffect(() => {
-    if (initialStandard) {
-      setActiveStandardFilter(initialStandard);
-    }
     if (initialPrompt) {
       setInputQuery(initialPrompt);
     }
-  }, [initialStandard, initialPrompt]);
+  }, [initialPrompt]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -156,7 +180,6 @@ function AssistantContent() {
     setIsLoading(true);
 
     try {
-      // Build history payload for multi-turn conversation
       const historyPayload: ChatMessageInput[] = messages
         .filter((m) => m.id !== "welcome-1")
         .slice(-6)
@@ -168,8 +191,6 @@ function AssistantContent() {
       const res: ChatResponse = await sendChatMessage(
         query,
         historyPayload,
-        4,
-        activeStandardFilter || undefined,
         language
       );
 
@@ -177,24 +198,21 @@ function AssistantContent() {
         id: `assistant-${Date.now()}`,
         sender: "assistant",
         content: res.answer,
-        citations: res.citations,
-        sources_used: res.sources_used,
-        insufficient_evidence: res.insufficient_evidence,
+        sources: res.sources || res.citations || [],
         intent: res.intent,
-        clarification_needed: res.clarification_needed,
+        response_type: res.response_type,
+        clarification_needed: res.clarification_needed || res.needs_clarification,
         clarification_options: res.clarification_options,
-        retrieval_triggered: res.retrieval_triggered,
+        evidence_status: res.evidence_status,
+        warnings: res.warnings,
+        needs_clarification: res.needs_clarification || res.clarification_needed,
+        clarification_question: res.clarification_question,
         processing_time_ms: res.processing_time_ms,
         model: res.model,
         created_at: new Date(),
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
-      if (res.citations && res.citations.length > 0) {
-        setSelectedCitation(res.citations[0]);
-      } else {
-        setSelectedCitation(null);
-      }
     } catch (err: any) {
       console.error("Chat error:", err);
       setErrorMessage(
@@ -207,6 +225,12 @@ function AssistantContent() {
 
   const suggestions = SAMPLE_SUGGESTIONS[language] || SAMPLE_SUGGESTIONS.en;
 
+  const loadingMessages = [
+    t("assistant.loading_step_1", "Understanding your question & context..."),
+    t("assistant.loading_step_2", "Processing through Groq AI Assistant..."),
+    t("assistant.loading_step_3", "Generating response..."),
+  ];
+
   return (
     <div className="space-y-6">
       {/* Top Banner */}
@@ -216,9 +240,9 @@ function AssistantContent() {
             <h1 className="text-xl font-bold text-slate-900">
               {t("assistant.title")}
             </h1>
-            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded border border-emerald-300 flex items-center space-x-1">
-              <ShieldCheck className="w-3 h-3 text-emerald-600" />
-              <span>{t("assistant.grounded_live")}</span>
+            <span className="text-[10px] bg-blue-100 text-blue-800 font-semibold px-2 py-0.5 rounded border border-blue-300 flex items-center space-x-1">
+              <Bot className="w-3 h-3 text-blue-600" />
+              <span>Sahayak AI</span>
             </span>
           </div>
           <p className="text-xs text-slate-500">
@@ -231,21 +255,10 @@ function AssistantContent() {
             <Languages className="w-3.5 h-3.5 text-bis-blue" />
             <span>{language === "hi" ? "हिन्दी (Hindi)" : language === "ta" ? "தமிழ் (Tamil)" : "English (EN)"}</span>
           </div>
-          {activeStandardFilter && (
-            <div className="flex items-center space-x-1 bg-amber-50 border border-amber-200 text-amber-800 px-2 py-1 rounded-lg">
-              <span>{t("assistant.filter_label", "Filter:")} <strong>{activeStandardFilter}</strong></span>
-              <button
-                onClick={() => setActiveStandardFilter("")}
-                className="text-xs text-amber-600 hover:text-amber-900 font-bold ml-1"
-              >
-                &times;
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Main Grid: Chat viewport on left, Grounded Evidence Panel on right */}
+      {/* Main Grid: Chat viewport on left, Assistant Capabilities on right */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Chat Area (2 cols) */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col h-[650px]">
@@ -281,6 +294,36 @@ function AssistantContent() {
                       : "bg-white text-slate-800 rounded-tl-none border border-slate-200"
                   }`}
                 >
+                  {/* Evidence Status Badge Header */}
+                  {msg.sender === "assistant" && msg.evidence_status && (
+                    <div className="mb-2 flex items-center justify-between">
+                      <span
+                        className={`inline-flex items-center space-x-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                          msg.evidence_status === "strong"
+                            ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                            : msg.evidence_status === "limited"
+                            ? "bg-amber-50 text-amber-800 border-amber-300"
+                            : "bg-slate-100 text-slate-700 border-slate-300"
+                        }`}
+                      >
+                        {msg.evidence_status === "strong" ? (
+                          <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                        ) : msg.evidence_status === "limited" ? (
+                          <AlertCircle className="w-3 h-3 text-amber-600" />
+                        ) : (
+                          <HelpCircle className="w-3 h-3 text-slate-500" />
+                        )}
+                        <span>
+                          {msg.evidence_status === "strong"
+                            ? "Strong Evidence"
+                            : msg.evidence_status === "limited"
+                            ? "Limited Evidence"
+                            : "Insufficient Evidence"}
+                        </span>
+                      </span>
+                    </div>
+                  )}
+
                   {/* Content */}
                   <div className="prose prose-xs max-w-none text-slate-800 dark:text-slate-800 space-y-2">
                     {msg.content.split("\n\n").map((para, pIdx) => {
@@ -299,12 +342,69 @@ function AssistantContent() {
                     })}
                   </div>
 
+                  {/* Evidence Warnings */}
+                  {msg.warnings && msg.warnings.length > 0 && (
+                    <div className="mt-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg p-2.5 text-[11px] space-y-1">
+                      <div className="font-semibold flex items-center space-x-1 text-amber-900">
+                        <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span>Evidence Warning</span>
+                      </div>
+                      {msg.warnings.map((w, wIdx) => (
+                        <p key={wIdx} className="text-amber-800 leading-tight">
+                          {w}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Sources & Citations Section */}
+                  {msg.sources && msg.sources.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
+                      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider flex items-center space-x-1">
+                        <FileText className="w-3 h-3 text-bis-blue" />
+                        <span>Sources & Official Citations ({msg.sources.length})</span>
+                      </p>
+                      <div className="space-y-1.5">
+                        {msg.sources.map((src, sIdx) => (
+                          <div
+                            key={sIdx}
+                            className="bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg p-2 text-[11px] transition-colors flex items-start justify-between gap-2"
+                          >
+                            <div className="space-y-0.5 min-w-0">
+                              <div className="font-medium text-slate-800 truncate">
+                                {src.title || "BIS Reference Document"}
+                              </div>
+                              {src.url ? (
+                                <a
+                                  href={src.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-bis-blue hover:underline flex items-center space-x-1 text-[10px] truncate"
+                                >
+                                  <span className="truncate">{src.url}</span>
+                                  <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                                </a>
+                              ) : (
+                                <span className="text-slate-400 text-[10px]">Official Record</span>
+                              )}
+                            </div>
+                            {src.source_type && (
+                              <span className="shrink-0 text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-200">
+                                {src.source_type.replace(/_/g, " ")}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Interactive Clarification Options */}
                   {msg.clarification_needed && msg.clarification_options && msg.clarification_options.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-slate-100 space-y-2">
                       <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider flex items-center space-x-1">
                         <HelpCircle className="w-3 h-3 text-bis-blue" />
-                        <span>Select a product option:</span>
+                        <span>Select a product category option:</span>
                       </p>
                       <div className="flex flex-col gap-1.5">
                         {msg.clarification_options.map((opt, oIdx) => (
@@ -320,85 +420,52 @@ function AssistantContent() {
                     </div>
                   )}
 
-                  {/* Insufficient Evidence Warning Banner */}
-                  {msg.insufficient_evidence && (
-                    <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-[11px] text-amber-900 flex items-start space-x-2">
-                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-semibold">{t("assistant.insufficient_evidence")}</span>
-                        <p className="text-amber-700 text-[10px] mt-0.5">
-                          {t("assistant.insufficient_evidence_desc")}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Citations Pill Bar */}
-                  {msg.retrieval_triggered !== false && msg.citations && msg.citations.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-slate-100 space-y-1.5">
-                      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider flex items-center space-x-1">
-                        <BookOpen className="w-3 h-3 text-bis-blue" />
-                        <span>
-                          {new Set(msg.citations.map((c) => c.standard_number)).size}{" "}
-                          {new Set(msg.citations.map((c) => c.standard_number)).size === 1 ? "standard" : "standards"}{" "}
-                          ({msg.citations.length} {msg.citations.length === 1 ? "excerpt" : "excerpts"} verified)
-                        </span>
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {msg.citations.map((cit) => (
-                          <button
-                            key={cit.id}
-                            onClick={() => setSelectedCitation(cit)}
-                            className={`text-[11px] px-2.5 py-1 rounded-md font-medium transition-all flex items-center space-x-1 border ${
-                              selectedCitation?.id === cit.id &&
-                              selectedCitation?.standard_number === cit.standard_number
-                                ? "bg-bis-blue text-white border-bis-blue shadow-sm"
-                                : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200"
-                            }`}
-                          >
-                            <span className="font-mono font-bold">[{cit.id}]</span>
-                            <span>{cit.standard_number}</span>
-                            {cit.clause && <span className="text-[10px] opacity-80">| Cl. {cit.clause}</span>}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Latency, Source & Feedback Footer */}
+                  {/* Latency & Feedback Footer */}
                   {msg.sender === "assistant" && (
                     <div className="mt-2.5 pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between text-[10px] text-slate-400 gap-2">
-                      {msg.retrieval_triggered !== false && (
-                        <span className="flex items-center space-x-1">
-                          <Clock className="w-3 h-3" />
-                          <span>
-                            {msg.processing_time_ms ? `${msg.processing_time_ms}ms` : t("assistant.grounded_badge", "Grounded")}
-                          </span>
+                      <span className="flex items-center space-x-1">
+                        <Clock className="w-3 h-3" />
+                        <span>
+                          {msg.processing_time_ms ? `${msg.processing_time_ms}ms` : "Sahayak AI"}
                         </span>
-                      )}
+                      </span>
 
                       {msg.id !== "welcome-1" && (
                         <div className="flex items-center space-x-1.5 bg-slate-50 px-2 py-0.5 rounded border border-slate-200 text-slate-500">
-                          <span className="text-[9px]">{t("assistant.helpful_question", "Helpful?")}</span>
+                          <button
+                            onClick={() => handleCopyMessage(msg.id, msg.content)}
+                            className={`p-0.5 rounded hover:text-bis-blue transition-colors flex items-center space-x-1 ${copiedId === msg.id ? "text-emerald-600 font-bold" : "text-slate-400"}`}
+                            title="Copy response"
+                          >
+                            {copiedId === msg.id ? (
+                              <>
+                                <Check className="w-3 h-3 text-emerald-600" />
+                                <span className="text-[9px] text-emerald-600">Copied</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3 h-3" />
+                                <span className="text-[9px]">Copy</span>
+                              </>
+                            )}
+                          </button>
+                          <span className="text-slate-300">|</span>
+                          <span className="text-[9px]">Helpful?</span>
                           <button
                             onClick={() => handleFeedback(msg.id, messages[messages.indexOf(msg) - 1]?.content || "", msg.content, true)}
                             className={`p-0.5 rounded hover:text-emerald-600 transition-colors ${feedbackMap[msg.id] === "positive" ? "text-emerald-600 font-bold" : "text-slate-400"}`}
-                            title={t("assistant.helpful_tooltip", "Helpful response")}
+                            title="Helpful response"
                           >
                             <ThumbsUp className="w-3 h-3" />
                           </button>
                           <button
                             onClick={() => handleFeedback(msg.id, messages[messages.indexOf(msg) - 1]?.content || "", msg.content, false)}
                             className={`p-0.5 rounded hover:text-red-600 transition-colors ${feedbackMap[msg.id] === "negative" ? "text-red-600 font-bold" : "text-slate-400"}`}
-                            title={t("assistant.not_helpful_tooltip", "Not helpful")}
+                            title="Not helpful"
                           >
                             <ThumbsDown className="w-3 h-3" />
                           </button>
                         </div>
-                      )}
-
-                      {msg.retrieval_triggered !== false && msg.sources_used !== undefined && msg.sources_used > 0 && (
-                        <span>{msg.sources_used} {t("assistant.sources_verified_count", "sources verified")}</span>
                       )}
                     </div>
                   )}
@@ -414,7 +481,7 @@ function AssistantContent() {
                 </div>
                 <div className="bg-white rounded-2xl rounded-tl-none p-4 text-xs text-slate-600 border border-slate-200 shadow-sm flex items-center space-x-2">
                   <RefreshCw className="w-3.5 h-3.5 animate-spin text-bis-blue" />
-                  <span>{t("assistant.loading_rag", "Finding relevant BIS standards & preparing verified response...")}</span>
+                  <span className="font-medium text-slate-700">{loadingMessages[loadingStep]}</span>
                 </div>
               </div>
             )}
@@ -425,7 +492,7 @@ function AssistantContent() {
                 <div className="flex items-start space-x-2">
                   <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-semibold">{t("assistant.error_title", "Request Notice")}</p>
+                    <p className="font-semibold">Request Notice</p>
                     <p className="text-[11px] text-red-700 mt-0.5">{errorMessage}</p>
                   </div>
                 </div>
@@ -433,7 +500,7 @@ function AssistantContent() {
                   onClick={() => handleSendMessage()}
                   className="bg-red-100 hover:bg-red-200 text-red-800 font-medium px-2 py-1 rounded text-[11px] transition-all"
                 >
-                  {t("assistant.retry", "Retry")}
+                  Retry
                 </button>
               </div>
             )}
@@ -486,117 +553,58 @@ function AssistantContent() {
               </button>
             </form>
             <p className="text-[10px] text-slate-400 mt-1.5 text-center">
-              {t("assistant.evidence_guarantee")}
+              e-BIS Sahayak AI Assistant provides general guidance. Always verify official notifications on bis.gov.in.
             </p>
           </div>
         </div>
 
-        {/* Evidence & Grounding Drawer (1 col) */}
+        {/* Right Drawer: Sahayak AI Capabilities & Guidance */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex flex-col h-[650px] overflow-y-auto space-y-4">
           <div className="flex items-center justify-between border-b border-slate-200 pb-3">
             <div className="flex items-center space-x-2">
-              <FileCheck2 className="w-4 h-4 text-bis-blue" />
+              <Bot className="w-4 h-4 text-bis-blue" />
               <h2 className="text-sm font-bold text-slate-900">
-                {t("assistant.sources_verified")}
+                Sahayak AI Capabilities
               </h2>
             </div>
-            <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-mono font-semibold">
-              {t("assistant.grounded_badge", "Grounded")}
+            <span className="text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-mono font-semibold">
+              Groq AI
             </span>
           </div>
 
-          {selectedCitation ? (
-            <div className="space-y-3">
-              {/* Citation Details Card */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2.5">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <span className="text-[10px] bg-bis-blue text-white font-mono px-1.5 py-0.5 rounded font-bold">
-                      [{selectedCitation.id}]
-                    </span>
-                    <h3 className="text-xs font-bold text-slate-900 mt-1">
-                      {selectedCitation.standard_number}
-                    </h3>
-                  </div>
-                    <span className="text-[10px] font-medium bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded flex items-center space-x-1">
-                      <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                      <span>{t("assistant.verified_source", "Verified Source")}</span>
-                    </span>
-                </div>
-
-                {selectedCitation.title && (
-                  <p className="text-[11px] text-slate-600 font-medium leading-snug">
-                    {selectedCitation.title}
-                  </p>
-                )}
-
-                <div className="grid grid-cols-2 gap-2 text-[11px] pt-2 border-t border-slate-200">
-                  <div>
-                    <span className="text-[10px] text-slate-400 block uppercase tracking-wider">
-                      {t("assistant.clause_section", "Clause / Section")}
-                    </span>
-                    <span className="font-semibold text-slate-800">
-                      {selectedCitation.clause || "General"}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 block uppercase tracking-wider">
-                      {t("assistant.page_reference", "Page Reference")}
-                    </span>
-                    <span className="font-semibold text-slate-800">
-                      {selectedCitation.page ? `${t("standards_detail.page_label", "Page")} ${selectedCitation.page}` : t("assistant.doc_body", "Document Body")}
-                    </span>
-                  </div>
-                </div>
-
-                {selectedCitation.reason && (
-                  <div className="pt-2 border-t border-slate-200">
-                    <span className="text-[10px] text-slate-400 block uppercase tracking-wider">
-                      {t("assistant.verification_context", "Verification Context")}
-                    </span>
-                    <p className="text-[11px] text-slate-700 mt-0.5 italic">
-                      &quot;{selectedCitation.reason}&quot;
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Verbatim Quoted Passage */}
-              {selectedCitation.snippet && (
-                <div className="space-y-1.5">
-                  <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider flex items-center space-x-1">
-                    <BookOpen className="w-3 h-3 text-bis-blue" />
-                    <span>{t("assistant.verbatim_passage", "Verbatim Grounded Passage")}</span>
-                  </span>
-                  <div className="bg-slate-900 text-slate-100 p-3 rounded-lg text-[11px] font-mono leading-relaxed border border-slate-800 max-h-48 overflow-y-auto">
-                    {selectedCitation.snippet}
-                  </div>
-                </div>
-              )}
-
-              {/* Source Info */}
-              <div className="text-[11px] text-slate-500 flex items-center justify-between pt-2">
-                <span>{t("assistant.source_label", "Source:")} <strong>{selectedCitation.source || t("assistant.official_doc", "BIS Official Document")}</strong></span>
-                <span className="text-[10px] text-emerald-600 font-medium">{t("assistant.sha_verified", "✓ SHA-256 Verified")}</span>
-              </div>
+          <div className="space-y-3 text-xs text-slate-600 leading-relaxed">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
+              <h3 className="font-semibold text-slate-900 flex items-center space-x-1.5">
+                <BookOpen className="w-4 h-4 text-bis-blue" />
+                <span>What I Can Help With</span>
+              </h3>
+              <ul className="list-disc list-inside space-y-1 text-[11px] text-slate-700">
+                <li>Indian Standards (IS) general specifications</li>
+                <li>Product-to-Standard applicability guidance</li>
+                <li>ISI Mark (Scheme-I), CRS (Scheme-II), and FMCS concepts</li>
+                <li>Quality Control Orders (QCO) information</li>
+                <li>BIS testing laboratory discovery</li>
+              </ul>
             </div>
-          ) : (
-            <div className="text-center py-12 space-y-2 text-slate-400">
-              <HelpCircle className="w-8 h-8 mx-auto text-slate-300" />
-              <p className="text-xs">
-                {t("assistant.click_inspect_prompt", "Ask a question or click any citation pill to inspect verbatim grounded source clauses here.")}
+
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 space-y-2">
+              <h3 className="font-semibold text-amber-900 flex items-center space-x-1.5">
+                <ShieldCheck className="w-4 h-4 text-amber-600" />
+                <span>Regulatory Guidance Notice</span>
+              </h3>
+              <p className="text-[11px] text-amber-800 leading-relaxed">
+                e-BIS Sahayak provides general guidance based on official BIS principles. Specific mandatory compliance requirements, QCO dates, and fee schedules must always be verified on the official BIS portal (bis.gov.in).
               </p>
             </div>
-          )}
+          </div>
 
-          {/* Anti-Hallucination Reminder */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-[11px] text-blue-900 space-y-1 mt-auto">
             <div className="flex items-center space-x-1 font-semibold">
-              <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-              <span>{t("assistant.evidence_guarantee_title", "Evidence-First Guarantee")}</span>
+              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+              <span>Multilingual Assistance</span>
             </div>
             <p className="text-blue-700 leading-relaxed text-[10px]">
-              {t("assistant.evidence_guarantee")}
+              Available natively in English, Hindi (हिंदी), and Tamil (தமிழ்). Select your language in the top bar.
             </p>
           </div>
         </div>

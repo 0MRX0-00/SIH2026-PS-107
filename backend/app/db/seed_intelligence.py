@@ -1,6 +1,6 @@
 """
 Seed data and in-memory registry for verified BIS standards, schemes, and testing laboratories.
-Ensures zero-hallucination structured lookups both with active PostgreSQL and resilient in-memory fallback,
+Ensures evidence-constrained structured lookups with hallucination safeguards both with active PostgreSQL and resilient in-memory fallback,
 with native multilingual support for English (en), Hindi (hi), and Tamil (ta).
 """
 import copy

@@ -22,4 +22,4 @@ async def test_api_v1_health_endpoint(async_client: AsyncClient):
     assert "environment" in data
     assert "subsystems" in data
     assert "database" in data["subsystems"]
-    assert "vector_store_configured" in data["subsystems"]
+    assert "groq_configured" in data["subsystems"]

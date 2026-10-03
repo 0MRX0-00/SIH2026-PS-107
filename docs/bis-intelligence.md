@@ -60,7 +60,7 @@ The `IntentRouter` (`backend/app/services/intent_router.py`) performs determinis
 
 ### 3.1 Product $\rightarrow$ Standard Discovery (`product_discovery_service.py`)
 - **Ambiguity Detection**: If a product description is overly generic (e.g. "I manufacture bottles" or "I make cables"), the system prompts clarification questions regarding material (e.g., Stainless Steel, Glass, PET), intended use (Packaged Water, Chemicals, Feeding), or voltage ratings rather than guessing.
-- **Candidate Retrieval**: Fetches candidate standards from Qdrant vector store and verifies them against indexed IS registries.
+- **Candidate Retrieval**: Fetches candidate standards from the seed intelligence catalog (app/db/seed_intelligence.py) and verifies them against indexed IS registries.
 - **Grounded Relevance Reasoning**: Formulates `Product characteristics + Retrieved evidence = Relevance explanation`.
 - **Distinction**: Explicitly distinguishes between *Potentially relevant standards* and *Mandatory standards under gazetted QCOs*.
 

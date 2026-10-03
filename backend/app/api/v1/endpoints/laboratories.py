@@ -1,5 +1,6 @@
+import logging
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, status
 from app.schemas.intelligence import (
     LaboratorySearchRequest,
     LaboratorySearchResponse,
@@ -7,10 +8,13 @@ from app.schemas.intelligence import (
 )
 from app.services.laboratory_service import LaboratoryService
 
+logger = logging.getLogger("ebis_sahayak.laboratories_api")
 router = APIRouter()
+
 
 def get_laboratory_service() -> LaboratoryService:
     return LaboratoryService()
+
 
 @router.post("/search", response_model=LaboratorySearchResponse)
 def search_laboratories(
@@ -23,7 +27,12 @@ def search_laboratories(
     try:
         return service.search_laboratories(request)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Laboratory search failed: {str(e)}")
+        logger.exception(f"Laboratory search error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to search laboratory directory. Please refine your search criteria."
+        )
+
 
 @router.get("/", response_model=List[LaboratoryItem])
 def list_laboratories(

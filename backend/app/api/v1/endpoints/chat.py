@@ -6,37 +6,28 @@ from app.schemas.chat import (
     ChatResponse,
     ChatDebugResponse,
 )
-from app.services.rag_service import RAGService
+from app.services.query_service import QueryService, query_service
 
 logger = logging.getLogger("ebis_sahayak.chat_api")
 router = APIRouter()
 
 
-_rag_service: Optional[RAGService] = None
-
-
-def get_rag_service() -> RAGService:
-    global _rag_service
-    if _rag_service is None:
-        _rag_service = RAGService()
-    return _rag_service
+def get_query_service() -> QueryService:
+    return query_service
 
 
 @router.post(
     "",
     response_model=ChatResponse,
     status_code=status.HTTP_200_OK,
-    summary="Grounded conversational assistant query (e-BIS Sahayak RAG)",
-    description=(
-        "Executes the full RAG pipeline: Query -> Vector Retrieval -> Relevance Filtering -> "
-        "Context Assembly -> Groq LPU Inference -> Citation Grounding & Validation."
-    ),
+    summary="Groq AI Assistant query (e-BIS Sahayak)",
+    description="Executes Groq AI Assistant pipeline: Input Validation -> Intent Routing -> Context Assembly -> Groq Inference -> Response Normalization.",
 )
 async def chat_endpoint(
     request: ChatRequest,
-    service: RAGService = Depends(get_rag_service),
+    service: QueryService = Depends(get_query_service),
 ) -> ChatResponse:
-    """Handles user conversational inquiries with strict source citations and anti-hallucination guardrails."""
+    """Handles user conversational inquiries with Groq AI Assistant architecture."""
     if not request.message or not request.message.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -50,13 +41,13 @@ async def chat_endpoint(
         )
 
     try:
-        response = await service.answer_query(request)
+        response = await service.process_query(request)
         return response
     except Exception as e:
         logger.exception(f"Error in chat endpoint: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred while processing your request: {str(e)}"
+            detail="An unexpected error occurred while processing your request. Please try again or contact system support."
         )
 
 
@@ -64,14 +55,14 @@ async def chat_endpoint(
     "/debug",
     response_model=ChatDebugResponse,
     status_code=status.HTTP_200_OK,
-    summary="RAG Pipeline Observability & Debug Endpoint",
-    description="Returns detailed traces of retrieved chunks, assembled context, raw LLM outputs, and citation validations for developer inspection.",
+    summary="Groq Pipeline Observability & Debug Endpoint",
+    description="Returns detailed traces of intent classification, system prompt, assembled messages, and raw LLM output.",
 )
 async def chat_debug_endpoint(
     request: ChatRequest,
-    service: RAGService = Depends(get_rag_service),
+    service: QueryService = Depends(get_query_service),
 ) -> ChatDebugResponse:
-    """Developer endpoint to inspect intermediate stages of the RAG pipeline."""
+    """Developer endpoint to inspect intermediate stages of the Groq pipeline."""
     if not request.message or not request.message.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -79,12 +70,11 @@ async def chat_debug_endpoint(
         )
 
     try:
-        debug_response = await service.answer_query_debug(request)
+        debug_response = await service.get_debug_info(request)
         return debug_response
     except Exception as e:
         logger.exception(f"Error in chat debug endpoint: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Debug pipeline error: {str(e)}"
+            detail="An error occurred in debug pipeline processing."
         )
-

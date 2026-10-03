@@ -17,66 +17,21 @@ export async function fetchHealthStatus(): Promise<HealthStatus | null> {
   }
 }
 
-export interface RetrievalResultItem {
-  chunk_id: string;
-  document_id?: string;
-  score: number;
-  text: string;
-  standard_number?: string;
+export interface SourceItem {
   title?: string;
-  section?: string;
-  clause?: string;
-  page_start?: number;
-  page_end?: number;
-  source?: string;
-  metadata?: Record<string, any>;
+  url?: string;
+  source_type?: string;
+  authority?: string;
+  verified?: boolean;
+  verification_status?: string;
+  provenance?: string;
+  last_verified?: string;
+  source_priority?: number;
+  evidence_scope?: string;
+  supported_claims?: string[];
 }
 
-export interface RetrievalSearchResponse {
-  query: string;
-  total_results: number;
-  results: RetrievalResultItem[];
-  retrieval_mode: string;
-}
-
-export async function searchKnowledgeBase(
-  query: string,
-  topK: number = 5,
-  standardNumber?: string
-): Promise<RetrievalSearchResponse | null> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/v1/retrieval/search`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        query,
-        top_k: topK,
-        standard_number: standardNumber || undefined,
-      }),
-    });
-    if (!res.ok) {
-      throw new Error(`HTTP error! status: ${res.status}`);
-    }
-    return await res.json();
-  } catch (err) {
-    console.error("Retrieval search failed:", err);
-    return null;
-  }
-}
-
-export interface CitationItem {
-  id: number;
-  standard_number: string;
-  title?: string;
-  clause?: string;
-  page?: number;
-  source?: string;
-  snippet?: string;
-  score?: number;
-  reason?: string;
-}
+export type CitationItem = SourceItem;
 
 export interface ChatMessageInput {
   role: "user" | "assistant";
@@ -85,56 +40,43 @@ export interface ChatMessageInput {
 
 export interface ChatResponse {
   answer: string;
-  citations: CitationItem[];
+  intent: string;
+  response_type: string;
+  grounded: boolean;
+  sources: SourceItem[];
   sources_used: number;
+  citations: SourceItem[];
   insufficient_evidence: boolean;
-  intent?: string;
-  clarification_needed?: boolean;
-  clarification_options?: string[];
-  retrieval_triggered?: boolean;
+  clarification_needed: boolean;
+  clarification_options: string[];
+  evidence_status?: string;
+  warnings?: string[];
+  needs_clarification?: boolean;
+  clarification_question?: string | null;
+  retrieval_triggered: boolean;
   conversation_id?: string;
   model: string;
   processing_time_ms: number;
-  language?: string;
+  language: string;
+  confidence?: number | null;
 }
 
 export interface ChatDebugResponse {
   request_query: string;
   normalized_query: string;
-  retrieval_count: number;
-  evidence_passed_filter: number;
-  evidence_chunks: {
-    id: number;
-    chunk_id: string;
-    standard_number: string;
-    clause?: string;
-    page?: number;
-    score: number;
-    text: string;
-  }[];
+  intent: string;
+  response_type: string;
   system_prompt: string;
-  assembled_context: string;
+  assembled_messages: Array<{ role: string; content: string }>;
   raw_llm_response: string;
-  parsed_citations: any[];
-  validated_citations: CitationItem[];
-  rejected_citations: any[];
-  insufficient_evidence: boolean;
   final_answer: string;
   model: string;
-  timing: {
-    retrieval_ms: number;
-    context_assembly_ms: number;
-    groq_ms: number;
-    citation_validation_ms: number;
-    total_ms: number;
-  };
+  timing_ms: number;
 }
 
 export async function sendChatMessage(
   message: string,
   history: ChatMessageInput[] = [],
-  topK?: number,
-  standardNumberFilter?: string,
   language: string = "auto"
 ): Promise<ChatResponse> {
   const res = await fetch(`${API_BASE_URL}/api/v1/chat`, {
@@ -145,8 +87,6 @@ export async function sendChatMessage(
     body: JSON.stringify({
       message,
       history,
-      top_k: topK,
-      standard_number_filter: standardNumberFilter || undefined,
       language: language || "auto",
     }),
   });
@@ -162,8 +102,6 @@ export async function sendChatMessage(
 export async function fetchChatDebug(
   message: string,
   history: ChatMessageInput[] = [],
-  topK?: number,
-  standardNumberFilter?: string,
   language: string = "auto"
 ): Promise<ChatDebugResponse> {
   const res = await fetch(`${API_BASE_URL}/api/v1/chat/debug`, {
@@ -174,8 +112,6 @@ export async function fetchChatDebug(
     body: JSON.stringify({
       message,
       history,
-      top_k: topK,
-      standard_number_filter: standardNumberFilter || undefined,
       language: language || "auto",
     }),
   });
@@ -231,7 +167,7 @@ export interface CandidateStandardItem {
   qco_details?: string;
   applicable_schemes: string[];
   applicability_caveat?: string;
-  citations: CitationItem[];
+  citations: SourceItem[];
 }
 
 export interface ProductDiscoveryRequest {
@@ -491,9 +427,9 @@ export interface AdminOverview {
   total_schemes: number;
   total_laboratories: number;
   languages_supported: string[];
-  vector_store_status: string;
-  vector_collection: string;
-  total_vectors: number;
+  evidence_provider_status: string;
+  evidence_catalog_name: string;
+  relevance_threshold: number;
   groq_model: string;
   demo_mode: boolean;
 }
@@ -518,9 +454,9 @@ export interface AdminDocument {
 export interface AdminSystemStatus {
   app_status: string;
   database_status: string;
-  qdrant_status: string;
+  evidence_provider_status: string;
   groq_status: string;
-  embedding_status: string;
+  relevance_gatekeeper_status: string;
   rate_limiter_active: boolean;
   demo_mode: boolean;
   uptime_seconds: number;

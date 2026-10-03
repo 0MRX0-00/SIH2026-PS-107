@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   ShieldAlert,
   Database,
@@ -50,7 +50,7 @@ export default function AdminDashboardPage() {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  const loadAllData = async (key: string) => {
+  const loadAllData = useCallback(async (key: string) => {
     setLoading(true);
     setAuthError(null);
     try {
@@ -70,11 +70,11 @@ export default function AdminDashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
     loadAllData(adminKey);
-  }, []);
+  }, [adminKey, loadAllData]);
 
   const handleReindex = async () => {
     setReindexing(true);
@@ -217,21 +217,21 @@ export default function AdminDashboardPage() {
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
               <div className="flex items-center space-x-2">
                 <Database className="w-4 h-4 text-bis-blue" />
-                <h3 className="text-xs font-bold text-slate-900">{t("dashboard.qdrant_db", "Qdrant Vector DB")}</h3>
+                <h3 className="text-xs font-bold text-slate-900">{t("dashboard.qdrant_db", "Evidence Knowledge Registry")}</h3>
               </div>
               <div className="space-y-1.5 text-xs text-slate-600">
                 <div className="flex justify-between">
-                  <span>Collection:</span>
-                  <span className="font-mono font-bold text-slate-800">{overview?.vector_collection}</span>
+                  <span>Catalog:</span>
+                  <span className="font-mono font-bold text-slate-800 text-[11px] truncate max-w-[140px]">{overview?.evidence_catalog_name}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>{t("admin.vector_points", "Total Vectors:")}</span>
-                  <span className="font-bold text-slate-800">{overview?.total_vectors}</span>
+                  <span>{t("admin.vector_points", "Relevance Threshold:")}</span>
+                  <span className="font-bold text-slate-800">{overview?.relevance_threshold}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>{t("admin.collection_status", "Status:")}</span>
+                  <span>{t("admin.collection_status", "Provider Status:")}</span>
                   <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded font-bold text-[10px]">
-                    {overview?.vector_store_status}
+                    {overview?.evidence_provider_status}
                   </span>
                 </div>
               </div>
@@ -380,16 +380,16 @@ export default function AdminDashboardPage() {
                 <span className="text-emerald-700 font-bold">{systemStatus?.database_status}</span>
               </div>
               <div className="flex justify-between pt-1.5">
-                <span className="text-slate-500">Qdrant Vector DB:</span>
-                <span className="text-emerald-700 font-bold">{systemStatus?.qdrant_status}</span>
+                <span className="text-slate-500">Evidence Provider:</span>
+                <span className="text-emerald-700 font-bold">{systemStatus?.evidence_provider_status}</span>
               </div>
               <div className="flex justify-between pt-1.5">
                 <span className="text-slate-500">Groq LLM Synthesis:</span>
                 <span className="font-bold text-slate-800">{systemStatus?.groq_status}</span>
               </div>
               <div className="flex justify-between pt-1.5">
-                <span className="text-slate-500">Embedding Engine:</span>
-                <span className="font-bold text-slate-800">{systemStatus?.embedding_status}</span>
+                <span className="text-slate-500">Relevance Gatekeeper:</span>
+                <span className="font-bold text-emerald-700">{systemStatus?.relevance_gatekeeper_status}</span>
               </div>
               <div className="flex justify-between pt-1.5">
                 <span className="text-slate-500">Server Uptime:</span>
@@ -401,24 +401,24 @@ export default function AdminDashboardPage() {
           <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
             <h3 className="text-xs font-bold text-slate-900 flex items-center space-x-1.5">
               <Database className="w-4 h-4 text-purple-600" />
-              <span>Vector Database & Indices</span>
+              <span>Evidence Catalog & Governance</span>
             </h3>
             <div className="space-y-2 text-xs divide-y divide-slate-100">
               <div className="flex justify-between pt-1.5">
-                <span className="text-slate-500">Collection:</span>
-                <span className="font-mono font-bold text-slate-800">{overview?.vector_collection}</span>
+                <span className="text-slate-500">Catalog Name:</span>
+                <span className="font-mono font-bold text-slate-800 text-[11px] truncate max-w-[180px]">{overview?.evidence_catalog_name}</span>
               </div>
               <div className="flex justify-between pt-1.5">
-                <span className="text-slate-500">Vector Dimension:</span>
-                <span className="font-mono font-bold text-slate-800">1024 / 384</span>
+                <span className="text-slate-500">Core Standards:</span>
+                <span className="font-mono font-bold text-slate-800">{overview?.total_standards} Core Standards</span>
               </div>
               <div className="flex justify-between pt-1.5">
-                <span className="text-slate-500">Distance Metric:</span>
-                <span className="font-bold text-slate-800">Cosine Similarity</span>
+                <span className="text-slate-500">Relevance Gate:</span>
+                <span className="font-bold text-slate-800">{overview?.relevance_threshold} (Keyword & Term Overlap)</span>
               </div>
               <div className="flex justify-between pt-1.5">
-                <span className="text-slate-500">Payload Indexing:</span>
-                <span className="text-emerald-700 font-bold">Enabled (standard_number, document_type)</span>
+                <span className="text-slate-500">Provenance Verification:</span>
+                <span className="text-emerald-700 font-bold">Enabled (standard_number, clause, source_type)</span>
               </div>
             </div>
           </div>
@@ -457,7 +457,7 @@ export default function AdminDashboardPage() {
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700 space-y-1.5">
             <p className="font-bold text-slate-900">Evaluation Invariant Verification:</p>
             <p>✓ All factual statements require verified citations linking directly to indexed standards.</p>
-            <p>✓ Zero-hallucination policy strictly flags fictional standards (e.g., IS 99999) with <code>insufficient_evidence: true</code>.</p>
+            <p>✓ Evidence-constrained policy with hallucination safeguards strictly flags fictional standards (e.g., IS 99999) with <code>insufficient_evidence: true</code>.</p>
             <p>✓ Cross-lingual Hindi and Tamil queries maintain identical evidence retrieval integrity.</p>
           </div>
         </div>

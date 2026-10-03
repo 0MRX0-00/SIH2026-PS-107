@@ -11,7 +11,7 @@ graph TB
     subgraph Client Layer
         UI[Next.js 14 Web Portal & Multilingual Client]
         LangCtx[Language Context / i18n Engine]
-        AdminUI[Admin Dashboard & Knowledge Manager]
+        AdminUI[Admin Dashboard]
     end
 
     subgraph API Gateway & Controller Layer
@@ -20,14 +20,15 @@ graph TB
         Router[API v1 Router]
     end
 
-    subgraph RAG & Core Intelligence Engine
-        QueryProc[Query Processor & Language Detector]
-        TransService[Translation Service: Indic to English]
-        VectorRetriever[Qdrant Semantic Vector Retriever]
-        Reranker[Top-K Re-ranking & Score Normalizer]
-        PromptAssembler[Grounding Prompt Engine with Zero-Hallucination Guardrails]
-        LLMDriver[Groq LLaMA 3.3 70B Versatile / Fallback LLM]
-        CitationValidator[Citation & Source Clause Validator]
+    subgraph Core Intelligence & Guardrail Engine
+        InputGate[Garbage Input & Entropy Gatekeeper]
+        SecGuard[Prompt Injection & Adversarial Guardrail]
+        QueryProc[Anaphoric Query Resolver & Intent Router]
+        TransService[Language Service: Indic & Hinglish Normalization]
+        DataProvider[Curated BIS Data Provider Abstraction]
+        AbstentionGate[Abstention Gatekeeper: RAG_MIN_RELEVANCE_SCORE]
+        PromptAssembler[Grounding Prompt Engine with Zero-Hallucination Rules]
+        LLMDriver[Groq LLaMA 3.3 70B Versatile LLM Engine]
     end
 
     subgraph Structured Intelligence Modules
@@ -35,13 +36,11 @@ graph TB
         CertRoadmap[5-Step Certification Roadmap Generator]
         LabDirectory[Accredited Testing Laboratory Finder]
         FeedbackModule[User Feedback & Quality Metrics Collector]
-        AdminModule[Admin Document Scanner & Idempotent Reindexer]
     end
 
-    subgraph Storage & Vector DB Layer
-        Qdrant[(Qdrant Vector DB: bis_knowledge)]
-        KnowledgeFiles[(Document Knowledge Base: Markdown & Structured Registries)]
-        ModelCache[(BAAI/bge-small-en-v1.5 Embedding Model Cache)]
+    subgraph Storage & Catalog Layer
+        SeedCatalog[(Curated Verified BIS Standards & Schemes Catalog)]
+        Postgres[(PostgreSQL Relational DB: Users & Feedback)]
     end
 
     UI --> Router
@@ -49,42 +48,39 @@ graph TB
     Router --> CORS
     CORS --> FastAPI
 
-    FastAPI --> QueryProc
+    FastAPI --> InputGate
+    InputGate --> SecGuard
+    SecGuard --> QueryProc
     QueryProc --> TransService
-    TransService --> VectorRetriever
-    VectorRetriever --> ModelCache
-    VectorRetriever --> Qdrant
-    VectorRetriever --> Reranker
-    Reranker --> PromptAssembler
+    TransService --> DataProvider
+    DataProvider --> SeedCatalog
+    DataProvider --> AbstentionGate
+    AbstentionGate --> PromptAssembler
     PromptAssembler --> LLMDriver
-    LLMDriver --> CitationValidator
-    CitationValidator --> UI
+    LLMDriver --> UI
 
     FastAPI --> StandardsModule
     FastAPI --> CertRoadmap
     FastAPI --> LabDirectory
     FastAPI --> FeedbackModule
-    FastAPI --> AdminModule
-    AdminModule --> KnowledgeFiles
-    AdminModule --> VectorRetriever
+    FeedbackModule --> Postgres
 ```
 
 ---
 
 ## 2. Component Specifications
 
-### 2.1 Embedding & Vector Search Pipeline
-- **Embedding Model**: `BAAI/bge-small-en-v1.5` (Dense representation, 384 dimensions, cosine distance).
-- **Chunking Strategy**: Semantic clause-preserving chunking (500 tokens chunk size, 100 tokens overlap) with hierarchical metadata tags (`standard_id`, `clause_number`, `document_type`, `division`).
-- **Vector Database**: Qdrant Vector Engine with HNSW indexing for sub-15ms vector similarity queries.
+### 2.1 Intent Routing & Multi-Turn Resolution
+- **Garbage Input Gatekeeper**: Intercepts uninformative strings ("asdfgh", "123456", "@@@@") via alphanumeric ratio (< 0.4) and entropy checks before data provider lookup.
+- **Security Guardrail**: Intercepts prompt injection attempts ("ignore instructions", "make up standards") with hard refusals.
+- **Multi-Turn Anaphoric Resolver**: Resolves bare numeric/ordinal choices ("1", "first", "second") against previous assistant option menus and resolves follow-up entities without raw string concatenation.
 
-### 2.2 RAG Verification & Grounding Engine
-- **Prompt Engineering**: Strict zero-hallucination system prompt that commands the LLM to only answer based on retrieved evidence chunks and explicitly refuse out-of-domain queries.
-- **Citation Extractor**: Automated regex & metadata correlation mapping citations to exact IS numbers and clause titles.
+### 2.2 Curated Evidence Retrieval & Abstention Gate
+- **Data Provider Abstraction**: `BaseBISDataProvider` with `SeedBISDataProvider` and `SeedProviderWithProvenanceTag` queries a curated seed catalog (`app/db/seed_intelligence.py`).
+- **Abstention Gatekeeper (`RAG_MIN_RELEVANCE_SCORE = 0.65`)**: Enforces a strict term/keyword relevance score threshold. If zero chunks clear 0.65, returns `insufficient_evidence=True`, `grounded=False`, `sources=[]` **without calling the LLM**.
 
-### 2.3 Multilingual Indic Pipeline
-- Seamless translation bridge converting Hindi/Tamil user queries into English retrieval vectors while generating responses in the user's native Indic script.
+### 2.3 MultilingualIndic & Hinglish Pipeline
+- Seamless translation bridge converting Devanagari Hindi, Tamil, and Hinglish (Romanized Hindi) query terms into English search keywords while preserving standard numbers and clause markers.
 
-### 2.4 Administrative Lifecycle Management
-- SHA-256 file fingerprinting preventing duplicate ingestion.
-- Idempotent document re-indexing for live knowledge updates without downtime.
+### 2.4 LLM Evidence-Constrained Inference
+- Synthesizes answers using Groq LPU (`llama-3.3-70b-versatile`), strictly bounded by retrieved evidence context.

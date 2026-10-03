@@ -4,7 +4,7 @@
 
 In **Phase 3**, **e-BIS Sahayak** integrates the **Groq Cloud LPU (Language Processing Unit) API** to generate ultra-fast, source-grounded answers for Indian Standards and BIS services.
 
-To satisfy the zero-hallucination constraint of **SIH 2026 (Problem Statement SIH26107)**, the model is strictly forbidden from answering directly from its internal pre-trained memory. Every response is dynamically grounded in verified evidence retrieved from Qdrant vector storage.
+To satisfy the evidence-grounded requirement of **SIH 2026 (Problem Statement SIH26107)**, the model is strictly forbidden from answering directly from its internal pre-trained memory. Every response is dynamically grounded in verified evidence retrieved via the decoupled `BaseBISDataProvider` abstraction with explicit data provenance metadata.
 
 ---
 
@@ -16,20 +16,21 @@ Client Browser (Next.js)
          ▼ (POST /api/v1/chat)
 FastAPI Backend Gateway (Zero API Key Exposure)
          │
-         ├── 1. Vector Retrieval (RetrievalService)
-         │       └── Qdrant Vector DB (Cosine Similarity)
+         ├── 1. Intent Routing & Ambiguity Detection (IntentRouter)
+         │       └── Clarification Prompts & Product Profiles
          │
-         ├── 2. Relevance Filtering & Context Assembly (ContextBuilder)
-         │       └── Strict [EVIDENCE X] formatting & Prompt Injection Delimiters
+         ├── 2. Data Provider Abstraction (BaseBISDataProvider)
+         │       ├── SeedBISDataProvider (Curated BIS Registry with Provenance)
+         │       └── LiveBISDataProvider (Live BIS Search with Fallback)
          │
          ├── 3. Structured Inference (GroqService)
-         │       └── Groq Cloud LPU (llama-3.3-70b-versatile, JSON Mode)
+         │       └── Groq Cloud LPU (llama-3.3-70b-versatile with Retries & Fallback)
          │
-         ├── 4. Citation Validation Engine (CitationEngine)
-         │       └── Rejects hallucinated IDs & Enriches verified metadata
+         ├── 4. Evidence Grounding & Citation Validation
+         │       └── Enriches metadata with Authority, Source Priority & Provenance
          │
          ▼
-Clean, Grounded Response with Verified Citations
+Clean, Grounded Response with Verified Citations & Provenance Metadata
 ```
 
 > [!IMPORTANT]
@@ -49,8 +50,7 @@ Environment variables configured in `.env` and [`backend/app/core/config.py`](fi
 | `GROQ_TIMEOUT_SECONDS`| `30.0` | HTTP request timeout |
 | `GROQ_TEMPERATURE` | `0.1` | Low temperature for maximum factual consistency |
 | `GROQ_MAX_TOKENS` | `1500` | Maximum response generation token limit |
-| `RAG_TOP_K` | `4` | Number of nearest chunks retrieved per query |
-| `RAG_MIN_RELEVANCE_SCORE`| `0.25` | Minimum vector similarity threshold |
+| `RAG_MIN_RELEVANCE_SCORE`| `0.65` | Minimum keyword relevance score threshold computed by `_retrieve_bis_evidence()` against curated seed catalog |
 | `MAX_CHAT_MESSAGE_LENGTH`| `1000` | Maximum user message character limit |
 | `MAX_CONVERSATION_HISTORY_TURNS`| `6` | Bounded sliding window for follow-up turns |
 
@@ -59,7 +59,7 @@ Environment variables configured in `.env` and [`backend/app/core/config.py`](fi
 ## 4. Prompt Injection & Isolation Guardrails
 
 ### 4.1 Data vs. Instruction Separation
-Indian Standards and official gazettes may contain arbitrary legal or technical language. The `ContextBuilder` treats all retrieved text as **DATA**, enclosing each passage in explicit boundaries:
+Indian Standards and official gazettes may contain arbitrary legal or technical language. `QueryService` (`app/services/query_service.py`) treats all retrieved text as **DATA**, enclosing each passage in explicit boundaries:
 
 ```markdown
 --- VERIFIED BIS EVIDENCE PASSAGES ---
@@ -79,16 +79,16 @@ Standard rated voltages are 250V AC...
 The model operates under strict instructions:
 1. **Grounded Answers:** Answer strictly using provided evidence.
 2. **Zero Fabrication:** Never invent IS numbers, clauses, test limits, or lab names.
-3. **Citation Markers:** Reference evidence chunks using `[1]`, `[2]`.
-4. **Insufficient Evidence Fallback:** If retrieved evidence is weak or irrelevant, return `insufficient_evidence: true` and clearly state that the knowledge base lacks sufficient verified data.
+3. **Citation Markers:** Reference evidence passages using `[1]`, `[2]`.
+4. **Insufficient Evidence Fallback:** If retrieved evidence score is below `RAG_MIN_RELEVANCE_SCORE` (0.65), return `insufficient_evidence: true` and clearly state that the knowledge base lacks sufficient verified data.
 
 ---
 
 ## 5. Citation Validation & Anti-Hallucination Pipeline
 
-Even with strict prompts, LLMs can occasionally cite nonexistent numbers. The backend `CitationEngine` enforces a 2-stage verification:
+Even with strict prompts, LLMs can occasionally cite nonexistent numbers. `QueryService` enforces 2-stage verification:
 
-1. **Mapping:** Maps returned citation IDs against the integer IDs `1..N` of chunks actually passed into the context.
+1. **Mapping:** Maps returned citation IDs against the integer IDs `1..N` of evidence passages actually passed into the context.
 2. **Rejection:** Any citation ID not in the evidence list is stripped from the response text and added to the `rejected_citations` log.
 3. **Enrichment:** Valid citation IDs are populated with full verifiable metadata (`standard_number`, `title`, `clause`, `page`, `source`, `snippet_text`, `score`).
 
@@ -132,3 +132,4 @@ Standard conversational endpoint for web clients and chatbots.
 
 ### 6.2 `POST /api/v1/chat/debug`
 Developer and audit endpoint returning full intermediate context, timing metrics, and citation validation logs.
+

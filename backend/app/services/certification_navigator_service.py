@@ -4,7 +4,7 @@ from app.schemas.intelligence import (
     CertificationRoadmapResponse,
     RoadmapStepItem
 )
-from app.schemas.chat import CitationItem
+from app.schemas.chat import SourceItem, SourceItem as CitationItem
 from app.db.seed_intelligence import VERIFIED_STANDARDS, VERIFIED_SCHEMES
 
 
@@ -337,3 +337,6 @@ class CertificationNavigatorService:
             disclaimer=disclaimer_text,
             citations=citations
         )
+
+
+certification_navigator_service = CertificationNavigatorService()

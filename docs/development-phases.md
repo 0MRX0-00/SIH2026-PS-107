@@ -11,7 +11,7 @@ To ensure high reliability, maintainability, and thorough verification, `e-BIS S
   * PostgreSQL schema with full citation tracking support.
   * FastAPI backend with healthcheck endpoints (`/health`, `/api/v1/health`) and structured configuration.
   * Next.js frontend with accessible Government-standard layout, navigation, and placeholder shells.
-  * Multi-container `docker-compose.yml` (Frontend, Backend, PostgreSQL, Qdrant).
+  * Multi-container `docker-compose.yml` (Frontend, Backend, PostgreSQL).
   * Unit tests and verification suite.
 * **Boundary:** Strictly no mock AI answers, no premature RAG or LLM calls.
 

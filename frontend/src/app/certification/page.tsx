@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -37,7 +37,7 @@ function CertificationContent() {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"wizard" | "schemes">("wizard");
 
-  const loadRoadmap = (query: string, lang?: string) => {
+  const loadRoadmap = useCallback((query: string, lang?: string) => {
     if (!query.trim()) return;
     setLoading(true);
     generateCertificationRoadmap({
@@ -48,7 +48,7 @@ function CertificationContent() {
       .then((data) => setActiveRoadmap(data))
       .catch((err) => console.error("Roadmap generation failed:", err))
       .finally(() => setLoading(false));
-  };
+  }, [language]);
 
   useEffect(() => {
     listCertificationSchemes(language)
@@ -58,7 +58,7 @@ function CertificationContent() {
 
   useEffect(() => {
     loadRoadmap(productInput, language);
-  }, [language]);
+  }, [language, productInput, loadRoadmap]);
 
   const handleGenerate = (e: React.FormEvent) => {
     e.preventDefault();

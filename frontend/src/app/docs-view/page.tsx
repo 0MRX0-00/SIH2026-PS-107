@@ -10,7 +10,7 @@ export default function DocsViewPage() {
   const DOCS_LIST = [
     {
       file: "problem-statement.md",
-      title: t("docs_view.problem_statement_title", "Problem Statement (SIH26107)"),
+      title: t("docs_view.problem_statement_title", "BIS Objectives & Scope"),
       icon: Shield,
       desc: t("docs_view.problem_statement_desc", "Context, challenges, and core objectives for e-BIS Sahayak."),
     },
@@ -30,7 +30,7 @@ export default function DocsViewPage() {
       file: "technology-stack.md",
       title: t("docs_view.technology_stack_title", "Technology Stack"),
       icon: Cpu,
-      desc: t("docs_view.technology_stack_desc", "FastAPI, Next.js, PostgreSQL, Qdrant, Groq, and rationale."),
+      desc: t("docs_view.technology_stack_desc", "FastAPI, Next.js, PostgreSQL, Groq, and rationale."),
     },
     {
       file: "database-design.md",
@@ -45,10 +45,10 @@ export default function DocsViewPage() {
       desc: t("docs_view.api_design_desc", "OpenAPI endpoints, versioning strategy, and response structures."),
     },
     {
-      file: "rag-architecture.md",
-      title: t("docs_view.rag_architecture_title", "Grounded RAG Pipeline"),
+      file: "groq-integration.md",
+      title: t("docs_view.groq_integration_title", "Groq AI Architecture"),
       icon: Layers,
-      desc: t("docs_view.rag_architecture_desc", "Hierarchical clause chunking, hybrid retrieval, and prompt guardrails."),
+      desc: t("docs_view.groq_integration_desc", "Sub-second Groq LLM inference, zero-RAG architecture, and prompt guardrails."),
     },
     {
       file: "security.md",

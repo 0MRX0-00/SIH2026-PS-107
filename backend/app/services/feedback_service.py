@@ -87,3 +87,6 @@ class FeedbackService:
             helpfulness_rate=rate,
             recent_issues=recent_issues
         )
+
+
+feedback_service = FeedbackService()

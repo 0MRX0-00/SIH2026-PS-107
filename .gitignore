@@ -17,6 +17,7 @@ ENV/
 out/
 build/
 dist/
+*.tsbuildinfo
 
 # Environment Variables
 .env
@@ -24,6 +25,8 @@ dist/
 .env.development.local
 .env.test.local
 .env.production.local
+backend/.env
+*.env
 
 # IDE & OS Files
 .DS_Store
@@ -33,20 +36,26 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+.kilo/
 
 # Testing & Coverage
 coverage/
 .coverage
 htmlcov/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# Qdrant & Database local storage
+# ChromaDB, Qdrant & Database local storage
 qdrant_storage/
 pgdata/
+chroma_db/
 
-# Logs
+# Logs & Temp Outputs
 logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+benchmark_results.json
+performance_profile.json

@@ -12,7 +12,7 @@ This document defines the functional and non-functional requirements for the **e
 * **FR-03 (Multilingual Querying):** System shall support English and Hindi queries, with architecture extensible to 10+ scheduled Indian languages.
 
 ### 1.2 Standards Discovery & Grounding
-* **FR-04 (Hybrid Retrieval):** System shall retrieve relevant clauses using dense vector similarity (Qdrant) and sparse lexical search (BM25 / PostgreSQL full-text search).
+* **FR-04 (Hybrid Retrieval):** System shall retrieve relevant clauses using high-precision keyword/seed matching (QueryService) with scale-out support for dense vector similarity (Qdrant) as future scope.
 * **FR-05 (Clause-Level Grounding):** Every AI response must cite the specific Indian Standard number, edition/year, clause/subclause number, page number, and source document URL/hash.
 * **FR-06 (Mandatory QCO Detection):** System shall detect if a requested standard or product falls under a mandatory Quality Control Order (QCO) published by Government ministries.
 
@@ -36,12 +36,12 @@ This document defines the functional and non-functional requirements for the **e
 ## 2. Non-Functional Requirements
 
 ### 2.1 Reliability & Grounding (Anti-Hallucination)
-* **NFR-01 (Strict Grounding):** When no standard or evidence exists in the vector/document store, the system must clearly state that no verified BIS standard was found, rather than speculating.
-* **NFR-02 (Zero Secret Exposure):** No API keys (Groq, Qdrant, DB credentials) shall be leaked to client bundles or browser consoles.
+* **NFR-01 (Strict Grounding):** When no standard or evidence exists matches above RAG_MIN_RELEVANCE_SCORE (0.65), the system must clearly state that no verified BIS standard was found, rather than speculating.
+* **NFR-02 (Zero Secret Exposure):** No API keys (Groq, DB credentials) shall be leaked to client bundles or browser consoles.
 
 ### 2.2 Performance & Scalability
 * **NFR-03 (Response Latency):** Sub-second initial response chunk streaming via Groq ultra-fast LPU inference once RAG is enabled.
-* **NFR-04 (Vector Search Latency):** Sub-50ms vector similarity lookups against Qdrant collection of >200,000 standard chunks.
+* **NFR-04 (Vector Search Latency):** Sub-10ms evidence lookup against the standard catalog (with sub-50ms vector search for future >200,000 chunk scale-out).
 * **NFR-05 (Modular Scaling):** Independent scaling of frontend (Next.js), backend API (FastAPI), and vector/relational databases.
 
 ### 2.3 Usability & Accessibility
@@ -49,4 +49,4 @@ This document defines the functional and non-functional requirements for the **e
 * **NFR-07 (Trustworthy UI Design):** Clean, uncluttered, official-grade Indian public service styling.
 
 ### 2.4 Extensibility & Modularity
-* **NFR-08 (Pluggable AI Services):** LLM client (Groq), embedding models, vector store (Qdrant), and database (PostgreSQL) must use abstract interfaces to allow drop-in replacement.
+* **NFR-08 (Pluggable AI Services):** LLM client (Groq), data providers (SeedBISDataProvider / LiveBISDataProvider), and database (PostgreSQL) must use abstract interfaces to allow drop-in replacement.

@@ -1,7 +1,11 @@
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 from sqlalchemy import String, Text, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base, TimestampMixin
+
+if TYPE_CHECKING:
+    from app.models.standard import Standard
+    from app.models.citation import Citation
 
 
 class Document(Base, TimestampMixin):

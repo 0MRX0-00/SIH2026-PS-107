@@ -2,7 +2,6 @@ from app.schemas.health import RootHealthResponse, DetailedHealthResponse, Subsy
 from app.schemas.citation import CitationBase, CitationCreate, CitationResponse
 from app.schemas.conversation import ConversationCreate, ConversationResponse, MessageCreate, MessageResponse
 from app.schemas.standard import StandardBase, StandardResponse, StandardSectionBase, StandardSectionResponse
-from app.schemas.retrieval import SearchRequest, SearchResponse, SearchResultItem
 from app.schemas.chat import ChatRequest, ChatResponse, CitationItem, ChatDebugResponse, ChatMessageInput
 from app.schemas.intelligence import (
     ProductDiscoveryRequest,
@@ -34,9 +33,6 @@ __all__ = [
     "StandardResponse",
     "StandardSectionBase",
     "StandardSectionResponse",
-    "SearchRequest",
-    "SearchResponse",
-    "SearchResultItem",
     "ChatRequest",
     "ChatResponse",
     "CitationItem",
