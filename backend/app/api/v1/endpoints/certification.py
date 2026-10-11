@@ -33,9 +33,18 @@ def generate_certification_roadmap(
 
 @router.get("/schemes", response_model=List[Dict[str, Any]])
 def list_certification_schemes(
-    language: Optional[str] = Query("en", description="Target language: en, hi, ta")
+    language: Optional[str] = Query("en", description="Target language: en, hi, ta"),
+    search: Optional[str] = Query(None, description="Optional search query by name, keyword, or standard"),
+    manufacturer_scope: Optional[str] = Query(None, description="Filter by manufacturer scope: ALL, DOMESTIC, FOREIGN, ORGANIZATIONS_AND_LABS"),
+    classification: Optional[str] = Query(None, description="Filter by route classification")
 ):
     """
-    List verified BIS certification schemes (e.g. Scheme-I ISI Mark, Scheme-II CRS, FMCS).
+    List verified BIS conformity assessment schemes and routes (e.g. Scheme-I Normal, Scheme-I Simplified, FMCS, Scheme-II CRS, Eco Mark, Scheme-III CoC, Scheme-IV MSCS, Scheme-X, Hallmarking, LRS).
     """
-    return get_localized_all_schemes(language or "en")
+    return get_localized_all_schemes(
+        language=language or "en",
+        search=search,
+        manufacturer_scope=manufacturer_scope,
+        classification=classification
+    )
+

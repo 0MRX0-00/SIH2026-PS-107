@@ -12,7 +12,7 @@ This document defines the functional and non-functional requirements for the **e
 * **FR-03 (Multilingual Querying):** System shall support English and Hindi queries, with architecture extensible to 10+ scheduled Indian languages.
 
 ### 1.2 Standards Discovery & Grounding
-* **FR-04 (Hybrid Retrieval):** System shall retrieve relevant clauses using high-precision keyword/seed matching (QueryService) with scale-out support for dense vector similarity (Qdrant) as future scope.
+* **FR-04 (Evidence Retrieval):** System shall retrieve relevant standards and requirements using deterministic catalog lookup (`BaseBISDataProvider`), with dense vector similarity (Qdrant) documented strictly as an unimplemented future roadmap option.
 * **FR-05 (Clause-Level Grounding):** Every AI response must cite the specific Indian Standard number, edition/year, clause/subclause number, page number, and source document URL/hash.
 * **FR-06 (Mandatory QCO Detection):** System shall detect if a requested standard or product falls under a mandatory Quality Control Order (QCO) published by Government ministries.
 
@@ -28,7 +28,7 @@ This document defines the functional and non-functional requirements for the **e
 * **FR-09 (Lab Directory):** Enable filtering of BIS recognized, BIS branch, and NABL accredited partner labs by standard number, test parameters, and state/region.
 
 ### 1.5 Traceability & Audit Trail
-* **FR-10 (Citation Verification UI):** Allow users to click any citation inline to preview the exact excerpted clause, source document metadata, and confidence score.
+* **FR-10 (Citation Verification UI):** Allow users to click any citation inline to preview the exact source document metadata, issuing authority, and official verification provenance.
 * **FR-11 (User Feedback Loop):** Enable users to rate response accuracy, flag incorrect citations, and submit corrections.
 
 ---
@@ -36,13 +36,13 @@ This document defines the functional and non-functional requirements for the **e
 ## 2. Non-Functional Requirements
 
 ### 2.1 Reliability & Grounding (Anti-Hallucination)
-* **NFR-01 (Strict Grounding):** When no standard or evidence exists matches above RAG_MIN_RELEVANCE_SCORE (0.65), the system must clearly state that no verified BIS standard was found, rather than speculating.
+* **NFR-01 (Strict Grounding):** When no verified standard or official gazette record exists for a query, the system must clearly state that no verified BIS standard was found, rather than speculating.
 * **NFR-02 (Zero Secret Exposure):** No API keys (Groq, DB credentials) shall be leaked to client bundles or browser consoles.
 
 ### 2.2 Performance & Scalability
-* **NFR-03 (Response Latency):** Sub-second initial response chunk streaming via Groq ultra-fast LPU inference once RAG is enabled.
-* **NFR-04 (Vector Search Latency):** Sub-10ms evidence lookup against the standard catalog (with sub-50ms vector search for future >200,000 chunk scale-out).
-* **NFR-05 (Modular Scaling):** Independent scaling of frontend (Next.js), backend API (FastAPI), and vector/relational databases.
+* **NFR-03 (Response Latency):** Low-latency response generation via Groq ultra-fast LPU inference.
+* **NFR-04 (Lookup Latency):** Sub-10ms evidence lookup against the standard catalog.
+* **NFR-05 (Modular Architecture):** Clean decoupling of Next.js frontend, FastAPI backend, and relational database layers.
 
 ### 2.3 Usability & Accessibility
 * **NFR-06 (Accessibility Standards):** Comply with WCAG 2.1 AA guidelines, supporting screen readers, keyboard navigation, and high-contrast accessibility.

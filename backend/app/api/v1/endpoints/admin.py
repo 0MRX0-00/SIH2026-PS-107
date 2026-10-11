@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Header, HTTPException, status
+import secrets
 from typing import List, Optional
+from fastapi import APIRouter, Header, HTTPException, status
 from app.core.config import settings
 from app.schemas.admin import (
     AdminDocumentItem,
@@ -18,10 +19,13 @@ feedback_service = FeedbackService()
 
 
 def verify_admin_key(x_admin_key: Optional[str] = Header(None)):
-    """Verifies that the caller has administrative privileges."""
+    """Verifies that the caller has administrative privileges using constant-time comparison."""
     if not settings.ADMIN_API_KEY:
-        return True
-    if x_admin_key != settings.ADMIN_API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Admin authentication is not configured on the server."
+        )
+    if not x_admin_key or not secrets.compare_digest(x_admin_key, settings.ADMIN_API_KEY):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or missing X-Admin-Key header for administrator access."
@@ -62,4 +66,4 @@ async def get_admin_feedback(
 @router.get("/system-status", response_model=AdminSystemStatusResponse, summary="Real-Time System Diagnostics")
 async def get_system_status(x_admin_key: Optional[str] = Header(None)) -> AdminSystemStatusResponse:
     verify_admin_key(x_admin_key)
-    return admin_service.get_system_status()
+    return await admin_service.get_system_status()

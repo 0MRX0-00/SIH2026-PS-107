@@ -50,7 +50,6 @@ Environment variables configured in `.env` and [`backend/app/core/config.py`](fi
 | `GROQ_TIMEOUT_SECONDS`| `30.0` | HTTP request timeout |
 | `GROQ_TEMPERATURE` | `0.1` | Low temperature for maximum factual consistency |
 | `GROQ_MAX_TOKENS` | `1500` | Maximum response generation token limit |
-| `RAG_MIN_RELEVANCE_SCORE`| `0.65` | Minimum keyword relevance score threshold computed by `_retrieve_bis_evidence()` against curated seed catalog |
 | `MAX_CHAT_MESSAGE_LENGTH`| `1000` | Maximum user message character limit |
 | `MAX_CONVERSATION_HISTORY_TURNS`| `6` | Bounded sliding window for follow-up turns |
 
@@ -80,7 +79,7 @@ The model operates under strict instructions:
 1. **Grounded Answers:** Answer strictly using provided evidence.
 2. **Zero Fabrication:** Never invent IS numbers, clauses, test limits, or lab names.
 3. **Citation Markers:** Reference evidence passages using `[1]`, `[2]`.
-4. **Insufficient Evidence Fallback:** If retrieved evidence score is below `RAG_MIN_RELEVANCE_SCORE` (0.65), return `insufficient_evidence: true` and clearly state that the knowledge base lacks sufficient verified data.
+4. **Insufficient Evidence Fallback:** If no verified standard or official gazette record matches the query, return `insufficient_evidence: true` and clearly state that the knowledge base lacks sufficient verified data to prevent speculation.
 
 ---
 

@@ -46,28 +46,26 @@
 * `GET /api/v1/standards/{standard_id}`
 * `GET /api/v1/standards/{standard_id}/clauses`
 
-### 3.2 Assistant & RAG Inference (`/api/v1/assistant`)
-* `POST /api/v1/assistant/conversations` (Create conversational session)
-* `POST /api/v1/assistant/conversations/{conv_id}/messages`
+### 3.2 Assistant & Conversational Inference (`/api/v1/chat`)
+* `POST /api/v1/chat`
   * Request Body:
     ```json
     {
-      "query": "What are the testing requirements for IS 1293 plugs?",
+      "message": "What are the testing requirements for IS 1293 plugs?",
       "language": "en"
     }
     ```
   * Response:
     ```json
     {
-      "message_id": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
-      "content": "According to IS 1293:2019...",
+      "answer": "According to IS 1293:2019...",
       "citations": [
         {
-          "standard_number": "IS 1293:2019",
-          "clause_ref": "Clause 8.1",
-          "page_number": 12,
-          "snippet": "...",
-          "confidence_score": 0.94
+          "title": "IS 1293:2019: Plugs and Socket-Outlets",
+          "url": "https://services.bis.gov.in/...",
+          "authority": "Bureau of Indian Standards",
+          "verified": true,
+          "provenance": "Official BIS Repository"
         }
       ]
     }

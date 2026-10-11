@@ -44,7 +44,7 @@ class ChatResponse(BaseModel):
         description="Explicit response category: 'DIRECT_RESPONSE', 'CLARIFICATION_REQUIRED', 'PRODUCT_APPLICABILITY', 'STANDARD_INFORMATION', 'CERTIFICATION_INFORMATION', 'OUT_OF_SCOPE', 'ERROR'"
     )
     grounded: bool = Field(False, description="True only when response is supported by explicitly provided source content")
-    evidence_status: Optional[str] = Field("strong", description="Quality of supporting evidence: 'strong', 'limited', 'insufficient'")
+    evidence_status: Optional[str] = Field(None, description="Evidence status, None for direct Groq-only conversational responses")
     warnings: List[str] = Field(default=[], description="Regulatory or evidence caveats")
     needs_clarification: bool = Field(False, description="True if query is underspecified")
     clarification_question: Optional[str] = Field(None, description="Specific clarification prompt if required")

@@ -8,26 +8,26 @@
 
 ### Act 1: Problem Introduction & National Impact (1.5 Minutes)
 - **Presenter 1:** "Good morning, respected judges. Indian businesses, startups, and MSMEs lose millions of work hours struggling through dense 80-page BIS technical standards, scattered QCO notifications across ministry gazettes, and unclear certification pathways."
-- **Presenter 1:** "Our solution, **e-BIS Sahayak**, bridges this gap through a high-precision, multilingual, source-grounded RAG intelligence system that guarantees zero hallucinations and exact clause citations."
+- **Presenter 1:** "Our solution, **e-BIS Sahayak**, bridges this gap through a high-precision, multilingual, source-grounded intelligence system powered by Groq LPU with deterministic catalog lookup and official gazette evidence verification."
 
 ---
 
-### Act 2: Conversational RAG & Zero-Hallucination Demo (2.5 Minutes)
+### Act 2: Conversational Assistant & Grounded Evidence Demo (2.5 Minutes)
 1. **Scenario 1: Mandatory QCO applicability**
    - **Query:** *"Is ISI mark mandatory for plugs and socket-outlets, and which standard applies?"*
    - **Showcase:** 
-     - Sahayak retrieves `IS 1293:2019` chunk with exact clause `Clause 4.1`.
+     - Sahayak identifies `IS 1293:2019` with relevant technical clauses and testing scope.
      - Highlights mandatory Quality Control Order (QCO) issued by DPIIT.
-     - Displays clickable source citation cards showing standard title, section, and confidence score.
+     - Displays clickable official source citation cards with verified portal links and data provenance.
 2. **Scenario 2: Strict Evidence Defense**
    - **Query:** *"What is the standard test procedure for warp-speed starship engine shielding?"*
    - **Showcase:** 
-     - Sahayak detects no indexed BIS standard matches this out-of-domain query.
-     - Returns grounded fallback message stating no verified BIS standard exists, rather than hallucinating fake IS numbers.
+     - Sahayak detects that no verified BIS standard matches this fictional query.
+     - Returns clear evidence-based abstention stating no verified BIS standard exists, refusing to invent fictitious requirements.
 3. **Scenario 3: Direct Clause Deep-Dive**
    - **Query:** *"What are the mandatory marking requirements under IS 2347 for domestic pressure cookers?"*
    - **Showcase:**
-     - Sahayak extracts `Clause 10` markings: Nominal capacity, Manufacturer name/trademark, and mandatory ISI certification mark.
+     - Sahayak identifies `Clause 10` markings: Nominal capacity, Manufacturer name/trademark, and mandatory ISI certification mark.
 
 ---
 
@@ -35,18 +35,18 @@
 1. **Switch UI language to हिन्दी (Hindi):**
    - **Query:** *"प्रेशर कुकर के लिए कौन सा बीआईएस मानक लागू होता है और क्या यह अनिवार्य है?"*
    - **Showcase:**
-     - Query translated, retrieved against BGE-embedded knowledge base, and synthesized back in fluent, technically accurate Hindi citing `IS 2347:2017`.
+     - Natural Hindi language interaction citing `IS 2347:2017` with official gazette reference.
 2. **Switch UI language to தமிழ் (Tamil):**
    - **Query:** *"பிளக் மற்றும் சாக்கெட்டுகளுக்கான ஐஎஸ்ஐ மார்க் கட்டாயமா?"*
    - **Showcase:**
-     - Accurate Tamil response citing `IS 1293:2019` with verified citations.
+     - Fluent Tamil response citing `IS 1293:2019` with official BIS citations.
 
 ---
 
 ### Act 4: Certification Navigator & Accredited Lab Finder (2 Minutes)
 1. **Certification Roadmap Wizard (`/certification`):**
    - Enter *"Plugs and Socket-Outlets"*.
-   - Walk through the 5-step guided roadmap:
+   - Walk through the guided roadmap:
      - *Step 1: Standard Identification (`IS 1293:2019`)*
      - *Step 2: Factory Testing Facilities setup*
      - *Step 3: Manakonline Portal Application submission*
@@ -55,24 +55,22 @@
 2. **Accredited Laboratory Directory (`/laboratories`):**
    - Search by standard `IS 1293`.
    - Filter by State (e.g. *Delhi* or *Haryana*).
-   - Display BIS Central Laboratory (CL Sahibabad) & National Test House with verified contact, accreditation scope, and turnaround capabilities.
+   - Display verified laboratories from the 576-laboratory LIMS directory with contact information and accreditation scope.
 
 ---
 
-### Act 5: Operations, Admin Management & Quality Benchmarks (1.5 Minutes)
+### Act 5: Operations, Security Controls & Admin Management (1.5 Minutes)
 1. **Admin Console (`/admin`):**
-   - Enter Admin Key `ebis-admin-secret-key-2026`.
-   - Inspect indexed documents, SHA-256 hashes, and chunk distributions.
-   - Demonstrate 1-click idempotent re-indexing.
-   - Show live user feedback metrics (👍 / 👎 ratings and issue categories).
-2. **Evaluation Metrics Summary:**
-   - **Retrieval Hit@3:** 100.0%
-   - **MRR (Mean Reciprocal Rank):** 1.000
-   - **Precision@3:** 88.9%
-   - **Citation Accuracy:** 100.0%
-   - **Faithfulness Score:** 0.990
+   - Enter your configured Admin Key (e.g. `<your-admin-secret-key>`).
+   - Inspect verified catalog records, source provenance, and laboratory registry status.
+   - Show live user feedback metrics (helpful ratings and issue categories).
+2. **Reliability & Security Controls:**
+   - **Pure ASGI Size Limiter:** Enforces strict 2 MB payload limits across declared and chunked streaming requests (HTTP 413).
+   - **Bounded Rate Limiter:** 10,000-entry capacity with LRU eviction to prevent memory exhaustion under IP churn.
+   - **Protected Debug Observability:** `/api/v1/chat/debug` guarded behind administrator authentication.
+   - **100% Deterministic Test Suite:** 283 passed / 283 tests in under 4 seconds with zero external network dependencies.
 
 ---
 
 ### Act 6: Summary & Judge Q&A (1 Minute)
-- **Presenter 2:** "e-BIS Sahayak is production-ready, fully tested with 87+ passing automated test suites, supports all Indian manufacturing sectors, and stands ready to empower Make in India compliance."
+- **Presenter 2:** "e-BIS Sahayak is production-ready, fully verified with 283 passing automated tests, supports Indian manufacturing across 3 languages, and stands ready to empower Make in India compliance."

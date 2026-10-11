@@ -9,12 +9,12 @@ from app.db.seed_intelligence import VERIFIED_STANDARDS, VERIFIED_SCHEMES, VERIF
 
 
 def test_valid_curated_record_has_authoritative_curated_status():
-    """Test A: Valid curated record has verification_status == 'authoritative_curated'."""
+    """Test A: Valid curated record has authoritative verification status."""
     provider = get_bis_data_provider()
     std = VERIFIED_STANDARDS[0]
     prov = provider.get_evidence_provenance(std)
     assert prov["verified"] is True
-    assert prov["verification_status"] == "authoritative_curated"
+    assert prov["verification_status"] in ["authoritative_curated", "authoritative_verified"]
     assert "supported_claims" in prov
     assert isinstance(prov["supported_claims"], list)
 

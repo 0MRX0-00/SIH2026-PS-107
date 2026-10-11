@@ -51,18 +51,23 @@ async def chat_endpoint(
         )
 
 
+from app.api.v1.endpoints.admin import verify_admin_key
+from app.core.config import settings
+
+
 @router.post(
     "/debug",
     response_model=ChatDebugResponse,
     status_code=status.HTTP_200_OK,
-    summary="Groq Pipeline Observability & Debug Endpoint",
-    description="Returns detailed traces of intent classification, system prompt, assembled messages, and raw LLM output.",
+    summary="Groq Pipeline Observability & Debug Endpoint (Admin Only)",
+    description="Returns detailed traces of intent classification, system prompt, assembled messages, and raw LLM output. Requires administrator authentication.",
 )
 async def chat_debug_endpoint(
     request: ChatRequest,
+    _admin_authenticated: bool = Depends(verify_admin_key),
     service: QueryService = Depends(get_query_service),
 ) -> ChatDebugResponse:
-    """Developer endpoint to inspect intermediate stages of the Groq pipeline."""
+    """Developer/admin endpoint to inspect intermediate stages of the Groq pipeline."""
     if not request.message or not request.message.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

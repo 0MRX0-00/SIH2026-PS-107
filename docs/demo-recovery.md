@@ -29,7 +29,7 @@ This runbook provides 30-second troubleshooting steps if any subsystem experienc
 **Symptom**: Chat response returns `insufficient_evidence: true` with an explicit notice stating that no authoritative verified BIS evidence was found.
 
 **Recovery Action**:
-1. **Expected System Behavior**: This is not a failure; it is the zero-hallucination **Abstention Gatekeeper** (`RAG_MIN_RELEVANCE_SCORE = 0.65`) preventing speculative answers for out-of-scope or fictional queries.
+1. **Expected System Behavior**: This is not a failure; it is the evidence-based **Abstention Gatekeeper** preventing speculative answers for out-of-scope or fictional queries.
 2. **Refined Query Prompting**: If testing core standards during a demo, ensure the query includes target keywords or IS standard numbers (e.g., "IS 1293 plug ratings", "IS 13252 safety requirements", "IS 17803 fan performance").
 
 ---

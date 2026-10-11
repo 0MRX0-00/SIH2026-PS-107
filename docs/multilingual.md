@@ -1,9 +1,9 @@
-# Multilingual AI Architecture & Cross-Lingual RAG
+# Multilingual AI Architecture & Cross-Lingual Evidence Lookup
 
 ## 1. Overview
 e-BIS Sahayak (SIH 2026 Problem Statement SIH26107) supports multilingual intelligence across **English (`en`)**, **Hindi (`hi` - हिन्दी)**, and **Tamil (`ta` - தமிழ்)**.
 
-The system ensures that users across India—ranging from small-scale rural manufacturers and artisans to state industrial promotion officers and consumers—can interact seamlessly in their preferred language while receiving **authoritative, 100% source-grounded answers** cited from Indian Standards (IS).
+The system ensures that users across India—ranging from small-scale rural manufacturers and artisans to state industrial promotion officers and consumers—can interact seamlessly in their preferred language while receiving **authoritative, verified source-grounded answers** cited from Indian Standards (IS).
 
 ```
    ┌─────────────────────────────────────────────────────────────┐
@@ -62,7 +62,7 @@ The system ensures that users across India—ranging from small-scale rural manu
 ### 2.2 Cross-Lingual Knowledge Retrieval
 - Authoritative Indian Standards documents are indexed in English.
 - The `LanguageService` translates domain-specific keywords from Hindi/Tamil into English search terms (e.g., "प्रेशर कुकर" ➔ "pressure cooker", "மின்விசிறி" ➔ "ceiling fan").
-- The normalized search query performs keyword and standard-number evidence lookup against the seed catalog (`SeedBISDataProvider`), retrieving exact clauses and tables without modifying document metadata. (Scale-out vector search via Qdrant is reserved for future large-scale document collections).
+- The normalized search query performs keyword and standard-number evidence lookup against the seed catalog (`SeedBISDataProvider`), retrieving exact clauses and tables without modifying document metadata. (Scale-out vector search via Qdrant is strictly an unimplemented future roadmap concept).
 
 ### 2.3 Strict Terminology Preservation Rules
 When synthesizing responses in Hindi or Tamil, the Groq LPU model follows strict preservation constraints:
@@ -79,7 +79,7 @@ When synthesizing responses in Hindi or Tamil, the Groq LPU model follows strict
 
 ## 3. Supported Languages Matrix
 
-| Language Code | Language Name | Native Script | Unicode Range | UI Localization | RAG Retrieval | Product Discovery |
+| Language Code | Language Name | Native Script | Unicode Range | UI Localization | Evidence Lookup | Product Discovery |
 |---|---|---|---|---|---|---|
 | `en` | English | Latin | `\u0020-\u007F` | ✅ Complete | ✅ Native | ✅ Complete |
 | `hi` | Hindi | Devanagari (हिन्दी) | `\u0900-\u097F` | ✅ Complete | ✅ Cross-Lingual | ✅ Complete |

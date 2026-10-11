@@ -24,6 +24,7 @@ class BaseBISDataProvider(ABC):
         self,
         query: Optional[str] = None,
         division: Optional[str] = None,
+        product_category: Optional[str] = None,
         qco_only: Optional[bool] = None,
         limit: int = 50,
         language: str = "en"
@@ -66,6 +67,20 @@ class BaseBISDataProvider(ABC):
         language: str = "en"
     ) -> List[LaboratoryItem]:
         """List all accredited laboratories in catalog."""
+        pass
+
+    @abstractmethod
+    def get_laboratory_by_id_or_code(
+        self,
+        id_or_code: str,
+        language: str = "en"
+    ) -> Optional[LaboratoryItem]:
+        """Retrieve single laboratory by ID or official Lab Code."""
+        pass
+
+    @abstractmethod
+    def get_laboratory_stats(self) -> Dict[str, Any]:
+        """Get summary statistics for the laboratory directory."""
         pass
 
     @abstractmethod

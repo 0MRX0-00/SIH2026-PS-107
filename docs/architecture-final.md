@@ -26,8 +26,8 @@ graph TB
         QueryProc[Anaphoric Query Resolver & Intent Router]
         TransService[Language Service: Indic & Hinglish Normalization]
         DataProvider[Curated BIS Data Provider Abstraction]
-        AbstentionGate[Abstention Gatekeeper: RAG_MIN_RELEVANCE_SCORE]
-        PromptAssembler[Grounding Prompt Engine with Zero-Hallucination Rules]
+        AbstentionGate[Abstention Gatekeeper: Catalog Registry Validation]
+        PromptAssembler[Grounding Prompt Engine with Evidence-Constrained Rules]
         LLMDriver[Groq LLaMA 3.3 70B Versatile LLM Engine]
     end
 
@@ -77,7 +77,7 @@ graph TB
 
 ### 2.2 Curated Evidence Retrieval & Abstention Gate
 - **Data Provider Abstraction**: `BaseBISDataProvider` with `SeedBISDataProvider` and `SeedProviderWithProvenanceTag` queries a curated seed catalog (`app/db/seed_intelligence.py`).
-- **Abstention Gatekeeper (`RAG_MIN_RELEVANCE_SCORE = 0.65`)**: Enforces a strict term/keyword relevance score threshold. If zero chunks clear 0.65, returns `insufficient_evidence=True`, `grounded=False`, `sources=[]` **without calling the LLM**.
+- **Abstention Gatekeeper**: Enforces strict catalog and official gazette validation. If an unverified standard or fictional entity is detected, returns `insufficient_evidence=True`, `grounded=False`, `sources=[]` without calling the LLM.
 
 ### 2.3 MultilingualIndic & Hinglish Pipeline
 - Seamless translation bridge converting Devanagari Hindi, Tamil, and Hinglish (Romanized Hindi) query terms into English search keywords while preserving standard numbers and clause markers.

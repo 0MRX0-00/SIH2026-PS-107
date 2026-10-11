@@ -6,7 +6,7 @@ This document describes the design, routing mechanisms, grounded intelligence se
 
 ## 1. Architectural Overview & Hybrid Intelligence
 
-The BIS Intelligence layer transforms raw vector retrieval into an actionable assistant by coupling structured PostgreSQL / verified seed registries with Groq LPU-powered RAG reasoning.
+The BIS Intelligence layer transforms raw user inquiries into structured assistance by coupling structured PostgreSQL / verified seed registries with Groq LPU-powered conversational inference.
 
 ```
                       [ User Query / UI Interaction ]
@@ -19,19 +19,19 @@ The BIS Intelligence layer transforms raw vector retrieval into an actionable as
        ▼                     ▼                    ▼                     ▼
 [STANDARD_SEARCH]   [PRODUCT_DISCOVERY]   [CERTIFICATION_GUIDANCE] [LABORATORY_SEARCH]
        │                     │                    │                     │
-  Structured DB         Vector RAG +          Structured Scheme     PostgreSQL Labs
-  IS Catalogue         Ambiguity Filter       + 5-Stage Roadmap     + Scope Filtering
+  Structured DB         Deterministic         Structured Scheme     PostgreSQL Labs
+  IS Catalogue         Catalog Matching       + 5-Stage Roadmap     + Scope Filtering
        │                     │                    │                     │
        └─────────────────────┼────────────────────┴─────────────────────┘
                              ▼
                2. Grounded Justification & Citations
                - Descriptive Evidence Status (High / Partial / Insufficient)
-               - Clause & Page Evidence Validation
+               - Clause & Official Gazette Evidence Validation
                - Clarification Prompts for Ambiguous Inquiries
                              ▼
                3. Next.js Frontend Modules
                - / (Dashboard with Live Search & Metrics)
-               - /assistant (Conversational AI with preloaded context)
+               - /assistant (Conversational Assistant with preloaded context)
                - /standards & /standards/[standardNumber] (Standards Explorer & Clauses)
                - /certification (Interactive 5-Stage Roadmap Wizard)
                - /laboratories (State/City/Standard Testing Facility Finder)
@@ -52,7 +52,7 @@ The `IntentRouter` (`backend/app/services/intent_router.py`) performs determinis
 | `STANDARD_EXPLANATION` | "What does Clause 13.1 mean", "Explain standard" | `POST /api/v1/chat` |
 | `DOCUMENT_QUERY` | Queries mentioning clauses, tables, annexures | `POST /api/v1/chat` |
 | `GENERAL_BIS_QUERY` | Queries about Bureau of Indian Standards, ManakOnline, portals | `POST /api/v1/chat` |
-| `UNKNOWN` | Open-ended queries | Fallback RAG |
+| `UNKNOWN` | Open-ended queries | Deterministic Catalog Lookup & Groq LPU |
 
 ---
 
@@ -60,7 +60,7 @@ The `IntentRouter` (`backend/app/services/intent_router.py`) performs determinis
 
 ### 3.1 Product $\rightarrow$ Standard Discovery (`product_discovery_service.py`)
 - **Ambiguity Detection**: If a product description is overly generic (e.g. "I manufacture bottles" or "I make cables"), the system prompts clarification questions regarding material (e.g., Stainless Steel, Glass, PET), intended use (Packaged Water, Chemicals, Feeding), or voltage ratings rather than guessing.
-- **Candidate Retrieval**: Fetches candidate standards from the seed intelligence catalog (app/db/seed_intelligence.py) and verifies them against indexed IS registries.
+- **Candidate Retrieval**: Fetches candidate standards from the seed intelligence catalog (`app/db/seed_intelligence.py`) and verifies them against indexed IS registries.
 - **Grounded Relevance Reasoning**: Formulates `Product characteristics + Retrieved evidence = Relevance explanation`.
 - **Distinction**: Explicitly distinguishes between *Potentially relevant standards* and *Mandatory standards under gazetted QCOs*.
 
@@ -77,7 +77,7 @@ Generates a structured 5-stage roadmap:
 
 ### 3.3 Laboratory Search & Guidance (`laboratory_service.py`)
 - Multi-criteria structured search: State, City, Accredited IS Standard (e.g. `IS 1293`), and Testing Capability keywords.
-- Zero hallucination: Only returns verified BIS Central Labs, Branch Labs, and NABL-accredited institutions from structured records.
+- Grounded Evidence: Only returns verified BIS Central Labs, Branch Labs, and NABL-accredited institutions from structured 576-laboratory records.
 
 ---
 
@@ -92,7 +92,7 @@ Generates a structured 5-stage roadmap:
 | `/api/v1/certification/schemes` | `GET` | List official BIS certification schemes |
 | `/api/v1/laboratories/search` | `POST` | Filter recognized laboratories by state, city, standard, capability |
 | `/api/v1/laboratories/` | `GET` | List all verified laboratories |
-| `/api/v1/chat` | `POST` | RAG conversational assistant with citation validation |
+| `/api/v1/chat` | `POST` | Conversational assistant with official source citation validation |
 
 ---
 

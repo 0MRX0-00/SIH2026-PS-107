@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -9,328 +9,519 @@ import {
   FileSearch,
   Award,
   FlaskConical,
-  CheckCircle2,
   Sparkles,
   ArrowRight,
   Search,
-  Compass,
-  Building2,
-  FileText,
+  Mic,
+  MicOff,
+  Clock,
+  ExternalLink,
+  CheckCircle2,
+  BookOpen,
+  Building,
   HelpCircle,
-  Globe,
-  Lock,
+  FileText,
   Layers,
-  Zap,
-  Shield,
-  Activity,
 } from "lucide-react";
-import { listStandards, listLaboratories, listCertificationSchemes } from "@/lib/api";
 import { useLanguage } from "@/context/LanguageContext";
+import {
+  getRecentConsultations,
+  saveRecentConsultation,
+  RecentConsultation,
+} from "@/lib/consultations";
 
 export default function DashboardPage() {
   const router = useRouter();
   const { t, language } = useLanguage();
   const [queryInput, setQueryInput] = useState("");
-  const [stats, setStats] = useState({
-    standardsCount: 4,
-    labsCount: 5,
-    schemesCount: 3,
-  });
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const [recentConsultations, setRecentConsultations] = useState<RecentConsultation[]>([]);
+  const recognitionRef = useRef<any>(null);
 
+  // Initialize Speech Recognition if supported in browser
   useEffect(() => {
-    Promise.all([
-      listStandards().catch(() => []),
-      listLaboratories().catch(() => []),
-      listCertificationSchemes().catch(() => []),
-    ]).then(([stds, labs, schemes]) => {
-      setStats({
-        standardsCount: stds.length || 4,
-        labsCount: labs.length || 5,
-        schemesCount: schemes.length || 3,
-      });
-    });
+    if (typeof window !== "undefined") {
+      const SpeechRecognition =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        setSpeechSupported(true);
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang =
+          language === "hi" ? "hi-IN" : language === "ta" ? "ta-IN" : "en-IN";
+
+        recognition.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript;
+          setQueryInput(transcript);
+          setIsListening(false);
+        };
+
+        recognition.onerror = () => {
+          setIsListening(false);
+        };
+
+        recognition.onend = () => {
+          setIsListening(false);
+        };
+
+        recognitionRef.current = recognition;
+      }
+    }
+  }, [language]);
+
+  // Load recent consultations
+  useEffect(() => {
+    const loadConsultations = () => {
+      setRecentConsultations(getRecentConsultations());
+    };
+    loadConsultations();
+    window.addEventListener("ebis_consultations_updated", loadConsultations);
+    return () => {
+      window.removeEventListener("ebis_consultations_updated", loadConsultations);
+    };
   }, []);
+
+  const handleVoiceToggle = () => {
+    if (!speechSupported || !recognitionRef.current) return;
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      try {
+        recognitionRef.current.lang =
+          language === "hi" ? "hi-IN" : language === "ta" ? "ta-IN" : "en-IN";
+        recognitionRef.current.start();
+        setIsListening(true);
+      } catch (err) {
+        console.warn("Speech recognition start failed", err);
+        setIsListening(false);
+      }
+    }
+  };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!queryInput.trim()) return;
-    router.push(`/assistant?prompt=${encodeURIComponent(queryInput.trim())}`);
+    const q = queryInput.trim();
+    saveRecentConsultation(q);
+    router.push(`/assistant?prompt=${encodeURIComponent(q)}`);
+  };
+
+  const handleSampleClick = (sampleQuery: string) => {
+    setQueryInput(sampleQuery);
+    saveRecentConsultation(sampleQuery);
+    router.push(`/assistant?prompt=${encodeURIComponent(sampleQuery)}`);
   };
 
   const sampleQueries = {
     en: [
-      { label: "IS 1293 Plugs & Sockets", query: "What are the temperature rise requirements in IS 1293:2019 Clause 19.1?" },
-      { label: "Product Discovery", query: "I manufacture stainless steel water bottles. Which Indian standard applies?" },
-      { label: "CRS Registration", query: "What is the procedure for Scheme-II Compulsory Registration for power adapters?" },
-      { label: "Find Testing Lab", query: "Where can I test electrical appliances in Tamil Nadu?" },
+      {
+        tag: "Standard Scope",
+        query: "What is IS 1293:2019 and what are its safety requirements for plugs and sockets?",
+      },
+      {
+        tag: "Product Discovery",
+        query: "Which Indian Standard and mandatory QCO applies to stainless steel water bottles?",
+      },
+      {
+        tag: "Certification Wizard",
+        query: "What is the procedure and document checklist for Scheme-II CRS for mobile phone chargers?",
+      },
+      {
+        tag: "Testing Facility",
+        query: "Where can I test ceiling fans under IS 17803 in Maharashtra or Gujarat?",
+      },
     ],
     hi: [
-      { label: "IS 1293 प्लग और सॉकेट", query: "IS 1293:2019 खंड 19.1 में तापमान वृद्धि की आवश्यकताएं क्या हैं?" },
-      { label: "उत्पाद खोज", query: "मैं स्टेनलेस स्टील पानी की बोतल बनाता हूँ। कौन सा भारतीय मानक लागू होता है?" },
-      { label: "CRS पंजीकरण", query: "पावर एडाप्टर के लिए योजना-II अनिवार्य पंजीकरण प्रक्रिया क्या है?" },
-      { label: "परीक्षण प्रयोगशाला", query: "उत्तर प्रदेश में विद्युत उपकरणों के परीक्षण के लिए कौन सी प्रयोगशाला है?" },
+      {
+        tag: "मानक दायरा",
+        query: "IS 1293:2019 क्या है और प्लग और सॉकेट के लिए सुरक्षा आवश्यकताएं क्या हैं?",
+      },
+      {
+        tag: "उत्पाद खोज",
+        query: "स्टेनलेस स्टील पानी की बोतलों पर कौन सा भारतीय मानक और अनिवार्य QCO लागू होता है?",
+      },
+      {
+        tag: "प्रमाणन प्रक्रिया",
+        query: "मोबाइल फोन चार्जर के लिए योजना-II CRS की प्रक्रिया और आवश्यक दस्तावेज क्या हैं?",
+      },
+      {
+        tag: "परीक्षण प्रयोगशाला",
+        query: "महाराष्ट्र या गुजरात में IS 17803 के तहत सीलिंग पंखे का परीक्षण कहाँ करवा सकते हैं?",
+      },
     ],
     ta: [
-      { label: "IS 1293 பிளக் & சாக்கெட்", query: "IS 1293:2019 பிரிவு 19.1 இன் கீழ் வெப்பநிலை அதிகரிப்பு தேவைகள் என்ன?" },
-      { label: "தயாரிப்பு தரநிலை", query: "நான் துருப்பிடிக்காத எஃகு தண்ணீர் பாட்டில்களை தயாரிக்கிறேன். எந்த இந்திய தரநிலை பொருந்தும்?" },
-      { label: "CRS பதிவு", query: "பவர் அடாப்டர்களுக்கான திட்டம்-II கட்டாய பதிவு நடைமுறை என்ன?" },
-      { label: "ஆய்வகம் கண்டறிதல்", query: "தமிழ்நாட்டில் மின் சாதனங்களை சோதிக்கக்கூடிய ஆய்வகங்கள் எங்கே உள்ளன?" },
-    ]
+      {
+        tag: "தரநிலை நோக்கம்",
+        query: "IS 1293:2019 என்றால் என்ன மற்றும் பிளக் மற்றும் சாக்கெட்டுகளுக்கான பாதுகாப்பு தேவைகள் என்ன?",
+      },
+      {
+        tag: "தயாரிப்பு கண்டறிதல்",
+        query: "துருப்பிடிக்காத எஃகு தண்ணீர் பாட்டில்களுக்கு எந்த இந்திய தரநிலை மற்றும் கட்டாய QCO பொருந்தும்?",
+      },
+      {
+        tag: "சான்றிதழ் வழிகாட்டி",
+        query: "மொபைல் போன் சார்ஜர்களுக்கான திட்டம்-II CRS நடைமுறை மற்றும் ஆவணப் பட்டியல் என்ன?",
+      },
+      {
+        tag: "சோதனை ஆய்வகம்",
+        query: "தமிழ்நாட்டில் IS 17803 இன் கீழ் மின் விசிறிகளை சோதிக்கக்கூடிய ஆய்வகங்கள் எங்கே உள்ளன?",
+      },
+    ],
   };
 
-  const activeQueries = sampleQueries[language] || sampleQueries.en;
+  const currentSampleQueries = sampleQueries[language] || sampleQueries.en;
+
+  const FEATURE_CARDS = [
+    {
+      title: t("dashboard.card_assistant_title", "Ask Sahayak AI"),
+      desc: t(
+        "dashboard.card_assistant_desc",
+        "Source-grounded regulatory guidance powered by Groq LPU inference. Resolves standard requirements, QCOs, and clauses."
+      ),
+      href: "/assistant",
+      icon: BotMessageSquare,
+      badge: "Fast Inference",
+      badgeColor: "bg-blue-100 text-blue-800",
+      cta: t("dashboard.card_assistant_cta", "Start Consultation"),
+    },
+    {
+      title: t("dashboard.card_standards_title", "Explore Indian Standards"),
+      desc: t(
+        "dashboard.card_standards_desc",
+        "Search authentic Indian Standards (IS), mandatory Quality Control Orders, technical committees, and technical clauses."
+      ),
+      href: "/standards",
+      icon: FileSearch,
+      badge: "Verified Catalogue",
+      badgeColor: "bg-amber-100 text-amber-800",
+      cta: t("dashboard.card_standards_cta", "Search Standards"),
+    },
+    {
+      title: t("dashboard.card_cert_title", "Certification Guidance"),
+      desc: t(
+        "dashboard.card_cert_desc",
+        "Interactive 4-step roadmap for Scheme-I (ISI Mark), Scheme-II (CRS), and Scheme-IV (FMCS) with document checklists."
+      ),
+      href: "/certification",
+      icon: Award,
+      badge: "Roadmap Wizard",
+      badgeColor: "bg-purple-100 text-purple-800",
+      cta: t("dashboard.card_cert_cta", "View Schemes"),
+    },
+    {
+      title: t("dashboard.card_lab_title", "Find a Testing Laboratory"),
+      desc: t(
+        "dashboard.card_lab_desc",
+        "Locate 576 accredited laboratory facilities across 27 States and Union Territories with direct BIS LIMS directory links."
+      ),
+      href: "/laboratories",
+      icon: FlaskConical,
+      badge: "576 Labs",
+      badgeColor: "bg-emerald-100 text-emerald-800",
+      cta: t("dashboard.card_lab_cta", "Find Laboratories"),
+    },
+  ];
+
+  const OFFICIAL_PORTALS = [
+    {
+      name: t("dashboard.portal_bis_name", "Bureau of Indian Standards"),
+      url: "https://www.bis.gov.in",
+      desc: t(
+        "dashboard.portal_bis_desc",
+        "National Standards Body of India portal with official gazette orders and notifications."
+      ),
+    },
+    {
+      name: t("dashboard.portal_manak_name", "Manakonline e-Portal"),
+      url: "https://www.manakonline.in",
+      desc: t(
+        "dashboard.portal_manak_desc",
+        "Digital e-BIS portal for product certification, laboratory recognition, and hallmarking."
+      ),
+    },
+    {
+      name: t("dashboard.portal_lims_name", "BIS LIMS Laboratory Portal"),
+      url: "https://lims.bis.gov.in",
+      desc: t(
+        "dashboard.portal_lims_desc",
+        "Laboratory Information Management System for test requests and accreditation data."
+      ),
+    },
+    {
+      name: t("dashboard.portal_care_name", "BIS Care Mobile App"),
+      url: "https://www.bis.gov.in/index.php/bis-care-app/",
+      desc: t(
+        "dashboard.portal_care_desc",
+        "Consumer app for verifying ISI marks, Hallmark authenticity, and lodging complaints."
+      ),
+    },
+  ];
 
   return (
-    <div className="space-y-8 pb-12">
-      {/* Banner / Hero Section */}
-      <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 rounded-3xl p-6 sm:p-10 text-white shadow-xl border border-slate-800 relative overflow-hidden">
-        {/* Background Ambient Elements */}
+    <div className="space-y-8 pb-10">
+      {/* 1. Welcome Section */}
+      <div className="bg-gradient-to-br from-[#071324] via-[#0d213a] to-[#152E4D] rounded-3xl p-6 sm:p-10 text-white shadow-xl border border-slate-800 relative overflow-hidden">
+        {/* Subtle decorative emblem */}
         <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none hidden lg:block">
-          <ShieldCheck className="w-96 h-96 text-amber-400" />
+          <ShieldCheck className="w-80 h-80 text-amber-400" />
         </div>
         <div className="absolute -bottom-10 -left-10 w-72 h-72 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="max-w-3xl relative z-10 space-y-6">
+        <div className="max-w-3xl relative z-10 space-y-4">
           <div className="inline-flex items-center space-x-2 bg-amber-500/15 text-amber-300 border border-amber-400/30 px-3.5 py-1 rounded-full text-xs font-bold tracking-wide backdrop-blur-xs">
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>{t("dashboard.badge", "Intelligent Information & Guidance for Indian Standards")}</span>
+            <span>SIH 2026 Problem Statement #107 • Bureau of Indian Standards</span>
           </div>
 
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-tight">
-            {t("dashboard.title_main", "e-BIS Sahayak")} —{" "}
-            <span className="text-amber-400 font-extrabold">
-              {t("dashboard.title_highlight", "Understand Indian Standards. Navigate BIS services with confidence.")}
-            </span>
+            {t("dashboard.welcome_title", "Welcome to e-BIS Sahayak")}
           </h1>
-          
-          <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-2xl font-normal">
-            {t("dashboard.description", "Find relevant standards, understand certification requirements, explore laboratory information, and get evidence-backed answers from authoritative BIS documentation.")}
+
+          <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-2xl">
+            {t(
+              "dashboard.welcome_subtitle",
+              "Your intelligent assistant for understanding Indian Standards (IS), mandatory Quality Control Orders (QCOs), certification schemes (ISI Mark, CRS, FMCS), and accredited testing laboratories in English, हिन्दी, and தமிழ்."
+            )}
           </p>
 
-          {/* Quick Query Input Bar */}
-          <form onSubmit={handleSearchSubmit} className="pt-2">
-            <div className="relative flex items-center max-w-2xl bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 p-2 focus-within:border-amber-400 focus-within:ring-2 focus-within:ring-amber-400/30 transition-all shadow-lg">
-              <Search className="w-5 h-5 text-amber-400 ml-3 shrink-0" />
-              <input
-                type="text"
-                value={queryInput}
-                onChange={(e) => setQueryInput(e.target.value)}
-                placeholder={t("dashboard.search_placeholder", "Ask Sahayak in English, हिन्दी, or தமிழ்...")}
-                className="w-full bg-transparent border-none text-white placeholder-slate-400 text-sm px-3 py-2 focus:outline-none font-medium"
-              />
+          {/* 2. Main AI Query Area */}
+          <div className="pt-2">
+            <form onSubmit={handleSearchSubmit} className="relative flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={queryInput}
+                  onChange={(e) => setQueryInput(e.target.value)}
+                  placeholder={t(
+                    "dashboard.search_placeholder",
+                    "Ask Sahayak in English, हिन्दी, or தமிழ் (e.g., 'What is IS 1293?')..."
+                  )}
+                  className="w-full text-sm bg-white/95 text-slate-900 placeholder-slate-400 pl-11 pr-12 py-3.5 rounded-2xl border border-slate-200 shadow-md focus:bg-white focus:outline-hidden focus:ring-3 focus:ring-amber-500 focus:border-amber-500 transition-all"
+                  aria-label="Ask Sahayak AI Query Input"
+                />
+                <Search className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+
+                {/* Voice Input Button */}
+                {speechSupported && (
+                  <button
+                    type="button"
+                    onClick={handleVoiceToggle}
+                    className={`absolute right-3.5 top-1/2 -translate-y-1/2 p-1.5 rounded-xl transition-all ${
+                      isListening
+                        ? "bg-rose-500 text-white animate-pulse"
+                        : "text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                    }`}
+                    title={isListening ? "Listening... Click to stop" : "Speak your query"}
+                    aria-label="Voice input button"
+                  >
+                    {isListening ? <Mic className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                  </button>
+                )}
+              </div>
+
               <button
                 type="submit"
-                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-5 py-2.5 rounded-xl text-xs sm:text-sm transition-all shadow-md shrink-0 flex items-center space-x-1.5 hover:scale-[1.02] active:scale-[0.98]"
+                className="bg-amber-500 hover:bg-amber-400 active:scale-[0.98] text-slate-950 font-bold px-6 py-3.5 rounded-2xl shadow-lg transition-all flex items-center justify-center space-x-2 shrink-0 focus-visible:ring-2 focus-visible:ring-amber-300"
               >
-                <span>{t("dashboard.ask_ai_btn", "Ask Sahayak")}</span>
+                <span>{t("dashboard.ask_ai_btn", "Ask Sahayak AI")}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
-            </div>
-          </form>
+            </form>
 
-          {/* Sample Query Chips */}
-          <div className="space-y-2 pt-1">
-            <p className="text-slate-400 font-semibold text-xs">{t("dashboard.try_asking", "Suggested questions:")}</p>
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              {activeQueries.map((item, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => router.push(`/assistant?prompt=${encodeURIComponent(item.query)}`)}
-                  className="bg-slate-800/80 hover:bg-slate-700/90 text-slate-200 hover:text-white border border-slate-700/80 px-3 py-1.5 rounded-xl transition-all text-left flex items-center space-x-1.5 hover:border-amber-400/40"
-                >
-                  <Sparkles className="w-3 h-3 text-amber-400 shrink-0" />
-                  <span>{item.label}</span>
-                </button>
-              ))}
+            {/* Example Queries Chips */}
+            <div className="mt-4 pt-3 border-t border-slate-800/80">
+              <p className="text-[11px] font-semibold text-slate-400 mb-2">
+                {t("dashboard.try_asking", "Suggested queries:")}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {currentSampleQueries.map((sample, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleSampleClick(sample.query)}
+                    className="inline-flex items-center space-x-1.5 bg-slate-900/80 hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-750 hover:border-amber-500/50 px-3 py-1.5 rounded-xl text-xs transition-all text-left group"
+                  >
+                    <span className="text-[10px] font-bold text-amber-400 uppercase">
+                      {sample.tag}:
+                    </span>
+                    <span className="truncate max-w-xs">{sample.query}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Core Action Cards (4 Pillars of BIS Services) */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-900 flex items-center space-x-2">
-            <Compass className="w-5 h-5 text-blue-900" />
-            <span>{t("dashboard.core_modules", "What You Can Do")}</span>
-          </h2>
-          <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
-            {t("dashboard.grounded_subtitle", "Evidence-Backed Information")}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          {/* Card 1: Ask Assistant */}
-          <Link
-            href="/assistant"
-            className="group bg-white rounded-2xl border border-slate-200 hover:border-blue-700 p-6 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between hover:-translate-y-1"
-          >
-            <div className="space-y-4">
-              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-800 flex items-center justify-center border border-blue-100 group-hover:scale-110 transition-transform">
-                <BotMessageSquare className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="font-bold text-slate-900 text-base group-hover:text-blue-900 transition-colors">
-                  {t("dashboard.assistant_card_title", "Ask the Assistant")}
-                </h3>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {t("dashboard.assistant_card_desc", "Get answers about Indian Standards, BIS services, certification and testing.")}
-                </p>
-              </div>
-            </div>
-            <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-blue-800 group-hover:translate-x-0.5 transition-transform">
-              <span>{t("dashboard.assistant_card_btn", "Ask Sahayak")}</span>
-              <ArrowRight className="w-4 h-4" />
-            </div>
-          </Link>
-
-          {/* Card 2: Find a Standard */}
-          <Link
-            href="/standards"
-            className="group bg-white rounded-2xl border border-slate-200 hover:border-emerald-600 p-6 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between hover:-translate-y-1"
-          >
-            <div className="space-y-4">
-              <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-100 group-hover:scale-110 transition-transform">
-                <FileSearch className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="font-bold text-slate-900 text-base group-hover:text-emerald-800 transition-colors">
-                  {t("dashboard.standards_card_title", "Find a Standard")}
-                </h3>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {t("dashboard.standards_card_desc", "Discover standards relevant to your product, material, or industry.")}
-                </p>
-              </div>
-            </div>
-            <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-700 group-hover:translate-x-0.5 transition-transform">
-              <span>{t("dashboard.standards_card_btn", "Explore Standards")}</span>
-              <ArrowRight className="w-4 h-4" />
-            </div>
-          </Link>
-
-          {/* Card 3: Certification Guidance */}
-          <Link
-            href="/certification"
-            className="group bg-white rounded-2xl border border-slate-200 hover:border-amber-600 p-6 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between hover:-translate-y-1"
-          >
-            <div className="space-y-4">
-              <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center border border-amber-100 group-hover:scale-110 transition-transform">
-                <Award className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="font-bold text-slate-900 text-base group-hover:text-amber-800 transition-colors">
-                  {t("dashboard.cert_card_title", "Certification Guidance")}
-                </h3>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {t("dashboard.cert_card_desc", "Understand the certification journey, requirements, checklists, and next steps.")}
-                </p>
-              </div>
-            </div>
-            <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-amber-700 group-hover:translate-x-0.5 transition-transform">
-              <span>{t("dashboard.cert_card_btn", "View Guidance")}</span>
-              <ArrowRight className="w-4 h-4" />
-            </div>
-          </Link>
-
-          {/* Card 4: Find a Laboratory */}
-          <Link
-            href="/laboratories"
-            className="group bg-white rounded-2xl border border-slate-200 hover:border-purple-600 p-6 shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between hover:-translate-y-1"
-          >
-            <div className="space-y-4">
-              <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center border border-purple-100 group-hover:scale-110 transition-transform">
-                <FlaskConical className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="font-bold text-slate-900 text-base group-hover:text-purple-800 transition-colors">
-                  {t("dashboard.lab_card_title", "Find a Laboratory")}
-                </h3>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {t("dashboard.lab_card_desc", "Explore laboratories and testing information relevant to your product testing needs.")}
-                </p>
-              </div>
-            </div>
-            <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-purple-700 group-hover:translate-x-0.5 transition-transform">
-              <span>{t("dashboard.lab_card_btn", "Search Laboratories")}</span>
-              <ArrowRight className="w-4 h-4" />
-            </div>
-          </Link>
-        </div>
-      </div>
-
-      {/* How It Works & Transparency Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Knowledge Stats */}
-        <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs space-y-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2.5">
-              <Building2 className="w-5 h-5 text-blue-900" />
-              <h2 className="text-base font-bold text-slate-900">
-                {t("dashboard.verified_repo", "Verified Knowledge Base & Registries")}
-              </h2>
-            </div>
-            <span className="text-[11px] font-bold bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full flex items-center space-x-1">
-              <Activity className="w-3 h-3 text-emerald-700" />
-              <span>P95 &lt; 3.5ms Cache</span>
-            </span>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4 text-center">
-              <p className="text-3xl font-extrabold text-slate-900 tracking-tight">{stats.standardsCount}</p>
-              <p className="text-xs font-semibold text-slate-500 mt-1">{t("dashboard.verified_standards", "Verified Standards")}</p>
-            </div>
-            <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4 text-center">
-              <p className="text-3xl font-extrabold text-slate-900 tracking-tight">{stats.schemesCount}</p>
-              <p className="text-xs font-semibold text-slate-500 mt-1">{t("dashboard.cert_schemes", "Certification Schemes")}</p>
-            </div>
-            <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4 text-center">
-              <p className="text-3xl font-extrabold text-slate-900 tracking-tight">{stats.labsCount}</p>
-              <p className="text-xs font-semibold text-slate-500 mt-1">{t("dashboard.accredited_labs", "Testing Facilities")}</p>
-            </div>
-          </div>
-
-          <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl p-4 text-xs text-emerald-950 flex items-start space-x-3">
-            <CheckCircle2 className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
-            <p className="leading-relaxed font-medium">
-              {t("dashboard.zero_hallucination_note", "Evidence-First Information: Standard requirements, quality control orders, and testing scopes are strictly verified against official BIS source records.")}
+      {/* 3. Core Feature Cards (2x2 Grid) */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-bold text-[#0F172A]">
+              {t("dashboard.core_features_title", "e-BIS Sahayak Core Modules")}
+            </h2>
+            <p className="text-xs text-[#64748B]">
+              Direct access to standards navigation, certification schemes, and testing facilities
             </p>
           </div>
         </div>
 
-        {/* How It Works Card */}
-        <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-7 shadow-xs space-y-5 flex flex-col justify-between">
-          <div className="space-y-4">
-            <div className="flex items-center space-x-2.5">
-              <ShieldCheck className="w-5 h-5 text-blue-900" />
-              <h2 className="text-base font-bold text-slate-900">
-                {t("dashboard.how_it_works_title", "How It Works")}
-              </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {FEATURE_CARDS.map((card, idx) => {
+            const Icon = card.icon;
+            return (
+              <Link
+                key={idx}
+                href={card.href}
+                className="bg-white border border-slate-200 hover:border-amber-500/40 rounded-2xl p-5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between group"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-800 group-hover:bg-[#071324] group-hover:text-amber-400 transition-colors">
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${card.badgeColor}`}
+                    >
+                      {card.badge}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="font-bold text-sm text-[#0F172A] group-hover:text-blue-900 transition-colors">
+                      {card.title}
+                    </h3>
+                    <p className="text-xs text-[#64748B] mt-1 line-clamp-3 leading-relaxed">
+                      {card.desc}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-amber-600 group-hover:text-amber-500">
+                  <span>{card.cta}</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 4. Recent Consultations & Official Resources (2 Columns) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column: Recent Consultations */}
+        <div className="lg:col-span-1 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-center space-x-2">
+              <Clock className="w-4 h-4 text-amber-600" />
+              <h3 className="text-sm font-bold text-[#0F172A]">
+                {t("dashboard.recent_title", "Recent Consultations")}
+              </h3>
             </div>
-            
-            <ol className="space-y-3 text-xs text-slate-600">
-              <li className="flex items-start space-x-3">
-                <span className="w-6 h-6 rounded-xl bg-blue-50 text-blue-900 font-extrabold flex items-center justify-center shrink-0 border border-blue-100 text-xs">1</span>
-                <span className="leading-relaxed">{t("dashboard.how_step_1", "Ask questions or search for your product in English, Hindi, or Tamil.")}</span>
-              </li>
-              <li className="flex items-start space-x-3">
-                <span className="w-6 h-6 rounded-xl bg-blue-50 text-blue-900 font-extrabold flex items-center justify-center shrink-0 border border-blue-100 text-xs">2</span>
-                <span className="leading-relaxed">{t("dashboard.how_step_2", "Review verified answers with clickable citations pointing to exact clauses.")}</span>
-              </li>
-              <li className="flex items-start space-x-3">
-                <span className="w-6 h-6 rounded-xl bg-blue-50 text-blue-900 font-extrabold flex items-center justify-center shrink-0 border border-blue-100 text-xs">3</span>
-                <span className="leading-relaxed">{t("dashboard.how_step_3", "Explore certification pathways and find recognized laboratories across India.")}</span>
-              </li>
-            </ol>
+            {recentConsultations.length > 0 && (
+              <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full">
+                {recentConsultations.length}
+              </span>
+            )}
           </div>
 
-          <Link
-            href="/about"
-            className="pt-4 border-t border-slate-100 text-xs font-bold text-blue-900 hover:text-blue-700 flex items-center justify-between group"
-          >
-            <span>{t("dashboard.learn_more", "Learn more about e-BIS Sahayak")}</span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform text-amber-500" />
-          </Link>
+          <div className="mt-3 flex-1 flex flex-col justify-between">
+            {recentConsultations.length === 0 ? (
+              <div className="text-center py-8 px-4 text-slate-400 space-y-2">
+                <BotMessageSquare className="w-8 h-8 mx-auto text-slate-300" />
+                <p className="text-xs font-medium text-slate-600">
+                  {t("dashboard.no_recent", "No recent consultations yet")}
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  Your recent queries will appear here for fast follow-up.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {recentConsultations.slice(0, 4).map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => handleSampleClick(item.query)}
+                    className="w-full text-left p-2.5 rounded-xl border border-slate-100 hover:border-amber-400/50 hover:bg-slate-50 transition-all group"
+                  >
+                    <p className="text-xs font-semibold text-slate-800 group-hover:text-blue-900 truncate">
+                      {item.query}
+                    </p>
+                    <span className="text-[10px] text-slate-400">
+                      {new Date(item.timestamp).toLocaleDateString()}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <Link
+              href="/assistant"
+              className="mt-4 block text-center text-xs font-bold text-[#071324] hover:text-amber-600 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors"
+            >
+              {t("dashboard.open_assistant_btn", "Open Full AI Assistant →")}
+            </Link>
+          </div>
+        </div>
+
+        {/* Right Column: Official Portals & Verified Governance */}
+        <div className="lg:col-span-2 bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
+          <div className="pb-3 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <h3 className="text-sm font-bold text-[#0F172A]">
+                {t("dashboard.portals_title", "Official Government Portals & Statutory Verification")}
+              </h3>
+            </div>
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+              {t("dashboard.authoritative_bis", "Authoritative BIS")}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+            {OFFICIAL_PORTALS.map((portal, idx) => (
+              <a
+                key={idx}
+                href={portal.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-3.5 rounded-xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50/30 transition-all flex flex-col justify-between group"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-900 group-hover:text-blue-900">
+                      {portal.name}
+                    </span>
+                    <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 shrink-0" />
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+                    {portal.desc}
+                  </p>
+                </div>
+                <div className="mt-3 flex items-center space-x-1 text-[10px] text-emerald-600 font-semibold">
+                  <CheckCircle2 className="w-3 h-3" />
+                  <span>{t("dashboard.whitelisted_domain", "Whitelisted Government Domain")}</span>
+                </div>
+              </a>
+            ))}
+          </div>
+
+          {/* Architecture Trust Note */}
+          <div className="mt-4 p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 flex items-start space-x-2.5">
+            <CheckCircle2 className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+            <div className="text-[11px] leading-relaxed">
+              <strong className="text-slate-800">
+                {t("dashboard.grounded_architecture_title", "Grounded Provenance Architecture:")}
+              </strong>{" "}
+              {t(
+                "dashboard.grounded_architecture_text",
+                "e-BIS Sahayak responses are synthesized using Groq LPU fast inference with strict evidence constraints from the authentic Bureau of Indian Standards catalogue. Unindexed standards receive transparent abstention notices."
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

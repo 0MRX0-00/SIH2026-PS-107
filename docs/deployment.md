@@ -107,7 +107,7 @@ volumes:
 2. **Metadata Refresh**: Trigger standard metadata sync via the Admin API:
    ```bash
    curl -X POST http://localhost:8000/api/v1/admin/documents/reindex \
-        -H "X-Admin-Key: ebis-admin-secret-key-2026" \
+        -H "X-Admin-Key: <your-configured-admin-secret-key>" \
         -H "Content-Type: application/json" \
         -d '{"force": true}'
    ```
@@ -120,11 +120,11 @@ volumes:
 - [x] Input sanitization and prompt injection defenses in `IntentRouter` gateway.
 - [x] Strict CORS origin validation on FastAPI backend.
 - [x] Protected Admin Console authenticated via `X-Admin-Key` / `ADMIN_API_KEY`.
-- [x] Zero-hallucination constraint with `RAG_MIN_RELEVANCE_SCORE = 0.65` abstention gatekeeper.
+- [x] Evidence abstention constraint with verified catalog validation gatekeeper.
 
 ---
 
-## 5. Future Scale-Out Deployment (Optional Qdrant Vector Layer)
-*When scaling the e-BIS Sahayak platform from core standards to the complete repository of >21,000 Indian Standards:*
-- A Qdrant vector database container (`qdrant/qdrant:v1.7.4`) can be added to `docker-compose.yml` on port `6333`.
-- Heavy PDF extraction and embedding pipelines (`FastEmbed` / `BAAI/bge-small-en-v1.5`) can be invoked asynchronously via `python -m app.cli.ingest`.
+## 5. Unimplemented Future Scale-Out Roadmap (Optional Vector Storage Proposal)
+*Note: The current verified implementation operates exclusively via deterministic catalog lookup and Groq LPU inference. Vector databases and embeddings are not implemented. The following is strictly a future architectural proposal for scaling to the complete repository of >21,000 Indian Standards:*
+- A Qdrant vector database container could be added to `docker-compose.yml` on port `6333`.
+- Heavy PDF extraction and embedding pipelines could be invoked asynchronously via background ingestion workers.

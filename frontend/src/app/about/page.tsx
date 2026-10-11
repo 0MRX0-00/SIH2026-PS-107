@@ -26,10 +26,10 @@ export default function AboutPage() {
   return (
     <div className="space-y-10 pb-16 max-w-5xl mx-auto">
       {/* Hero Banner */}
-      <div className="bg-gradient-to-r from-bis-navy via-slate-900 to-blue-950 rounded-2xl p-8 sm:p-12 text-white shadow-xl border border-slate-700 relative overflow-hidden">
+      <div className="bg-gradient-to-br from-[#071324] via-[#0d213a] to-[#152E4D] rounded-3xl p-8 sm:p-12 text-white shadow-xl border border-slate-800 relative overflow-hidden">
         <div className="max-w-3xl space-y-4">
-          <div className="inline-flex items-center space-x-2 bg-blue-500/20 text-blue-300 border border-blue-400/30 px-3.5 py-1 rounded-full text-xs font-bold tracking-wide">
-            <Sparkles className="w-3.5 h-3.5 text-bis-saffron" />
+          <div className="inline-flex items-center space-x-2 bg-amber-500/20 text-amber-300 border border-amber-400/30 px-3.5 py-1 rounded-full text-xs font-bold tracking-wide">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
             <span>{t("about.hero_badge", "About e-BIS Sahayak")}</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">

@@ -14,9 +14,9 @@ cd /d "%ROOT_DIR%"
 
 echo [1/3] Running Pre-Flight Diagnostics Check...
 if exist "%ROOT_DIR%backend\venv\Scripts\python.exe" (
-    "%ROOT_DIR%backend\venv\Scripts\python.exe" -m app.demo.check
+    "%ROOT_DIR%backend\venv\Scripts\python.exe" -m app.preflight
 ) else (
-    python -m app.demo.check
+    python -m app.preflight
 )
 echo.
 

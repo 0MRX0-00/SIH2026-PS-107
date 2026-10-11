@@ -41,15 +41,15 @@ Incoming Request
 
 ## 2. Threat Modeling & Mitigations
 
-### 2.1 Prompt Injection Defense (Direct & Indirect / RAG Poisoning)
+### 2.1 Prompt Injection & Adversarial Defense
 - **Data Isolation:** Retrieved document text is treated strictly as passive data inside delimited `[EVIDENCE X] ... [END EVIDENCE X]` envelopes.
 - **Instruction Boundary Hardening:** The system prompt instructs the Groq LPU to treat any command found within evidence passages as inert content.
 - **Pre-Processing Pattern Filter:** `IntentRouter` (`app/services/intent_router.py`) intercepts adversarial keywords (`"ignore all previous instructions"`, `"system override"`, `"You are now DAN"`, `"जाली"`, `"போலி"`) and classifies them under `ADVERSARIAL_INJECTION` or `GARBAGE_INPUT` intents to prevent jailbreaking.
 
-### 2.2 API Security & Rate Limiting
-- **In-Memory Sliding Window Rate Limiter:** Protects expensive AI endpoints (`/api/v1/chat`, `/api/v1/discovery`) with a default limit of 40 requests/min and general endpoints with 120 requests/min.
+### 2.2 API Security, Request Size & Rate Limiting
+- **Pure ASGI Request Size Limiter:** Enforces a strict 2MB limit across both declared Content-Length and chunked streaming requests, rejecting oversized payloads with HTTP 413 without loading excessive data into memory.
+- **Bounded Sliding Window Rate Limiter:** Protects expensive AI endpoints (`/api/v1/chat`, `/api/v1/discovery`) with a default limit of 40 requests/min and general endpoints with 120 requests/min. Hard upper bound of 10,000 IP entries with automatic LRU eviction and expired timestamp cleanup.
 - **HTTP 429 Status:** Returns structured JSON with `Retry-After` header and the associated `X-Request-ID`.
-- **Payload Size Control:** Drops payloads larger than 2MB with `HTTP 413 Payload Too Large`.
 
 ### 2.3 Secret Management & Information Exposure
 - **Zero Secrets in Code:** Environment configuration managed via `.env` and Pydantic `BaseSettings`.

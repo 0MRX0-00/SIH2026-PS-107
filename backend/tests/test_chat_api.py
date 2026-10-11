@@ -1,6 +1,7 @@
 import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app
+from app.core.config import settings
 
 
 @pytest.mark.asyncio
@@ -51,7 +52,9 @@ async def test_chat_endpoint_oversized_message():
 
 
 @pytest.mark.asyncio
-async def test_chat_debug_endpoint():
+async def test_chat_debug_endpoint(monkeypatch):
+    admin_key = "test-admin-secret-key-2026"
+    monkeypatch.setattr(settings, "ADMIN_API_KEY", admin_key)
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post(
@@ -59,7 +62,8 @@ async def test_chat_debug_endpoint():
             json={
                 "message": "Tell me about IS 1293 plugs requirements",
                 "top_k": 2,
-            }
+            },
+            headers={"X-Admin-Key": admin_key}
         )
         assert response.status_code == 200
         data = response.json()

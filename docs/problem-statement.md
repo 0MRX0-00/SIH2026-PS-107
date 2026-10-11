@@ -51,4 +51,4 @@ Currently, BIS oversees:
 In **Phase 1 (Foundation)**:
 * We construct the complete production-grade architecture, database schema, API routing, frontend shell, containerization, and technical documentation.
 * We establish strict boundaries: no mock or hallucinated BIS information is served; placeholders clearly indicate upcoming capabilities.
-* The system is structured to seamlessly plug in the RAG pipeline, Groq LLM inference, embedding generation, and Qdrant vector retrieval in subsequent phases.
+* The system is structured to seamlessly integrate Groq LLM inference, data provider catalog lookups, and official gazette evidence verification in subsequent phases.

@@ -18,8 +18,8 @@ This document outlines the technology selections, rationale, and versions used i
 | **Relational Database** | PostgreSQL | 16 | ACID compliance, JSONB support, relational integrity for citations |
 | **ORM & Migrations** | SQLAlchemy & Alembic | 2.0+ / 1.13+ | Modern 2.0 style async/sync ORM, schema migration versioning |
 | **Knowledge & Retrieval** | Curated Seed Catalog (`SeedBISDataProvider`) | 1.0 | Deterministic intent routing & high-precision keyword evidence lookup |
-| **Vector Database (Roadmap)** | Qdrant | 1.8+ | Planned integration layer for scaling to >21,000 full BIS PDF collections |
-| **LLM Inference** | Groq Cloud API | LPU Inference | Near real-time inference (500+ tokens/sec) for RAG responses |
+| **Vector Database (Future Roadmap - Unimplemented)** | Qdrant (Future Scope) | Planned future layer for scaling to >21,000 full BIS PDF collections |
+| **LLM Inference** | Groq Cloud API | LPU Inference | Exclusive sole LLM provider (`llama-3.3-70b-versatile`) for conversational synthesis |
 | **Containerization** | Docker & Docker Compose | 24+ / Compose v2 | Reproducible multi-service deployment with isolated networks |
 | **Testing** | Pytest / Httpx | 8+ | Async test client for backend endpoints, robust coverage |
 
@@ -39,7 +39,7 @@ This document outlines the technology selections, rationale, and versions used i
 
 ### 2.3 Knowledge Retrieval & Scalability Architecture
 * **Current Production Deployment**: High-precision deterministic evidence lookup against a curated seed catalog (`SeedBISDataProvider` in `app/db/seed_intelligence.py`) covering core national standards (`IS 1293:2019`, `IS 13252:2010`, `IS 17803:2022`, `IS 14543:2016`, `IS 17526:2021`, `IS 6911:2017`, `IS 7372:2021`). This eliminates vector embedding noise and hallucination during core standards evaluation.
-* **Vector Store Roadmap (Qdrant)**: Qdrant vector database is designated as the target semantic search backend when scaling the system to ingest all 21,000+ Indian Standards with metadata filtering (`division`, `qco_mandatory`).
+* **Unimplemented Roadmap Item (Qdrant Vector Store)**: The Qdrant vector database is strictly a future architectural roadmap proposal for scaling to the entire 21,000+ Indian Standards PDF archive. It is not implemented in the current production deployment, which relies entirely on deterministic catalog lookup and Groq LPU inference.
 
 ### 2.4 Why Groq for LLM Inference?
-* Groq's Language Processing Units (LPUs) provide unmatched token generation speed, crucial for retrieving dense standard clauses and delivering immediate grounded answers without frustrating conversational lag.
+* Groq's Language Processing Units (LPUs) provide unmatched token generation speed, crucial for retrieving dense standard clauses and delivering immediate grounded answers without frustrating conversational lag. Groq is the sole LLM provider in e-BIS Sahayak.

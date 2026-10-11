@@ -17,22 +17,22 @@ To ensure high reliability, maintainability, and thorough verification, `e-BIS S
 
 ---
 
-## Phase 2: Ingestion & Vector Indexing Pipeline
-* **Objective:** Parse BIS standards, extract hierarchical clause metadata, generate vector embeddings, and populate Qdrant.
+## Phase 2: Ingestion & Catalog Provider Engine
+* **Objective:** Parse BIS standards, extract hierarchical clause metadata, and establish authoritative seed and live data providers.
 * **Deliverables:**
-  * PDF parser with clause and table awareness.
-  * Embedding generator abstraction (sentence-transformers / BAAI / HuggingFace).
-  * Qdrant collection setup with payload filtering indexes.
-  * Hybrid retrieval engine (dense + sparse).
+  * Structure-aware standards parser with clause and table metadata.
+  * `BaseBISDataProvider` abstraction (`SeedBISDataProvider`, `LiveBISDataProvider`).
+  * Note: External vector database deployment (Qdrant) is preserved strictly as a future roadmap scaling proposal.
+  * Deterministic high-precision retrieval engine.
 
 ---
 
-## Phase 3: RAG Engine & Groq LLM Grounding
+## Phase 3: Conversational Engine & Groq LLM Grounding
 * **Objective:** Connect Groq LPU API with retrieved context, enforcing strict clause citations and anti-hallucination guardrails.
 * **Deliverables:**
-  * RAG orchestration service and prompt engineering.
+  * Conversational orchestration service and evidence prompt engineering.
   * Interactive Assistant streaming interface with dynamic citation drawers.
-  * User feedback and confidence scoring loop.
+  * User feedback loop and admin observability.
 
 ---
 

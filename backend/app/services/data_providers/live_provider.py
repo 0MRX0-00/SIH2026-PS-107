@@ -28,11 +28,19 @@ class SeedProviderWithProvenanceTag(SeedBISDataProvider):
         self,
         query: Optional[str] = None,
         division: Optional[str] = None,
+        product_category: Optional[str] = None,
         qco_only: Optional[bool] = None,
         limit: int = 50,
         language: str = "en"
     ) -> List[StandardListItem]:
-        return super().search_standards(query=query, division=division, qco_only=qco_only, limit=limit, language=language)
+        return super().search_standards(
+            query=query,
+            division=division,
+            product_category=product_category,
+            qco_only=qco_only,
+            limit=limit,
+            language=language
+        )
 
 
 # Alias for backward compatibility with existing tests

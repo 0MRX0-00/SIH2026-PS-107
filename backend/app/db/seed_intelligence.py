@@ -4,568 +4,1054 @@ Ensures evidence-constrained structured lookups with hallucination safeguards bo
 with native multilingual support for English (en), Hindi (hi), and Tamil (ta).
 """
 import copy
-from typing import List, Dict, Any, Optional
+import re
+from typing import List, Dict, Any, Optional, Tuple
+from app.db.standards_data import OFFICIAL_INDIAN_STANDARDS, STATUTORY_REGULATORY_REFERENCES
 
-VERIFIED_STANDARDS: List[Dict[str, Any]] = [
-    {
-        "id": "std-1293",
-        "standard_number": "IS 1293:2019",
-        "title": "Plugs and Socket-Outlets for Related Voltages up to and including 250 V and Rated Current up to and including 16 A - Specification (Fourth Revision)",
-        "division": "Electrotechnical",
-        "year": 2019,
-        "status": "ACTIVE",
-        "is_qco_mandatory": True,
-        "qco_order_number": "Electrical Wires, Cables, Appliances and Protection Devices (Quality Control) Order, 2020",
-        "scope_summary": "Covers plugs and fixed or portable socket-outlets for a.c. only, with or without earthing contact, with rated voltage from 50 V up to 250 V and rated current up to 16 A intended for household and similar purposes.",
-        "related_standards": ["IS/IEC 60884-1", "IS 302-1"],
-        "sections": [
-            {
-                "clause_number": "1.1",
-                "clause_title": "Scope",
-                "content": "This standard applies to plugs and fixed or portable socket-outlets for a.c. only, with or without earthing contact, with a rated voltage greater than 50 V but not exceeding 250 V and a rated current not exceeding 16 A, intended for household and similar purposes, either indoors or outdoors.",
-                "page_number": 1
-            },
-            {
-                "clause_number": "4.1",
-                "clause_title": "Standard Ratings",
-                "content": "Standard rated voltages are 240 V a.c. Standard rated currents are 6 A and 16 A. Plugs and socket-outlets shall be rated for single phase 50 Hz a.c.",
-                "page_number": 3
-            },
-            {
-                "clause_number": "5.1",
-                "clause_title": "Marking Requirements",
-                "content": "Accessories shall be marked with rated current in amperes, rated voltage in volts, symbol for nature of supply, manufacturer's name or trademark, and Standard Mark (ISI mark) under Scheme-I.",
-                "page_number": 4
-            },
-            {
-                "clause_number": "13.1",
-                "clause_title": "Insulation Resistance and Electric Strength",
-                "content": "The insulation resistance shall not be less than 5 MOhm when measured with a 500 V d.c. megohmmeter applied between live parts connected together and the body.",
-                "page_number": 12
-            },
-            {
-                "clause_number": "19.1",
-                "clause_title": "Temperature Rise Test",
-                "content": "The temperature rise of terminals shall not exceed 45 K when carrying test current continuously for 1 hour.",
-                "page_number": 18
-            },
-            {
-                "clause_number": "24.1",
-                "clause_title": "Mechanical Strength",
-                "content": "Accessories shall have adequate mechanical strength to withstand drops and impacts from tumbling barrel test (1000 falls).",
-                "page_number": 23
-            }
-        ]
-    },
-    {
-        "id": "std-13252",
-        "standard_number": "IS 13252 (Part 1):2010",
-        "title": "Information Technology Equipment - Safety - Part 1: General Requirements",
-        "division": "Electronics & Information Technology",
-        "year": 2010,
-        "status": "ACTIVE",
-        "is_qco_mandatory": True,
-        "qco_order_number": "Electronics and Information Technology Goods (Requirement for Compulsory Registration) Order, 2012 (CRO)",
-        "scope_summary": "Applies to mains-powered or battery-powered information technology equipment, including electrical business equipment and associated equipment, with a rated voltage not exceeding 600 V.",
-        "related_standards": ["IEC 60950-1:2005", "IS/IEC 62368-1"],
-        "sections": [
-            {
-                "clause_number": "1.1",
-                "clause_title": "Equipment Covered",
-                "content": "This standard is applicable to mains-powered or battery-powered information technology equipment, including laptops, power adapters, data storage, and network equipment.",
-                "page_number": 2
-            },
-            {
-                "clause_number": "1.7",
-                "clause_title": "Marking and Instructions",
-                "content": "Equipment shall bear the Self-Declaration of Conformity mark under Scheme-II (CRS) with standard number and registration number R-XXXXXXXX.",
-                "page_number": 15
-            }
-        ]
-    },
-    {
-        "id": "std-17803",
-        "standard_number": "IS 17803:2022",
-        "title": "Electric Ceiling Type Fans - Specification",
-        "division": "Electrotechnical",
-        "year": 2022,
-        "status": "ACTIVE",
-        "is_qco_mandatory": True,
-        "qco_order_number": "Ceiling Fan Quality Control Order, 2023",
-        "scope_summary": "Specifies energy consumption, air delivery, and safety requirements for electric ceiling fans for household and commercial use.",
-        "related_standards": ["IS 374", "IS 302-1"],
-        "sections": [
-            {
-                "clause_number": "1.1",
-                "clause_title": "Scope",
-                "content": "Covers electric ceiling type fans including brushless DC (BLDC) motor fans.",
-                "page_number": 1
-            }
-        ]
-    },
-    {
-        "id": "std-14543",
-        "standard_number": "IS 14543:2016",
-        "title": "Packaged Drinking Water (Other than Packaged Natural Mineral Water) - Specification",
-        "division": "Food and Agriculture",
-        "year": 2016,
-        "status": "ACTIVE",
-        "is_qco_mandatory": True,
-        "qco_order_number": "Prevention of Food Adulteration / FSSAI & BIS Mandatory Certification Order",
-        "scope_summary": "Prescribes requirements for packaged drinking water offered for direct human consumption.",
-        "related_standards": ["IS 13428", "IS 10500"],
-        "sections": [
-            {
-                "clause_number": "1.1",
-                "clause_title": "Scope",
-                "content": "Applies to water derived from any source of potable water which is subjected to treatments such as decantation, filtration, demineralisation, reverse osmosis, and disinfection.",
-                "page_number": 1
-            }
-        ]
-    },
-    {
-        "id": "std-17526",
-        "standard_number": "IS 17526:2021",
-        "title": "Stainless Steel Vacuum Flasks / Insulated Flasks and Containers - Specification",
-        "division": "Mechanical Engineering & Consumer Products",
-        "year": 2021,
-        "status": "ACTIVE",
-        "is_qco_mandatory": True,
-        "qco_order_number": "Insulated Flasks, Bottles and Containers for Domestic Use (Quality Control) Order, 2023",
-        "scope_summary": "Specifies manufacturing, material, and performance requirements for domestic and commercial stainless steel insulated flasks, water bottles, and beverage containers.",
-        "related_standards": ["IS 6911", "IS 10252"],
-        "sections": [
-            {
-                "clause_number": "1.1",
-                "clause_title": "Scope and Applicability",
-                "content": "This standard specifies requirements for stainless steel vacuum flasks, single-wall and double-wall insulated stainless steel water bottles, and portable beverage containers used for household, school, travel, and office purposes.",
-                "page_number": 1
-            },
-            {
-                "clause_number": "4.1",
-                "clause_title": "Material & Grade Specifications",
-                "content": "All stainless steel components in direct contact with liquids/food shall be manufactured using food-grade austenitic stainless steel conforming to IS 6911 (Grade 304 / SS 304, designated as X6CrNi18-10, or Grade 316 for enhanced chemical resistance). Toxic heavy metal leaching into water shall strictly conform to BIS food-contact migration limits.",
-                "page_number": 3
-            },
-            {
-                "clause_number": "5.1",
-                "clause_title": "Mandatory Certification and Marking",
-                "content": "Every stainless steel water bottle and vacuum flask manufactured, imported, or sold in India MUST carry the Standard Mark (ISI mark) under BIS Scheme-I with the manufacturer's unique CM/L license number. Manufacturing or selling without ISI mark is a punishable offense under the BIS Act, 2016.",
-                "page_number": 5
-            },
-            {
-                "clause_number": "6.2",
-                "clause_title": "Performance & Leakage Testing",
-                "content": "Bottles must successfully pass the thermal insulation retention test (minimum temperature holding after 6/12/24 hours), pressure resistance test, 1.2-meter drop/impact test onto a concrete floor without fracture or leak, and seal gasket durability test.",
-                "page_number": 7
-            }
-        ]
-    },
-    {
-        "id": "std-6911",
-        "standard_number": "IS 6911:2017",
-        "title": "Stainless Steel Plate, Sheet and Strip - Specification (First Revision)",
-        "division": "Metallurgical Engineering",
-        "year": 2017,
-        "status": "ACTIVE",
-        "is_qco_mandatory": True,
-        "qco_order_number": "Stainless Steel Products (Quality Control) Order, 2020",
-        "scope_summary": "Prescribes chemical composition, mechanical properties, and finish requirements for stainless steel plate, sheet, and strip used for food utensils, water containers, and industrial fabrication.",
-        "related_standards": ["IS 17526", "IS 14756"],
-        "sections": [
-            {
-                "clause_number": "1.1",
-                "clause_title": "Scope",
-                "content": "Covers hot-rolled and cold-rolled stainless steel plates, sheets, and coils intended for fabrication of utensils, water bottles, and food storage equipment.",
-                "page_number": 1
-            },
-            {
-                "clause_number": "7.1",
-                "clause_title": "Food Grade Material Grades",
-                "content": "For food and drinking water contact utensils and bottles, austenitic Grade 304 (nominal 18% Chromium, 8% Nickel) or Grade 316 (containing Molybdenum) shall be used to ensure corrosion resistance and zero toxic leaching.",
-                "page_number": 8
-            }
-        ]
-    },
-    {
-        "id": "std-7372",
-        "standard_number": "IS 7372:2021",
-        "title": "Lead-Acid Storage Batteries for Motor Vehicles - Specification (Second Revision)",
-        "division": "Electrotechnical",
-        "year": 2021,
-        "status": "ACTIVE",
-        "is_qco_mandatory": True,
-        "qco_order_number": "Electrical Appliances and Batteries (Quality Control) Order, 2023",
-        "scope_summary": "Specifies requirements and tests for 6 V and 12 V lead-acid storage batteries used primarily as a power source for starting, lighting, and ignition (SLI) of internal combustion engine motor vehicles and automobiles.",
-        "related_standards": ["IS 14257:1995", "IS 1651:2013", "IEC 60095-1"],
-        "sections": [
-            {
-                "clause_number": "1.1",
-                "clause_title": "Scope and Field of Application",
-                "content": "This standard specifies performance, dimension, marking, and safety requirements for 12 V and 6 V lead-acid storage batteries used for starting, lighting, and ignition in passenger cars, commercial vehicles, and heavy transport vehicles.",
-                "page_number": 1
-            },
-            {
-                "clause_number": "4.1",
-                "clause_title": "Rating and Capacity Specifications",
-                "content": "The rated 20-hour capacity (C20) and cold cranking amperes (CCA) at -18 °C shall meet the declared nominal specifications without cell voltage dropping below 7.2 V for a 12 V battery during cranking.",
-                "page_number": 4
-            },
-            {
-                "clause_number": "5.1",
-                "clause_title": "Marking & Certification under Scheme-I",
-                "content": "Every lead-acid battery for motor vehicles shall be legibly marked with nominal voltage, rated capacity in Ampere-hours (Ah), cold cranking current (CCA), manufacturer identity, and the Standard Mark (ISI mark) under BIS Scheme-I licensing.",
-                "page_number": 6
-            },
-            {
-                "clause_number": "8.1",
-                "clause_title": "Endurance and Vibration Resistance Test",
-                "content": "Batteries shall withstand continuous vibration testing for 2 hours at 30 Hz with 20 m/s2 acceleration without terminal leakage, internal short-circuits, or electrolyte loss.",
-                "page_number": 11
-            }
-        ]
-    },
-    {
-        "id": "std-16046",
-        "standard_number": "IS 16046 (Part 2):2018",
-        "title": "Secondary Cells and Batteries Containing Alkaline or Other Non-Acid Electrolytes - Secondary Lithium Cells and Batteries for Portable Applications - Safety Requirements",
-        "division": "Electronics & Information Technology",
-        "year": 2018,
-        "status": "ACTIVE",
-        "is_qco_mandatory": True,
-        "qco_order_number": "Electronics and IT Goods (Requirement for Compulsory Registration) Order (CRO / Scheme-II CRS)",
-        "scope_summary": "Specifies safety requirements and tests for the safe operation of portable sealed secondary lithium cells and batteries (for mobile phones, laptops, and consumer electronics).",
-        "related_standards": ["IEC 62133-2:2017", "IS 16046 (Part 1):2018"],
-        "sections": [
-            {
-                "clause_number": "1.1",
-                "clause_title": "Scope",
-                "content": "Specifies requirements and tests for the safe operation of portable sealed secondary lithium cells and batteries containing non-acid electrolyte, under intended use and reasonably foreseeable misuse.",
-                "page_number": 1
-            },
-            {
-                "clause_number": "5.1",
-                "clause_title": "Scheme-II CRS Registration Requirements",
-                "content": "All lithium-ion cells and battery packs manufactured or imported for portable electronics in India must be registered under BIS Compulsory Registration Scheme (Scheme-II CRS) bearing standard mark and registration number R-XXXXXXXX.",
-                "page_number": 5
-            }
-        ]
-    },
-    {
-        "id": "std-bis-act",
-        "standard_number": "BIS Act 2016",
-        "title": "Bureau of Indian Standards Act, 2016 (Act No. 11 of 2016) - National Standards Body of India",
-        "division": "General Standards & Administration",
-        "year": 2016,
-        "status": "ACTIVE",
-        "is_qco_mandatory": False,
-        "qco_order_number": None,
-        "scope_summary": "Establishes the Bureau of Indian Standards (BIS) as the National Standards Body of India for the harmonious development of standardization, conformity assessment, and quality assurance of goods, articles, processes, systems, and services.",
-        "related_standards": ["BIS Rules 2018", "BIS Conformity Assessment Regulations 2018"],
-        "sections": [
-            {
-                "clause_number": "Section 10",
-                "clause_title": "Functions and Mandate of BIS",
-                "content": "The Bureau of Indian Standards (BIS) is the National Standards Body of India established under the BIS Act, 2016. Its primary functions include formulating Indian Standards (IS), operating product certification schemes (ISI Mark, CRS, FMCS, Hallmarking), recognizing testing laboratories, and ensuring consumer protection through national quality benchmarks.",
-                "page_number": 6
-            },
-            {
-                "clause_number": "Section 16",
-                "clause_title": "Mandatory Standards and Quality Control Orders",
-                "content": "The Central Government may, in public interest, human health, or environmental safety, issue Quality Control Orders (QCOs) making compliance to specific Indian Standards mandatory for manufacture, import, distribution, and sale in India.",
-                "page_number": 9
-            }
-        ]
-    },
-    {
-        "id": "std-qco-guide",
-        "standard_number": "QCO Framework",
-        "title": "Quality Control Orders (QCO) - Mandatory BIS Compliance and Enforcement Regulations",
-        "division": "Regulatory & Legal",
-        "year": 2023,
-        "status": "ACTIVE",
-        "is_qco_mandatory": True,
-        "qco_order_number": "General Quality Control Orders Framework Notification",
-        "scope_summary": "Regulatory framework governing mandatory Quality Control Orders (QCOs) issued by Line Ministries under Section 16 of the BIS Act, 2016.",
-        "related_standards": ["BIS Act 2016", "Scheme-I"],
-        "sections": [
-            {
-                "clause_number": "Clause 1",
-                "clause_title": "What is a Quality Control Order (QCO)?",
-                "content": "A Quality Control Order (QCO) is a statutory order issued by the Government of India that makes standard compliance and BIS certification mandatory for specific products. Once a QCO is enforced, no person or entity shall manufacture, import, distribute, store, or sell the notified product without a valid BIS license and Standard Mark.",
-                "page_number": 1
-            },
-            {
-                "clause_number": "Clause 2",
-                "clause_title": "Enforcement and Penalties",
-                "content": "Manufacturing, importing, or selling products without the requisite BIS certification under a mandatory QCO is a punishable offense under Section 29 of the BIS Act, 2016, carrying penalties including heavy fines, seizure of non-compliant goods, and imprisonment.",
-                "page_number": 2
-            }
-        ]
-    },
-    {
-        "id": "std-scheme-isi",
-        "standard_number": "Scheme-I (ISI Mark)",
-        "title": "BIS Scheme-I Product Certification Scheme (ISI Mark Licensing Guidelines)",
-        "division": "Conformity Assessment",
-        "year": 2023,
-        "status": "ACTIVE",
-        "is_qco_mandatory": False,
-        "qco_order_number": None,
-        "scope_summary": "Covers the grant and operation of Scheme-I product certification licenses for domestic and foreign manufacturers to use the prestigious ISI Mark.",
-        "related_standards": ["Scheme-II (CRS)", "FMCS"],
-        "sections": [
-            {
-                "clause_number": "Clause 3",
-                "clause_title": "What is the ISI Mark and Scheme-I Licensing?",
-                "content": "The ISI Mark is the official product certification mark granted by the Bureau of Indian Standards under Scheme-I. It certifies that a product conforms to the relevant Indian Standard (IS). Obtaining an ISI license involves factory manufacturing audit, in-house testing capability verification, third-party sample testing in BIS labs, and issuance of a unique CM/L license number.",
-                "page_number": 3
-            },
-            {
-                "clause_number": "Clause 4",
-                "clause_title": "Application and Grant Process",
-                "content": "Manufacturers apply online via the Manakonline portal with company registration, manufacturing machinery details, testing equipment calibration certificates, and test reports. Upon successful factory inspection and sample verification, BIS grants the Scheme-I license to apply the ISI mark on conforming batches.",
-                "page_number": 4
-            }
-        ]
-    }
-]
+VERIFIED_STANDARDS: List[Dict[str, Any]] = OFFICIAL_INDIAN_STANDARDS
 
 STANDARDS_TRANSLATIONS: Dict[str, Dict[str, Any]] = {
     "hi": {
         "std-1293": {
             "title": "250 V तक और सहित संबंधित वोल्टेज और 16 A तक रेटेड करंट के लिए प्लग और सॉकेट-आउटलेट - विशिष्टता (चौथा संशोधन)",
             "division": "इलेक्ट्रो-तकनीकी",
+            "product_category": "विद्युत वायरिंग सहायक उपकरण",
             "qco_order_number": "विद्युत तार, केबल, उपकरण और सुरक्षा उपकरण (गुणवत्ता नियंत्रण) आदेश, 2020",
+            "qco_notifying_ministry": "वाणिज्य एवं उद्योग मंत्रालय (DPIIT)",
             "scope_summary": "केवल ए.सी. के लिए प्लग और फिक्स्ड या पोर्टेबल सॉकेट-आउटलेट को कवर करता है, अर्थिंग संपर्क के साथ या उसके बिना, 50 V से 250 V तक रेटेड वोल्टेज और 16 A तक रेटेड करंट के साथ घरेलू और समान उद्देश्यों के लिए अभिप्रेत है।",
             "sections": {
-                "1.1": {
-                    "clause_title": "दायरा और प्रयोज्यता",
-                    "content": "यह मानक केवल a.c. के लिए प्लग और स्थिर या पोर्टेबल सॉकेट-आउटलेट पर लागू होता है, अर्थिंग संपर्क के साथ या बिना, 50 V से अधिक लेकिन 250 V से अनधिक और 16 A तक रेटेड करंट के साथ, घरेलू और समान उद्देश्यों के लिए।"
-                },
-                "4.1": {
-                    "clause_title": "मानक रेटिंग",
-                    "content": "मानक रेटेड वोल्टेज 240 V a.c. हैं। मानक रेटेड करंट 6 A और 16 A हैं। प्लग और सॉकेट-आउटलेट सिंगल फेज 50 Hz a.c. के लिए रेटेड होंगे।"
-                },
-                "5.1": {
-                    "clause_title": "अंकन आवश्यकताएं",
-                    "content": "सामग्रियों पर एम्पीयर में रेटेड करंट, वोल्ट में रेटेड वोल्टेज, आपूर्ति की प्रकृति का प्रतीक, निर्माता का नाम और योजना-I के तहत मानक चिह्न (ISI मार्क) अंकित होना चाहिए।"
-                },
-                "13.1": {
-                    "clause_title": "इन्सुलेशन प्रतिरोध और विद्युत शक्ति",
-                    "content": "500 V d.c. मेगोहममीटर से मापे जाने पर इन्सुलेशन प्रतिरोध 5 MOhm से कम नहीं होना चाहिए।"
-                },
-                "19.1": {
-                    "clause_title": "तापमान वृद्धि परीक्षण",
-                    "content": "1 घंटे तक लगातार परीक्षण धारा प्रवाहित करने पर टर्मिनलों का तापमान वृद्धि 45 K से अधिक नहीं होना चाहिए।"
-                },
-                "24.1": {
-                    "clause_title": "यांत्रिक शक्ति",
-                    "content": "टम्बलिंग बैरल परीक्षण (1000 बार गिरने) के झटकों और प्रभावों का सामना करने के लिए सामग्रियों में पर्याप्त यांत्रिक शक्ति होनी चाहिए।"
-                }
+                "1.1": {"clause_title": "दायरा और प्रयोज्यता", "content": "यह मानक केवल a.c. के लिए प्लग और स्थिर या पोर्टेबल सॉकेट-आउटलेट पर लागू होता है, अर्थिंग संपर्क के साथ या बिना, 50 V से अधिक लेकिन 250 V से अनधिक और 16 A तक रेटेड करंट के साथ, घरेलू और समान उद्देश्यों के लिए।"},
+                "4.1": {"clause_title": "मानक रेटिंग", "content": "मानक रेटेड वोल्टेज 240 V a.c. हैं। मानक रेटेड करंट 6 A और 16 A हैं। प्लग और सॉकेट-आउटलेट सिंगल फेज 50 Hz a.c. के लिए रेटेड होंगे।"},
+                "5.1": {"clause_title": "अंकन आवश्यकताएं", "content": "सामग्रियों पर एम्पीयर में रेटेड करंट, वोल्ट में रेटेड वोल्टेज, आपूर्ति की प्रकृति का प्रतीक, निर्माता का नाम और योजना-I के तहत मानक चिह्न (ISI मार्क) अंकित होना चाहिए।"},
+                "13.1": {"clause_title": "इन्सुलेशन प्रतिरोध और विद्युत शक्ति", "content": "500 V d.c. मेगोहममीटर से मापे जाने पर इन्सुलेशन प्रतिरोध 5 MOhm से कम नहीं होना चाहिए।"},
+                "19.1": {"clause_title": "तापमान वृद्धि परीक्षण", "content": "1 घंटे तक लगातार परीक्षण धारा प्रवाहित करने पर टर्मिनलों का तापमान वृद्धि 45 K से अधिक नहीं होना चाहिए।"},
+                "24.1": {"clause_title": "यांत्रिक शक्ति", "content": "टम्बलिंग बैरल परीक्षण (1000 बार गिरने) के झटकों और प्रभावों का सामना करने के लिए सामग्रियों में पर्याप्त यांत्रिक शक्ति होनी चाहिए।"}
             }
+        },
+        "std-694": {
+            "title": "450/750 V तक के कार्यकारी वोल्टेज के लिए पीवीसी इंसुलेटेड केबल/कॉर्ड - विशिष्टता (चौथा संशोधन)",
+            "division": "इलेक्ट्रो-तकनीकी",
+            "product_category": "विद्युत केबल और तार",
+            "qco_order_number": "विद्युत तार, केबल, उपकरण और सुरक्षा उपकरण (गुणवत्ता नियंत्रण) आदेश, 2020",
+            "qco_notifying_ministry": "वाणिज्य एवं उद्योग मंत्रालय (DPIIT)",
+            "scope_summary": "घरेलू और हल्के औद्योगिक विद्युत वायरिंग अधिष्ठापनों में उपयोग किए जाने वाले 450/750 V a.c. तक के कार्यकारी वोल्टेज के लिए पीवीसी इंसुलेटेड केबलों के लिए आवश्यकताओं को निर्धारित करता है।"
+        },
+        "std-302-1": {
+            "title": "घरेलू और समान विद्युत उपकरणों की सुरक्षा - भाग 1: सामान्य आवश्यकताएं (पांचवां संशोधन)",
+            "division": "इलेक्ट्रो-तकनीकी",
+            "product_category": "घरेलू विद्युत उपकरण",
+            "qco_order_number": "विद्युत उपकरण (गुणवत्ता नियंत्रण) आदेश, 2023",
+            "qco_notifying_ministry": "वाणिज्य एवं उद्योग मंत्रालय (DPIIT)",
+            "scope_summary": "घरेलू और समान उद्देश्यों के लिए विद्युत उपकरणों की सामान्य सुरक्षा से संबंधित है जिनका रेटेड वोल्टेज सिंगल फेज के लिए 250 V से अनधिक है।"
+        },
+        "std-302-2-3": {
+            "title": "घरेलू विद्युत उपकरणों की सुरक्षा - भाग 2: विशेष आवश्यकताएं - धारा 3: इलेक्ट्रिक आयरन (प्रेस)",
+            "division": "इलेक्ट्रो-तकनीकी",
+            "product_category": "घरेलू विद्युत उपकरण",
+            "qco_order_number": "विद्युत उपकरण (गुणवत्ता नियंत्रण) आदेश, 2023",
+            "qco_notifying_ministry": "वाणिज्य एवं उद्योग मंत्रालय (DPIIT)",
+            "scope_summary": "घरेलू उपयोग के लिए इलेक्ट्रिक ड्राई आयरन और स्टीम आयरन की सुरक्षा से संबंधित है।"
+        },
+        "std-374": {
+            "title": "इलेक्ट्रिक सीलिंग प्रकार के पंखे और रेगुलेटर - विशिष्टता (चौथा संशोधन)",
+            "division": "इलेक्ट्रो-तकनीकी",
+            "product_category": "इलेक्ट्रिक पंखे और वायु परिसंचरण",
+            "qco_order_number": "सीलिंग फैन गुणवत्ता नियंत्रण आदेश, 2023",
+            "qco_notifying_ministry": "वाणिज्य एवं उद्योग मंत्रालय (DPIIT)",
+            "scope_summary": "घरेलू और वाणिज्यिक अनुप्रयोगों के लिए एसी सीलिंग पंखों और नियामकों के लिए आवश्यकताओं को निर्धारित करता है।"
+        },
+        "std-17803": {
+            "title": "इलेक्ट्रिक सीलिंग प्रकार के पंखे - विशिष्टता (BLDC एवं स्मार्ट पंखे)",
+            "division": "इलेक्ट्रो-तकनीकी",
+            "product_category": "इलेक्ट्रिक पंखे और वायु परिसंचरण",
+            "qco_order_number": "सीलिंग फैन गुणवत्ता नियंत्रण आदेश, 2023",
+            "qco_notifying_ministry": "वाणिज्य एवं उद्योग मंत्रालय (DPIIT)",
+            "scope_summary": "घरेलू और व्यावसायिक उपयोग के लिए इलेक्ट्रिक सीलिंग पंखों के ऊर्जा उपभोग, वायु प्रवाह, BLDC मोटर सुरक्षा और प्रदर्शन आवश्यकताओं को निर्दिष्ट करता है।",
+            "sections": {
+                "1.1": {"clause_title": "दायरा", "content": "ब्रशलेस डीसी (BLDC) मोटर पंखे सहित इलेक्ट्रिक सीलिंग प्रकार के पंखों को शामिल करता है।"}
+            }
+        },
+        "std-7372": {
+            "title": "मोटर वाहनों के लिए लेड-एसिड स्टोरेज बैटरियां - विशिष्टता (दूसरा संशोधन)",
+            "division": "इलेक्ट्रो-तकनीकी",
+            "product_category": "ऑटोमोटिव बैटरियां एवं ऊर्जा भंडारण",
+            "qco_order_number": "विद्युत उपकरण और बैटरियां (गुणवत्ता नियंत्रण) आदेश, 2023",
+            "qco_notifying_ministry": "भारी उद्योग मंत्रालय",
+            "scope_summary": "मोटर वाहनों के स्टार्ट, लाइट और इग्निशन (SLI) के लिए 6 V और 12 V लेड-एसिड स्टोरेज बैटरियों की आवश्यकताओं को निर्दिष्ट करता है।"
+        },
+        "std-16102-1": {
+            "title": "सामान्य प्रकाश सेवाओं के लिए सेल्फ-बैलास्टेड एलईडी लैंप - भाग 1: सुरक्षा आवश्यकताएं",
+            "division": "इलेक्ट्रो-तकनीकी",
+            "product_category": "प्रकाश व्यवस्था और एलईडी ल्यूमिनेयर",
+            "qco_order_number": "इलेक्ट्रॉनिक्स और आईटी सामान (अनिवार्य पंजीकरण आवश्यकता) आदेश (CRO)",
+            "qco_notifying_ministry": "इलेक्ट्रॉनिक्स और सूचना प्रौद्योगिकी मंत्रालय (MeitY)",
+            "scope_summary": "सामान्य प्रकाश व्यवस्था के लिए सेल्फ-बैलास्टेड एलईडी लैंप की सुरक्षा और विनिमेयता आवश्यकताओं को निर्दिष्ट करता है।"
         },
         "std-13252": {
             "title": "सूचना प्रौद्योगिकी उपकरण - सुरक्षा - भाग 1: सामान्य आवश्यकताएं",
             "division": "इलेक्ट्रॉनिक्स और सूचना प्रौद्योगिकी",
+            "product_category": "आईटी उपकरण और बिजली आपूर्ति",
             "qco_order_number": "इलेक्ट्रॉनिक्स और सूचना प्रौद्योगिकी सामान (अनिवार्य पंजीकरण की आवश्यकता) आदेश, 2012 (CRO)",
+            "qco_notifying_ministry": "इलेक्ट्रॉनिक्स और सूचना प्रौद्योगिकी मंत्रालय (MeitY)",
             "scope_summary": "मुख्य विद्युत या बैटरी से चलने वाले सूचना प्रौद्योगिकी उपकरणों पर लागू होता है, जिसमें 600 V से अनधिक रेटेड वोल्टेज वाले व्यावसायिक उपकरण और संबंधित उपकरण शामिल हैं।",
             "sections": {
-                "1.1": {
-                    "clause_title": "शामिल उपकरण",
-                    "content": "यह मानक लैपटॉप, पावर एडाप्टर, डेटा स्टोरेज और नेटवर्क उपकरण सहित सूचना प्रौद्योगिकी उपकरणों पर लागू होता है।"
-                },
-                "1.7": {
-                    "clause_title": "अंकन और निर्देश",
-                    "content": "उपकरणों पर मानक संख्या और पंजीकरण संख्या R-XXXXXXXX के साथ योजना-II (CRS) के तहत स्व-अनुरूपता घोषणा चिह्न होना चाहिए।"
-                }
+                "1.1": {"clause_title": "शामिल उपकरण", "content": "यह मानक लैपटॉप, पावर एडाप्टर, डेटा स्टोरेज और नेटवर्क उपकरण सहित सूचना प्रौद्योगिकी उपकरणों पर लागू होता है।"},
+                "1.7": {"clause_title": "अंकन और निर्देश", "content": "उपकरणों पर मानक संख्या और पंजीकरण संख्या R-XXXXXXXX के साथ योजना-II (CRS) के तहत स्व-अनुरूपता घोषणा चिह्न होना चाहिए।"}
             }
         },
-        "std-17803": {
-            "title": "इलेक्ट्रिक सीलिंग प्रकार के पंखे - विशिष्टता",
-            "division": "इलेक्ट्रो-तकनीकी",
-            "qco_order_number": "सीलिंग फैन गुणवत्ता नियंत्रण आदेश, 2023",
-            "scope_summary": "घरेलू और व्यावसायिक उपयोग के लिए इलेक्ट्रिक सीलिंग पंखों के ऊर्जा उपभोग, वायु प्रवाह और सुरक्षा आवश्यकताओं को निर्दिष्ट करता है।",
-            "sections": {
-                "1.1": {
-                    "clause_title": "दायरा",
-                    "content": "ब्रशलेस डीसी (BLDC) मोटर पंखे सहित इलेक्ट्रिक सीलिंग प्रकार के पंखों को शामिल करता है।"
-                }
-            }
+        "std-62368-1": {
+            "title": "ऑडियो/वीडियो, सूचना और संचार प्रौद्योगिकी उपकरण - भाग 1: सुरक्षा आवश्यकताएं",
+            "division": "इलेक्ट्रॉनिक्स और सूचना प्रौद्योगिकी",
+            "product_category": "ऑडियो/वीडियो और आईटी उपकरण",
+            "qco_order_number": "इलेक्ट्रॉनिक्स और सूचना प्रौद्योगिकी सामान (अनिवार्य पंजीकरण) आदेश",
+            "qco_notifying_ministry": "इलेक्ट्रॉनिक्स और सूचना प्रौद्योगिकी मंत्रालय (MeitY)",
+            "scope_summary": "ऑडियो, वीडियो, सूचना और संचार प्रौद्योगिकी तथा व्यावसायिक उपकरणों के लिए खतरा-आधारित सुरक्षा इंजीनियरिंग मानक।"
+        },
+        "std-16046-2": {
+            "title": "पोर्टेबल अनुप्रयोगों के लिए सेकेंडरी लिथियम सेल और बैटरियां - सुरक्षा आवश्यकताएं",
+            "division": "इलेक्ट्रॉनिक्स और सूचना प्रौद्योगिकी",
+            "product_category": "लिथियम-आयन सेल और बैटरी पैक",
+            "qco_order_number": "इलेक्ट्रॉनिक्स और आईटी सामान (अनिवार्य पंजीकरण) आदेश (CRO / Scheme-II CRS)",
+            "qco_notifying_ministry": "इलेक्ट्रॉनिक्स और सूचना प्रौद्योगिकी मंत्रालय (MeitY)",
+            "scope_summary": "पोर्टेबल इलेक्ट्रॉनिक उपकरणों (मोबाइल फोन, लैपटॉप) के लिए सीलबंद सेकेंडरी लिथियम सेल और बैटरियों के सुरक्षित संचालन के लिए सुरक्षा आवश्यकताओं को निर्दिष्ट करता है।"
+        },
+        "std-616": {
+            "title": "ऑडियो, वीडियो और समान इलेक्ट्रॉनिक उपकरण - सुरक्षा आवश्यकताएं",
+            "division": "इलेक्ट्रॉनिक्स और सूचना प्रौद्योगिकी",
+            "product_category": "उपभोक्ता ऑडियो और वीडियो इलेक्ट्रॉनिक्स",
+            "qco_order_number": "इलेक्ट्रॉनिक्स और सूचना प्रौद्योगिकी सामान (अनिवार्य पंजीकरण) आदेश (CRO)",
+            "qco_notifying_ministry": "इलेक्ट्रॉनिक्स और सूचना प्रौद्योगिकी मंत्रालय (MeitY)",
+            "scope_summary": "टेलीविजन रिसीवर, ऑडियो एम्पलीफायर और मल्टीमीडिया डिस्प्ले मॉनिटर की सुरक्षा के लिए लागू होता है।"
+        },
+        "std-16333-3": {
+            "title": "मोबाइल फोन हैंडसेट - भाग 3: भारतीय भाषा समर्थन - विशिष्ट आवश्यकताएं",
+            "division": "इलेक्ट्रॉनिक्स और सूचना प्रौद्योगिकी",
+            "product_category": "मोबाइल फोन और दूरसंचार",
+            "qco_order_number": "मोबाइल फोन के लिए भारतीय भाषा समर्थन (अनिवार्य पंजीकरण) आदेश",
+            "qco_notifying_ministry": "इलेक्ट्रॉनिक्स और सूचना प्रौद्योगिकी मंत्रालय (MeitY)",
+            "scope_summary": "भारत की सभी 22 आधिकारिक अनुसूचित भाषाओं के लिए मोबाइल फोन हैंडसेट पर भारतीय भाषा पाठ इनपुट और संदेश प्रदर्शन के लिए आवश्यकताओं को निर्धारित करता है।"
+        },
+        "std-456": {
+            "title": "सादा और प्रबलित कंक्रीट - अभ्यास संहिता (चौथा संशोधन)",
+            "division": "सिविल इंजीनियरिंग",
+            "product_category": "संरचनात्मक इंजीनियरिंग और कंक्रीट",
+            "qco_order_number": None,
+            "qco_notifying_ministry": None,
+            "scope_summary": "निर्माण में सादे और प्रबलित कंक्रीट के सामान्य संरचनात्मक उपयोग से संबंधित है। स्थायित्व, डिजाइन, सामग्री और कारीगरी की आवश्यकताओं को निर्धारित करता है।"
+        },
+        "std-12269": {
+            "title": "साधारण पोर्टलैंड सीमेंट, 53 ग्रेड - विशिष्टता (पहला संशोधन)",
+            "division": "सिविल इंजीनियरिंग",
+            "product_category": "सीमेंट और निर्माण सामग्री",
+            "qco_order_number": "सीमेंट (गुणवत्ता नियंत्रण) आदेश, 2024",
+            "qco_notifying_ministry": "वाणिज्य एवं उद्योग मंत्रालय (DPIIT)",
+            "scope_summary": "28 दिनों में 53 MPa से कम संपीड़न शक्ति न रखने वाले 53 ग्रेड साधारण पोर्टलैंड सीमेंट के निर्माण और रासायनिक/भौतिक आवश्यकताओं को शामिल करता है।"
+        },
+        "std-1489-1": {
+            "title": "पोर्टलैंड पॉज़ोलाना सीमेंट - विशिष्टता - भाग 1: फ्लाई ऐश आधारित (तीसरा संशोधन)",
+            "division": "सिविल इंजीनियरिंग",
+            "product_category": "सीमेंट और निर्माण सामग्री",
+            "qco_order_number": "सीमेंट (गुणवत्ता नियंत्रण) आदेश, 2024",
+            "qco_notifying_ministry": "वाणिज्य एवं उद्योग मंत्रालय (DPIIT)",
+            "scope_summary": "फ्लाई ऐश आधारित पोर्टलैंड पॉज़ोलाना सीमेंट (PPC) के लिए आवश्यकताओं को निर्धारित करता है।"
+        },
+        "std-1786": {
+            "title": "कंक्रीट सुदृढीकरण के लिए उच्च शक्ति विकृत स्टील बार और तार (TMT) - विशिष्टता (चौथा संशोधन)",
+            "division": "सिविल इंजीनियरिंग",
+            "product_category": "संरचनात्मक स्टील और TMT सरिया",
+            "qco_order_number": "स्टील और स्टील उत्पाद (गुणवत्ता नियंत्रण) आदेश, 2020",
+            "qco_notifying_ministry": "इस्पात मंत्रालय (Ministry of Steel)",
+            "scope_summary": "कंक्रीट में सुदृढीकरण के रूप में उपयोग के लिए उच्च शक्ति वाले विकृत स्टील बार और तारों (Fe 415, Fe 500, Fe 500D, Fe 550D) की तकनीकी आवश्यकताओं को शामिल करता है।"
         },
         "std-14543": {
-            "title": "पैकेज्ड पेयजल (पैकेज्ड प्राकृतिक खनिज जल के अलावा) - विशिष्टता",
+            "title": "पैकेज्ड पेयजल (पैकेज्ड प्राकृतिक खनिज जल के अलावा) - विशिष्टता (दूसरा संशोधन)",
             "division": "खाद्य और कृषि",
-            "qco_order_number": "खाद्य अपमिश्रण निवारण / FSSAI और BIS अनिवार्य प्रमाणन आदेश",
-            "scope_summary": "मानव उपभोग के लिए सीधे पेश किए जाने वाले पैकेज्ड पेयजल की आवश्यकताओं को निर्धारित करता है।",
+            "product_category": "पैकेज्ड जल और पेय पदार्थ",
+            "qco_order_number": "खाद्य सुरक्षा और मानक (बिक्री पर प्रतिबंध) विनियम और अनिवार्य बीआईएस प्रमाणन",
+            "qco_notifying_ministry": "उपभोक्ता मामले मंत्रालय और FSSAI",
+            "scope_summary": "मानव उपभोग के लिए सीधे पेश किए जाने वाले पैकेज्ड पेयजल की आवश्यकताओं और परीक्षण विधियों को निर्धारित करता है।",
             "sections": {
-                "1.1": {
-                    "clause_title": "दायरा",
-                    "content": "पीने योग्य पानी के किसी भी स्रोत से प्राप्त पानी पर लागू होता है जिसे निस्यंदन, विखनिजीकरण, रिवर्स ऑस्मोसिस (RO) और कीटाणुशोधन जैसे उपचारों से गुजारा जाता है।"
-                }
+                "1.1": {"clause_title": "दायरा", "content": "पीने योग्य पानी के किसी भी स्रोत से प्राप्त पानी पर लागू होता है जिसे निस्यंदन, विखनिजीकरण, रिवर्स ऑस्मोसिस (RO) और कीटाणुशोधन जैसे उपचारों से गुजारा जाता है।"}
             }
+        },
+        "std-13428": {
+            "title": "पैकेज्ड प्राकृतिक खनिज जल - विशिष्टता (दूसरा संशोधन)",
+            "division": "खाद्य और कृषि",
+            "product_category": "पैकेज्ड जल और पेय पदार्थ",
+            "qco_order_number": "FSSAI और BIS अनिवार्य प्रमाणन आदेश",
+            "qco_notifying_ministry": "उपभोक्ता मामले मंत्रालय और FSSAI",
+            "scope_summary": "खनिज संरचना में परिवर्तन किए बिना सीधे प्राकृतिक भूमिगत या झरने के स्रोतों से प्राप्त पैकेज्ड प्राकृतिक खनिज जल के लिए आवश्यकताओं को निर्धारित करता है।"
+        },
+        "std-10500": {
+            "title": "पेयजल - विशिष्टता (दूसरा संशोधन)",
+            "division": "खाद्य और कृषि",
+            "product_category": "पेयजल गुणवत्ता मानक",
+            "qco_order_number": None,
+            "qco_notifying_ministry": "जल शक्ति मंत्रालय",
+            "scope_summary": "घरेलू आपूर्ति के लिए पेयजल की भौतिक, रासायनिक और सूक्ष्मजीवविज्ञानी विशेषताओं के लिए स्वीकार्य और अनुमेय सीमाओं को निर्धारित करता है।"
+        },
+        "std-11536": {
+            "title": "शिशुओं के लिए प्रसंस्कृत अनाज आधारित पूरक आहार - विशिष्टता (दूसरा संशोधन)",
+            "division": "खाद्य और कृषि",
+            "product_category": "शिशु आहार और पोषण",
+            "qco_order_number": "शिशु आहार अनिवार्य बीआईएस प्रमाणन आदेश",
+            "qco_notifying_ministry": "महिला एवं बाल विकास मंत्रालय और FSSAI",
+            "scope_summary": "शिशुओं के लिए अनाज आधारित पूरक आहार के लिए आवश्यकताओं, पोषण संरचना, प्रसंस्करण स्वच्छता और परीक्षण विधियों को निर्धारित करता है।"
+        },
+        "std-17526": {
+            "title": "स्टेनलेस स्टील वैक्यूम फ्लास्क / इंसुलेटेड बोतलें और कंटेनर - विशिष्टता",
+            "division": "मैकेनिकल इंजीनियरिंग और उपभोक्ता उत्पाद",
+            "product_category": "इंसुलेटेड कंटेनर और बर्तन",
+            "qco_order_number": "घरेलू उपयोग के लिए इंसुलेटेड फ्लास्क, बोतलें और कंटेनर (गुणवत्ता नियंत्रण) आदेश, 2023",
+            "qco_notifying_ministry": "वाणिज्य एवं उद्योग मंत्रालय (DPIIT)",
+            "scope_summary": "घरेलू और वाणिज्यिक स्टेनलेस स्टील इंसुलेटेड फ्लास्क, पानी की बोतलों और पेय कंटेनरों के निर्माण, सामग्री और प्रदर्शन आवश्यकताओं को निर्दिष्ट करता है।"
+        },
+        "std-4151": {
+            "title": "दोपहिया वाहन सवारों के लिए सुरक्षात्मक हेलमेट - विशिष्टता (चौथा संशोधन)",
+            "division": "मैकेनिकल इंजीनियरिंग और उपभोक्ता उत्पाद",
+            "product_category": "सुरक्षात्मक सुरक्षा उपकरण",
+            "qco_order_number": "दोपहिया वाहनों के सवारों के लिए हेलमेट (गुणवत्ता नियंत्रण) आदेश, 2020",
+            "qco_notifying_ministry": "सड़क परिवहन और राजमार्ग मंत्रालय (MoRTH)",
+            "scope_summary": "दोपहिया वाहन सवारों के लिए सुरक्षात्मक हेलमेट के लिए सामग्री, निर्माण, वजन (अधिकतम 1.2 किग्रा), प्रभाव अवशोषण और प्रदर्शन परीक्षण के संबंध में आवश्यकताओं को निर्धारित करता है।"
+        },
+        "std-9873-1": {
+            "title": "खिलौनों की सुरक्षा - भाग 1: यांत्रिक और भौतिक गुणों से संबंधित सुरक्षा पहलू",
+            "division": "मैकेनिकल इंजीनियरिंग और उपभोक्ता उत्पाद",
+            "product_category": "खिलौने और बाल देखभाल उत्पाद",
+            "qco_order_number": "खिलौने (गुणवत्ता नियंत्रण) आदेश, 2020",
+            "qco_notifying_ministry": "वाणिज्य एवं उद्योग मंत्रालय (DPIIT)",
+            "scope_summary": "14 वर्ष तक के बच्चों द्वारा उपयोग किए जाने वाले खिलौनों की भौतिक और यांत्रिक विशेषताओं (दम घुटने के खतरे, नुकीले किनारों को रोकने) के लिए स्वीकार्य मानदंड निर्दिष्ट करता है।"
+        },
+        "std-9873-3": {
+            "title": "खिलौनों की सुरक्षा - भाग 3: कुछ तत्वों का प्रवास (विषाक्त भारी धातु सीमाएं)",
+            "division": "मैकेनिकल इंजीनियरिंग और उपभोक्ता उत्पाद",
+            "product_category": "खिलौने और बाल देखभाल उत्पाद",
+            "qco_order_number": "खिलौने (गुणवत्ता नियंत्रण) आदेश, 2020",
+            "qco_notifying_ministry": "वाणिज्य एवं उद्योग मंत्रालय (DPIIT)",
+            "scope_summary": "खिलौना सामग्री से विषाक्त तत्वों (सीसा, कैडमियम, पारा, आर्सेनिक) की अधिकतम अनुमेय प्रवासन सीमा निर्दिष्ट करता है।"
+        },
+        "std-7285-1": {
+            "title": "रिफिलेबल सीमलेस स्टील गैस सिलेंडर - भाग 1: सामान्यीकृत स्टील सिलेंडर (तीसरा संशोधन)",
+            "division": "मैकेनिकल इंजीनियरिंग और उपभोक्ता उत्पाद",
+            "product_category": "प्रेशर वेसल्स और गैस सिलेंडर",
+            "qco_order_number": "गैस सिलेंडर नियम और अनिवार्य बीआईएस प्रमाणन (PESO शासनादेश)",
+            "qco_notifying_ministry": "वाणिज्य एवं उद्योग मंत्रालय (PESO / DPIIT)",
+            "scope_summary": "संपीड़ित, द्रवीभूत और घुलित गैसों के लिए 0.5 लीटर से 150 लीटर तक पानी की क्षमता वाले सीमलेस स्टील गैस सिलेंडरों के लिए आवश्यकताओं को निर्धारित करता है।"
+        },
+        "std-3196-1": {
+            "title": "वेल्डेड लो कार्बन स्टील एलपीजी गैस सिलेंडर - विशिष्टता (पांचवां संशोधन)",
+            "division": "मैकेनिकल इंजीनियरिंग और उपभोक्ता उत्पाद",
+            "product_category": "प्रेशर वेसल्स और गैस सिलेंडर",
+            "qco_order_number": "एलपीजी गैस सिलेंडर (गुणवत्ता नियंत्रण) आदेश / PESO शासनादेश",
+            "qco_notifying_ministry": "पेट्रोलियम और प्राकृतिक गैस मंत्रालय और PESO",
+            "scope_summary": "घरेलू 14.2 किग्रा और वाणिज्यिक 19 किग्रा वेल्डेड स्टील एलपीजी सिलेंडरों के डिजाइन, निर्माण और परीक्षण को निर्दिष्ट करता है।"
+        },
+        "std-6911": {
+            "title": "स्टेनलेस स्टील प्लेट, शीट और स्ट्रिप - विशिष्टता (पहला संशोधन)",
+            "division": "धातुकर्म इंजीनियरिंग",
+            "product_category": "स्टेनलेस स्टील और धातुकर्म",
+            "qco_order_number": "स्टेनलेस स्टील उत्पाद (गुणवत्ता नियंत्रण) आदेश, 2020",
+            "qco_notifying_ministry": "इस्पात मंत्रालय (Ministry of Steel)",
+            "scope_summary": "खाद्य बर्तनों, पानी के कंटेनरों और औद्योगिक निर्माण के लिए उपयोग की जाने वाली स्टेनलेस स्टील प्लेट, शीट और स्ट्रिप के लिए रासायनिक संरचना और यांत्रिक गुणों को निर्धारित करता है।"
+        },
+        "std-2062": {
+            "title": "हॉट रोल्ड मध्यम और उच्च तन्यता संरचनात्मक स्टील - विशिष्टता (सातवां संशोधन)",
+            "division": "धातुकर्म इंजीनियरिंग",
+            "product_category": "संरचनात्मक स्टील और धातुकर्म",
+            "qco_order_number": "स्टील और स्टील उत्पाद (गुणवत्ता नियंत्रण) आदेश, 2020",
+            "qco_notifying_ministry": "इस्पात मंत्रालय (Ministry of Steel)",
+            "scope_summary": "पुलों, इमारतों, ट्रांसमिशन टावरों और सामान्य इंजीनियरिंग निर्माण के लिए हॉट-रोल्ड संरचनात्मक स्टील के लिए आवश्यकताओं को निर्धारित करता है।"
+        },
+        "std-14110": {
+            "title": "स्वर्ण एवं रजत मिश्र धातुएं - शुद्धता परीक्षण (अग्नि परख और XRF विधियां)",
+            "division": "धातुकर्म इंजीनियरिंग",
+            "product_category": "बहुमूल्य धातुएं और हॉलमार्किंग",
+            "qco_order_number": "स्वर्ण आभूषण और स्वर्ण कलाकृतियों का हॉलमार्किंग आदेश, 2020",
+            "qco_notifying_ministry": "उपभोक्ता मामले, खाद्य और सार्वजनिक वितरण मंत्रालय",
+            "scope_summary": "बीआईएस मान्यता प्राप्त परख और हॉलमार्किंग केंद्रों (AHC) में सोने और चांदी के आभूषणों की शुद्धता की पुष्टि के लिए परख और परीक्षण विधियों को निर्धारित करता है।"
+        },
+        "std-10177": {
+            "title": "कास्टिक सोडा, शुद्ध और तकनीकी - विशिष्टता (पहला संशोधन)",
+            "division": "केमिकल (रसायन)",
+            "product_category": "औद्योगिक रसायन और क्षार",
+            "qco_order_number": "कास्टिक सोडा (गुणवत्ता नियंत्रण) आदेश, 2018",
+            "qco_notifying_ministry": "रसायन और पेट्रोकेमिकल्स विभाग",
+            "scope_summary": "औद्योगिक उपयोग के लिए ठोस, फ्लेक और लाई ग्रेड में कास्टिक सोडा (सोडियम हाइड्रोक्साइड, NaOH) के लिए आवश्यकताओं और परीक्षण विधियों को निर्धारित करता है।"
+        },
+        "std-5145": {
+            "title": "मोल्डिंग और एक्सट्रूज़न के लिए पॉलीइथाइलीन सामग्री - विशिष्टता (दूसरा संशोधन)",
+            "division": "केमिकल (रसायन)",
+            "product_category": "पॉलिमर और प्लास्टिक कच्चा माल",
+            "qco_order_number": "मोल्डिंग और एक्सट्रूज़न के लिए पॉलीइथाइलीन सामग्री (गुणवत्ता नियंत्रण) आदेश, 2021",
+            "qco_notifying_ministry": "रसायन और पेट्रोकेमिकल्स विभाग",
+            "scope_summary": "मोल्डिंग, एक्सट्रूज़न, फिल्म, पाइप और कंटेनर निर्माण के लिए पॉलीइथाइलीन सामग्री (LDPE, LLDPE, HDPE) के लिए आवश्यकताओं को निर्धारित करता है।"
+        },
+        "std-13422": {
+            "title": "एकल उपयोग के लिए बाँझ हाइपोडर्मिक सीरिंज - विशिष्टता (पहला संशोधन)",
+            "division": "चिकित्सा उपकरण और स्वास्थ्य सेवा",
+            "product_category": "चिकित्सा डिस्पोजेबल्स और उपकरण",
+            "qco_order_number": "चिकित्सा उपकरण नियम और अनिवार्य बीआईएस गुणवत्ता शासनादेश",
+            "qco_notifying_ministry": "स्वास्थ्य और परिवार कल्याण मंत्रालय (CDSCO) और बीआईएस",
+            "scope_summary": "दवाओं के इंजेक्शन और तरल पदार्थों के निष्कर्षण के लिए प्लास्टिक सामग्री से बने एकल-उपयोग हाइपोडर्मिक सीरिंज के लिए आवश्यकताओं और परीक्षणों को निर्धारित करता है।"
         }
     },
     "ta": {
         "std-1293": {
             "title": "250 V வரை மற்றும் உள்ளடக்கிய தொடர்புடைய மின்னழுத்தங்கள் மற்றும் 16 A வரை மதிப்பிடப்பட்ட மின்னோட்டத்திற்கான பிளக்குகள் மற்றும் சாக்கெட்-அவுட்லெட்டுகள் - விவரக்குறிப்பு (நான்காவது திருத்தம்)",
             "division": "மின் தொழில்நுட்பம்",
+            "product_category": "மின் வயரிங் பாகங்கள்",
             "qco_order_number": "மின் கம்பிகள், கேபிள்கள், உபகரணங்கள் மற்றும் பாதுகாப்பு சாதனங்கள் (தரக் கட்டுப்பாடு) ஆணை, 2020",
+            "qco_notifying_ministry": "வர்த்தகம் மற்றும் தொழில்துறை அமைச்சகம் (DPIIT)",
             "scope_summary": "50 V முதல் 250 V வரையிலான மின்னழுத்தம் மற்றும் 16 A வரையிலான மின்னோட்டத்துடன் வீட்டு மற்றும் ஒத்த பயன்பாடுகளுக்காக வடிவமைக்கப்பட்ட ஏ.சி. பிளக்குகள் மற்றும் சாக்கெட்-அவுட்லெட்டுகளை உள்ளடக்கியது.",
             "sections": {
-                "1.1": {
-                    "clause_title": "நோக்கம் மற்றும் பயன்பாடு",
-                    "content": "இந்த தரநிலை 50 V முதல் 250 V வரையிலான மின்னழுத்தம் மற்றும் 16 A வரையிலான மின்னோட்டம் கொண்ட பிளக்குகள் மற்றும் சாக்கெட்-அவுட்லெட்டுகளுக்கு பொருந்தும்."
-                },
-                "4.1": {
-                    "clause_title": "நிலையான மதிப்பீடுகள்",
-                    "content": "நிலையான மின்னழுத்தம் 240 V a.c. நிலையான மின்னோட்டம் 6 A மற்றும் 16 A ஆகும். ஒற்றை கட்ட 50 Hz a.c. க்காக மதிப்பிடப்பட வேண்டும்."
-                },
-                "5.1": {
-                    "clause_title": "குறியிடுதல் தேவைகள்",
-                    "content": "பொருட்களில் மின்னோட்டம், மின்னழுத்தம், உற்பத்தியாளர் பெயர் மற்றும் திட்டம்-I இன் கீழ் ISI முத்திரை குறிக்கப்பட வேண்டும்."
-                },
-                "13.1": {
-                    "clause_title": "காப்பு எதிர்ப்பு மற்றும் மின் வலிமை",
-                    "content": "500 V d.c. மூலம் அளவிடும் போது காப்பு எதிர்ப்பு 5 MOhm க்கும் குறையாமல் இருக்க வேண்டும்."
-                },
-                "19.1": {
-                    "clause_title": "வெப்பநிலை அதிகரிப்பு சோதனை",
-                    "content": "1 மணி நேரம் சோதனை மின்னோட்டத்தை செலுத்தும் போது முனையங்களின் வெப்பநிலை அதிகரிப்பு 45 K ஐ தாண்டக்கூடாது."
-                },
-                "24.1": {
-                    "clause_title": "இயந்திர வலிமை",
-                    "content": "1000 முறை உருளும் உருளை சோதனையின் தாக்கங்களை தாங்கும் போதுமான இயந்திர வலிமை பெற்றிருக்க வேண்டும்."
-                }
+                "1.1": {"clause_title": "நோக்கம் மற்றும் பயன்பாடு", "content": "இந்த தரநிலை 50 V முதல் 250 V வரையிலான மின்னழுத்தம் மற்றும் 16 A வரையிலான மின்னோட்டம் கொண்ட பிளக்குகள் மற்றும் சாக்கெட்-அவுட்லெட்டுகளுக்கு பொருந்தும்."},
+                "4.1": {"clause_title": "நிலையான மதிப்பீடுகள்", "content": "நிலையான மின்னழுத்தம் 240 V a.c. நிலையான மின்னோட்டம் 6 A மற்றும் 16 A ஆகும். ஒற்றை கட்ட 50 Hz a.c. க்காக மதிப்பிடப்பட வேண்டும்."},
+                "5.1": {"clause_title": "குறியிடுதல் தேவைகள்", "content": "பொருட்களில் மின்னோட்டம், மின்னழுத்தம், உற்பத்தியாளர் பெயர் மற்றும் திட்டம்-I இன் கீழ் ISI முத்திரை குறிக்கப்பட வேண்டும்."},
+                "13.1": {"clause_title": "காப்பு எதிர்ப்பு மற்றும் மின் வலிமை", "content": "500 V d.c. மூலம் அளவிடும் போது காப்பு எதிர்ப்பு 5 MOhm க்கும் குறையாமல் இருக்க வேண்டும்."},
+                "19.1": {"clause_title": "வெப்பநிலை அதிகரிப்பு சோதனை", "content": "1 மணி நேரம் சோதனை மின்னோட்டத்தை செலுத்தும் போது முனையங்களின் வெப்பநிலை அதிகரிப்பு 45 K ஐ தாண்டக்கூடாது."},
+                "24.1": {"clause_title": "இயந்திர வலிமை", "content": "1000 முறை உருளும் உருளை சோதனையின் தாக்கங்களை தாங்கும் போதுமான இயந்திர வலிமை பெற்றிருக்க வேண்டும்."}
             }
+        },
+        "std-694": {
+            "title": "450/750 V வரை வேலை செய்யும் மின்னழுத்தத்திற்கான PVC காப்பிடப்பட்ட கேபிள்கள் - விவரக்குறிப்பு (நான்காவது திருத்தம்)",
+            "division": "மின் தொழில்நுட்பம்",
+            "product_category": "மின் கேபிள்கள் மற்றும் கம்பிகள்",
+            "qco_order_number": "மின் கம்பிகள் மற்றும் கேபிள்கள் (தரக் கட்டுப்பாடு) ஆணை",
+            "qco_notifying_ministry": "வர்த்தகம் மற்றும் தொழில்துறை அமைச்சகம் (DPIIT)",
+            "scope_summary": "வீட்டு மற்றும் இலகுவான தொழில்துறை மின் வயரிங் நிறுவல்களில் பயன்படுத்தப்படும் 450/750 V வரையிலான PVC கேபிள்களுக்கான தேவைகளை நிர்ணயிக்கிறது."
+        },
+        "std-302-1": {
+            "title": "வீட்டு மற்றும் ஒத்த மின் சாதனங்களின் பாதுகாப்பு - பகுதி 1: பொதுவான தேவைகள் (ஐந்தாவது திருத்தம்)",
+            "division": "மின் தொழில்நுட்பம்",
+            "product_category": "வீட்டு மின் உபகரணங்கள்",
+            "qco_order_number": "மின் சாதனங்கள் (தரக் கட்டுப்பாடு) ஆணை, 2023",
+            "qco_notifying_ministry": "வர்த்தகம் மற்றும் தொழில்துறை அமைச்சகம் (DPIIT)",
+            "scope_summary": "250 V க்கு மிகாமல் மதிப்பிடப்பட்ட மின்னழுத்தம் கொண்ட வீட்டு மற்றும் ஒத்த மின் சாதனங்களின் பொதுவான பாதுகாப்பைக் குறிக்கிறது."
+        },
+        "std-302-2-3": {
+            "title": "வீட்டு மின் சாதனங்களின் பாதுகாப்பு - பகுதி 2: குறிப்பிட்ட தேவைகள் - பிரிவு 3: மின்சார இஸ்திரி பெட்டி (அயர்ன் பாக்ஸ்)",
+            "division": "மின் தொழில்நுட்பம்",
+            "product_category": "வீட்டு மின் உபகரணங்கள்",
+            "qco_order_number": "மின் சாதனங்கள் (தரக் கட்டுப்பாடு) ஆணை, 2023",
+            "qco_notifying_ministry": "வர்த்தகம் மற்றும் தொழில்துறை அமைச்சகம் (DPIIT)",
+            "scope_summary": "வீட்டு உபயோகத்திற்கான மின்சார உலர் மற்றும் நீராவி இஸ்திரி பெட்டிகளின் பாதுகாப்பைக் குறிக்கிறது."
+        },
+        "std-374": {
+            "title": "மின்சார கூரை மின்விசிறிகள் மற்றும் ஒழுங்குபடுத்திகள் - விவரக்குறிப்பு (நான்காவது திருத்தம்)",
+            "division": "மின் தொழில்நுட்பம்",
+            "product_category": "மின்சார விசிறிகள் மற்றும் காற்று சுழற்சிகள்",
+            "qco_order_number": "கூரை மின்விசிறி தரக் கட்டுப்பாடு ஆணை, 2023",
+            "qco_notifying_ministry": "வர்த்தகம் மற்றும் தொழில்துறை அமைச்சகம் (DPIIT)",
+            "scope_summary": "வீட்டு மற்றும் வணிக பயன்பாடுகளுக்கான AC கூரை மின்விசிறிகள் மற்றும் ஒழுங்குபடுத்திகளுக்கான தேவைகளை நிர்ணயிக்கிறது."
+        },
+        "std-17803": {
+            "title": "மின்சார கூரை மின்விசிறிகள் - விவரக்குறிப்பு (BLDC & ஸ்மார்ட் மின்விசிறிகள்)",
+            "division": "மின் தொழில்நுட்பம்",
+            "product_category": "மின்சார விசிறிகள் மற்றும் காற்று சுழற்சிகள்",
+            "qco_order_number": "கூரை மின்விசிறி தரக் கட்டுப்பாடு ஆணை, 2023",
+            "qco_notifying_ministry": "வர்த்தகம் மற்றும் தொழில்துறை அமைச்சகம் (DPIIT)",
+            "scope_summary": "வீட்டு மற்றும் வணிக பயன்பாட்டிற்கான கூரை மின்விசிறிகளின் மின் நுகர்வு, காற்று விநியோகம், BLDC மோட்டார் பாதுகாப்பு மற்றும் செயல்திறன் தேவைகளை வரையறுக்கிறது.",
+            "sections": {
+                "1.1": {"clause_title": "நோக்கம்", "content": "BLDC மோட்டார் விசிறிகள் உட்பட அனைத்து மின்சார கூரை மின்விசிறிகளையும் உள்ளடக்கியது."}
+            }
+        },
+        "std-7372": {
+            "title": "மோட்டார் வாகனங்களுக்கான லெட்-அமில சேமிப்பு பேட்டரிகள் - விவரக்குறிப்பு (இரண்டாவது திருத்தம்)",
+            "division": "மின் தொழில்நுட்பம்",
+            "product_category": "வாகன பேட்டரிகள் & ஆற்றல் சேமிப்பு",
+            "qco_order_number": "மின் சாதனங்கள் மற்றும் பேட்டரிகள் (தரக் கட்டுப்பாடு) ஆணை, 2023",
+            "qco_notifying_ministry": "கனரக தொழில்துறை அமைச்சகம்",
+            "scope_summary": "மோட்டார் வாகனங்களின் தொடக்க, விளக்கு மற்றும் பற்றவைப்புக்கான (SLI) 6 V மற்றும் 12 V லெட்-அமில சேமிப்பு பேட்டரிகளின் தேவைகளை நிர்ணயிக்கிறது."
+        },
+        "std-16102-1": {
+            "title": "பொது விளக்கு சேவைகளுக்கான சுய-பேலஸ்டட் LED விளக்குகள் - பகுதி 1: பாதுகாப்பு தேவைகள்",
+            "division": "மின் தொழில்நுட்பம்",
+            "product_category": "விளக்குகள் மற்றும் LED சாதனங்கள்",
+            "qco_order_number": "மின்னணுவியல் மற்றும் தகவல் தொழில்நுட்ப பொருட்கள் (கட்டாய பதிவு) ஆணை (CRO)",
+            "qco_notifying_ministry": "மின்னணுவியல் மற்றும் தகவல் தொழில்நுட்ப அமைச்சகம் (MeitY)",
+            "scope_summary": "பொது விளக்குகளுக்கான சுய-பேலஸ்டட் LED விளக்குகளின் பாதுகாப்பு மற்றும் ஒன்றுக்கொன்று மாற்றக்கூடிய தேவைகளை குறிப்பிடுகிறது."
         },
         "std-13252": {
             "title": "தகவல் தொழில்நுட்ப உபகரணங்கள் - பாதுகாப்பு - பகுதி 1: பொதுவான தேவைகள்",
             "division": "மின்னணுவியல் & தகவல் தொழில்நுட்பம்",
+            "product_category": "தகவல் தொழில்நுட்ப சாதனங்கள் & மின் விநியோகங்கள்",
             "qco_order_number": "மின்னணுவியல் மற்றும் தகவல் தொழில்நுட்ப பொருட்கள் (கட்டாய பதிவு தேவை) ஆணை, 2012 (CRO)",
+            "qco_notifying_ministry": "மின்னணுவியல் மற்றும் தகவல் தொழில்நுட்ப அமைச்சகம் (MeitY)",
             "scope_summary": "600 V க்கு மிகாமல் மதிப்பிடப்பட்ட மின்னழுத்தம் கொண்ட மடிக்கணினிகள், பவர் அடாப்டர்கள் உள்ளிட்ட தகவல் தொழில்நுட்ப சாதனங்களுக்கு பொருந்தும்.",
             "sections": {
-                "1.1": {
-                    "clause_title": "உட்பட்ட உபகரணங்கள்",
-                    "content": "மடிக்கணினிகள், பவர் அடாப்டர்கள், தரவு சேமிப்பு மற்றும் நெட்வொர்க் சாதனங்கள் உள்ளிட்ட தகவல் தொழில்நுட்ப சாதனங்களுக்கு இந்த தரநிலை பொருந்தும்."
-                },
-                "1.7": {
-                    "clause_title": "குறியிடுதல் மற்றும் வழிமுறைகள்",
-                    "content": "சாதனங்களில் திட்டம்-II (CRS) இன் கீழ் தரநிலை எண் மற்றும் பதிவு எண் R-XXXXXXXX கொண்ட முத்திரை இருக்க வேண்டும்."
-                }
+                "1.1": {"clause_title": "உட்பட்ட உபகரணங்கள்", "content": "மடிக்கணினிகள், பவர் அடாப்டர்கள், தரவு சேமிப்பு மற்றும் நெட்வொர்க் சாதனங்கள் உள்ளிட்ட தகவல் தொழில்நுட்ப சாதனங்களுக்கு இந்த தரநிலை பொருந்தும்."},
+                "1.7": {"clause_title": "குறியிடுதல் மற்றும் வழிமுறைகள்", "content": "சாதனங்களில் திட்டம்-II (CRS) இன் கீழ் தரநிலை எண் மற்றும் பதிவு எண் R-XXXXXXXX கொண்ட முத்திரை இருக்க வேண்டும்."}
             }
         },
-        "std-17803": {
-            "title": "மின்சார கூரை மின்விசிறிகள் - விவரக்குறிப்பு",
-            "division": "மின் தொழில்நுட்பம்",
-            "qco_order_number": "கூரை மின்விசிறி தரக் கட்டுப்பாடு ஆணை, 2023",
-            "scope_summary": "வீட்டு மற்றும் வணிக பயன்பாட்டிற்கான கூரை மின்விசிறிகளின் மின் நுகர்வு, காற்று விநியோகம் மற்றும் பாதுகாப்பு தேவைகளை வரையறுக்கிறது.",
-            "sections": {
-                "1.1": {
-                    "clause_title": "நோக்கம்",
-                    "content": "BLDC மோட்டார் விசிறிகள் உட்பட அனைத்து மின்சார கூரை மின்விசிறிகளையும் உள்ளடக்கியது."
-                }
-            }
+        "std-62368-1": {
+            "title": "ஆடியோ/வீடியோ, தகவல் மற்றும் தொடர்பு தொழில்நுட்ப உபகரணங்கள் - பகுதி 1: பாதுகாப்பு தேவைகள்",
+            "division": "மின்னணுவியல் & தகவல் தொழில்நுட்பம்",
+            "product_category": "ஆடியோ/வீடியோ & தகவல் தொழில்நுட்ப உபகரணங்கள்",
+            "qco_order_number": "மின்னணுவியல் மற்றும் தகவல் தொழில்நுட்ப பொருட்கள் (கட்டாய பதிவு) ஆணை",
+            "qco_notifying_ministry": "மின்னணுவியல் மற்றும் தகவல் தொழில்நுட்ப அமைச்சகம் (MeitY)",
+            "scope_summary": "ஆடியோ, வீடியோ, தகவல் மற்றும் தொடர்பு தொழில்நுட்பம் மற்றும் வணிக சாதனங்களுக்கான ஆபத்து அடிப்படையிலான பாதுகாப்பு பொறியியல் தரநிலை."
+        },
+        "std-16046-2": {
+            "title": "கையடக்க பயன்பாடுகளுக்கான இரண்டாம் நிலை லித்தியம் செல்கள் மற்றும் பேட்டரிகள் - பாதுகாப்பு தேவைகள்",
+            "division": "மின்னணுவியல் & தகவல் தொழில்நுட்பம்",
+            "product_category": "லித்தியம்-அயன் செல்கள் மற்றும் பேட்டரி பேக்குகள்",
+            "qco_order_number": "மின்னணுவியல் மற்றும் தகவல் தொழில்நுட்ப பொருட்கள் (கட்டாய பதிவு) ஆணை (CRO / Scheme-II CRS)",
+            "qco_notifying_ministry": "மின்னணுவியல் மற்றும் தகவல் தொழில்நுட்ப அமைச்சகம் (MeitY)",
+            "scope_summary": "கையடக்க மின்னணு சாதனங்களுக்கான (ஸ்மார்ட்போன்கள், மடிக்கணினிகள்) சீல் செய்யப்பட்ட இரண்டாம் நிலை லித்தியம் செல்கள் மற்றும் பேட்டரிகளின் பாதுகாப்பான செயல்பாட்டிற்கான தேவைகளை குறிப்பிடுகிறது."
+        },
+        "std-616": {
+            "title": "ஆடியோ, வீடியோ மற்றும் ஒத்த மின்னணு சாதனங்கள் - பாதுகாப்பு தேவைகள்",
+            "division": "மின்னணுவியல் & தகவல் தொழில்நுட்பம்",
+            "product_category": "நுகர்வோர் ஆடியோ மற்றும் வீடியோ மின்னணுவியல்",
+            "qco_order_number": "மின்னணுவியல் மற்றும் தகவல் தொழில்நுட்ப பொருட்கள் (கட்டாய பதிவு) ஆணை (CRO)",
+            "qco_notifying_ministry": "மின்னணுவியல் மற்றும் தகவல் தொழில்நுட்ப அமைச்சகம் (MeitY)",
+            "scope_summary": "தொலைக்காட்சி பெறுநர்கள், ஆடியோ பெருக்கிகள் மற்றும் மல்டிமீடியா மானிட்டர்களின் பாதுகாப்பிற்கு பொருந்தும்."
+        },
+        "std-16333-3": {
+            "title": "மொபைல் போன் கைபேசிகள் - பகுதி 3: இந்திய மொழி ஆதரவு - குறிப்பிட்ட தேவைகள்",
+            "division": "மின்னணுவியல் & தகவல் தொழில்நுட்பம்",
+            "product_category": "மொபைல் போன்கள் மற்றும் தொலைத்தொடர்பு",
+            "qco_order_number": "மொபைல் போன்களுக்கான இந்திய மொழி ஆதரவு (கட்டாய பதிவு) ஆணை",
+            "qco_notifying_ministry": "மின்னணுவியல் மற்றும் தகவல் தொழில்நுட்ப அமைச்சகம் (MeitY)",
+            "scope_summary": "இந்தியாவின் அனைத்து 22 அதிகாரப்பூர்வ திட்டமிடப்பட்ட மொழிகளுக்கும் மொபைல் போன்களில் இந்திய மொழி உரையை உள்ளிடுவதற்கும் படிப்பதற்கும் தேவைகளை நிர்ணயிக்கிறது."
+        },
+        "std-456": {
+            "title": "சாதாரண மற்றும் வலுவூட்டப்பட்ட கான்கிரீட் - நடைமுறை குறியீடு (நான்காவது திருத்தம்)",
+            "division": "கட்டுமானப் பொறியியல்",
+            "product_category": "கட்டமைப்பு பொறியியல் மற்றும் கான்கிரீட்",
+            "qco_order_number": None,
+            "qco_notifying_ministry": None,
+            "scope_summary": "கட்டுமானத்தில் சாதாரண மற்றும் வலுவூட்டப்பட்ட கான்கிரீட்டின் பொதுவான கட்டமைப்பு பயன்பாட்டைக் குறிக்கிறது. ஆயுள், வடிவமைப்பு மற்றும் பொருட்களின் தேவைகளை அமைக்கிறது."
+        },
+        "std-12269": {
+            "title": "சாதாரண போர்ட்லேண்ட் சிமெண்ட், 53 தரம் - விவரக்குறிப்பு (முதல் திருத்தம்)",
+            "division": "கட்டுமானப் பொறியியல்",
+            "product_category": "சிமெண்ட் மற்றும் கட்டிடப் பொருட்கள்",
+            "qco_order_number": "சிமெண்ட் (தரக் கட்டுப்பாடு) ஆணை, 2024",
+            "qco_notifying_ministry": "வர்த்தகம் மற்றும் தொழில்துறை அமைச்சகம் (DPIIT)",
+            "scope_summary": "28 நாட்களில் 53 MPa க்கும் குறையாத அழுத்த வலிமை கொண்ட 53 தர சாதாரண போர்ட்லேண்ட் சிமெண்டின் உற்பத்தி மற்றும் வேதியியல்/உடல் தேவைகளை உள்ளடக்கியது."
+        },
+        "std-1489-1": {
+            "title": "போர்ட்லேண்ட் போஸோலானா சிமெண்ட் - விவரக்குறிப்பு - பகுதி 1: நிலக்கரி சாம்பல் அடிப்படையிலானது (மூன்றாவது திருத்தம்)",
+            "division": "கட்டுமானப் பொறியியல்",
+            "product_category": "சிமெண்ட் மற்றும் கட்டிடப் பொருட்கள்",
+            "qco_order_number": "சிமெண்ட் (தரக் கட்டுப்பாடு) ஆணை, 2024",
+            "qco_notifying_ministry": "வர்த்தகம் மற்றும் தொழில்துறை அமைச்சகம் (DPIIT)",
+            "scope_summary": "நிலக்கரி சாம்பல் அடிப்படையிலான போர்ட்லேண்ட் போஸோலானா சிமெண்டிற்கான (PPC) தேவைகளை நிர்ணயிக்கிறது."
+        },
+        "std-1786": {
+            "title": "கான்கிரீட் வலுவூட்டலுக்கான உயர் வலிமை சிதைக்கப்பட்ட எஃகு கம்பிகள் (TMT) - விவரக்குறிப்பு (நான்காவது திருத்தம்)",
+            "division": "கட்டுமானப் பொறியியல்",
+            "product_category": "கட்டமைப்பு எஃகு மற்றும் TMT கம்பிகள்",
+            "qco_order_number": "எஃகு மற்றும் எஃகு பொருட்கள் (தரக் கட்டுப்பாடு) ஆணை, 2020",
+            "qco_notifying_ministry": "எஃகு அமைச்சகம் (Ministry of Steel)",
+            "scope_summary": "கான்கிரீட்டில் வலுவூட்டலாகப் பயன்படுத்துவதற்கான உயர் வலிமை சிதைக்கப்பட்ட எஃகு கம்பிகள் மற்றும் கம்பிகளின் (Fe 415, Fe 500, Fe 500D) தொழில்நுட்பத் தேவைகளை உள்ளடக்கியது."
         },
         "std-14543": {
-            "title": "பேக்கேஜ் செய்யப்பட்ட குடிநீர் (இயற்கை கனிம நீர் தவிர்த்து) - விவரக்குறிப்பு",
+            "title": "பேக்கேஜ் செய்யப்பட்ட குடிநீர் (இயற்கை கனிம நீர் தவிர்த்து) - விவரக்குறிப்பு (இரண்டாவது திருத்தம்)",
             "division": "உணவு மற்றும் விவசாயம்",
-            "qco_order_number": "உணவு கலப்பட தடுப்பு / FSSAI & BIS கட்டாய சான்றிதழ் ஆணை",
-            "scope_summary": "மனித நுகர்வுக்காக வழங்கப்படும் பாட்டிலில் அடைக்கப்பட்ட குடிநீருக்கான தரத் தேவைகளை நிர்ணயிக்கிறது.",
+            "product_category": "பேக்கேஜ் செய்யப்பட்ட குடிநீர் & பானங்கள்",
+            "qco_order_number": "உணவு பாதுகாப்பு மற்றும் தரநிலைகள் மற்றும் கட்டாய BIS சான்றிதழ்",
+            "qco_notifying_ministry": "நுகர்வோர் விவகார அமைச்சகம் மற்றும் FSSAI",
+            "scope_summary": "மனித நுகர்வுக்காக வழங்கப்படும் பாட்டிலில் அடைக்கப்பட்ட குடிநீருக்கான தரத் தேவைகள் மற்றும் சோதனை முறைகளை நிர்ணயிக்கிறது.",
             "sections": {
-                "1.1": {
-                    "clause_title": "நோக்கம்",
-                    "content": "வடிகட்டுதல், கனிம நீக்கம், RO மற்றும் கிருமி நீக்கம் செய்யப்பட்ட குடிநீருக்கு இந்த தரநிலை பொருந்தும்."
-                }
+                "1.1": {"clause_title": "நோக்கம்", "content": "வடிகட்டுதல், கனிம நீக்கம், RO மற்றும் கிருமி நீக்கம் செய்யப்பட்ட குடிநீருக்கு இந்த தரநிலை பொருந்தும்."}
             }
+        },
+        "std-13428": {
+            "title": "பேக்கேஜ் செய்யப்பட்ட இயற்கை கனிம நீர் - விவரக்குறிப்பு (இரண்டாவது திருத்தம்)",
+            "division": "உணவு மற்றும் விவசாயம்",
+            "product_category": "பேக்கேஜ் செய்யப்பட்ட குடிநீர் & பானங்கள்",
+            "qco_order_number": "FSSAI & BIS கட்டாய சான்றிதழ் ஆணை",
+            "qco_notifying_ministry": "நுகர்வோர் விவகார அமைச்சகம் மற்றும் FSSAI",
+            "scope_summary": "கனிம அமைப்பை மாற்றாமல் நேரடியாக இயற்கை நிலத்தடி அல்லது நீரூற்று மூலங்களிலிருந்து பெறப்படும் இயற்கை கனிம நீருக்கான தேவைகளை நிர்ணயிக்கிறது."
+        },
+        "std-10500": {
+            "title": "குடிநீர் - விவரக்குறிப்பு (இரண்டாவது திருத்தம்)",
+            "division": "உணவு மற்றும் விவசாயம்",
+            "product_category": "குடிநீர் தர அளவுகோல்",
+            "qco_order_number": None,
+            "qco_notifying_ministry": "ஜல் சக்தி அமைச்சகம்",
+            "scope_summary": "வீட்டு விநியோகத்திற்கான குடிநீரின் இயற்பியல், வேதியியல் மற்றும் நுண்ணுயிரியல் பண்புகளுக்கான ஏற்றுக்கொள்ளக்கூடிய வரம்புகளை நிர்ணயிக்கிறது."
+        },
+        "std-11536": {
+            "title": "குழந்தைகளுக்கான பதப்படுத்தப்பட்ட தானிய அடிப்படையிலான துணை உணவுகள் - விவரக்குறிப்பு",
+            "division": "உணவு மற்றும் விவசாயம்",
+            "product_category": "குழந்தை உணவு மற்றும் ஊட்டச்சத்து",
+            "qco_order_number": "குழந்தை உணவு கட்டாய BIS சான்றிதழ் ஆணை",
+            "qco_notifying_ministry": "பெண்கள் மற்றும் குழந்தைகள் மேம்பாட்டு அமைச்சகம் & FSSAI",
+            "scope_summary": "குழந்தைகளுக்கான தானிய அடிப்படையிலான துணை உணவுகளுக்கான தேவைகள், ஊட்டச்சத்து கலவை மற்றும் சோதனை முறைகளை நிர்ணயிக்கிறது."
+        },
+        "std-17526": {
+            "title": "துருப்பிடிக்காத எஃகு வெற்றிட பிளாஸ்க்குகள் / இன்சுலேட்டட் பாட்டில்கள் மற்றும் கொள்கலன்கள் - விவரக்குறிப்பு",
+            "division": "இயந்திரப் பொறியியல்",
+            "product_category": "இன்சுலேட்டட் கொள்கலன்கள் மற்றும் பாத்திரங்கள்",
+            "qco_order_number": "வீட்டு உபயோகத்திற்கான இன்சுலேட்டட் பிளாஸ்க்குகள், பாட்டில்கள் மற்றும் கொள்கலன்கள் (தரக் கட்டுப்பாடு) ஆணை, 2023",
+            "qco_notifying_ministry": "வர்த்தகம் மற்றும் தொழில்துறை அமைச்சகம் (DPIIT)",
+            "scope_summary": "வீட்டு மற்றும் வணிக துருப்பிடிக்காத எஃகு இன்சுலேட்டட் பிளாஸ்க்குகள், தண்ணீர் பாட்டில்கள் மற்றும் பான கொள்கலன்களுக்கான உற்பத்தி, பொருள் மற்றும் செயல்திறன் தேவைகளை குறிப்பிடுகிறது."
+        },
+        "std-4151": {
+            "title": "இரு சக்கர வாகன ஓட்டிகளுக்கான பாதுகாப்பு தலைக்கவசங்கள் (ஹெல்மெட்) - விவரக்குறிப்பு (நான்காவது திருத்தம்)",
+            "division": "இயந்திரப் பொறியியல்",
+            "product_category": "தனிநபர் பாதுகாப்பு உபகரணங்கள்",
+            "qco_order_number": "இரு சக்கர வாகன ஓட்டிகளுக்கான ஹெல்மெட் (தரக் கட்டுப்பாடு) ஆணை, 2020",
+            "qco_notifying_ministry": "சாலைப் போக்குவரத்து மற்றும் நெடுஞ்சாலைகள் அமைச்சகம் (MoRTH)",
+            "scope_summary": "இரு சக்கர வாகன ஓட்டிகளுக்கான பாதுகாப்பு ஹெல்மெட்டுகளின் பொருட்கள், கட்டுமானம், எடை (அதிகபட்சம் 1.2 கிலோ), தாக்கத்தை உறிஞ்சுதல் மற்றும் செயல்திறன் சோதனை ஆகியவற்றின் தேவைகளை நிர்ணயிக்கிறது."
+        },
+        "std-9873-1": {
+            "title": "விளையாட்டுப் பொருட்களின் பாதுகாப்பு - பகுதி 1: இயந்திர மற்றும் இயற்பியல் பண்புகள் தொடர்பான பாதுகாப்பு அம்சங்கள்",
+            "division": "இயந்திரப் பொறியியல்",
+            "product_category": "விளையாட்டுப் பொருட்கள் & குழந்தைகள் பராமரிப்பு பொருட்கள்",
+            "qco_order_number": "விளையாட்டுப் பொருட்கள் (தரக் கட்டுப்பாடு) ஆணை, 2020",
+            "qco_notifying_ministry": "வர்த்தகம் மற்றும் தொழில்துறை அமைச்சகம் (DPIIT)",
+            "scope_summary": "14 வயது வரையிலான குழந்தைகள் பயன்படுத்தும் பொம்மைகளின் இயற்பியல் மற்றும் இயந்திர அம்சங்களுக்கான (மூச்சுத்திணறல் அபாயங்கள், கூர்மையான விளிம்புகளைத் தடுத்தல்) ஏற்றுக்கொள்ளக்கூடிய அளவுகோல்களைக் குறிப்பிடுகிறது."
+        },
+        "std-9873-3": {
+            "title": "விளையாட்டுப் பொருட்களின் பாதுகாப்பு - பகுதி 3: நச்சு கனரக உலோக இடம்பெயர்வு வரம்புகள்",
+            "division": "இயந்திரப் பொறியியல்",
+            "product_category": "விளையாட்டுப் பொருட்கள் & குழந்தைகள் பராமரிப்பு பொருட்கள்",
+            "qco_order_number": "விளையாட்டுப் பொருட்கள் (தரக் கட்டுப்பாடு) ஆணை, 2020",
+            "qco_notifying_ministry": "வர்த்தகம் மற்றும் தொழில்துறை அமைச்சகம் (DPIIT)",
+            "scope_summary": "பொம்மைப் பொருட்களிலிருந்து நச்சுத் தனிமங்களின் (ஈயம், காட்மியம், பாதரசம், ஆர்சனிக்) அதிகபட்ச அனுமதிக்கப்பட்ட இடம்பெயர்வு வரம்புகளைக் குறிப்பிடுகிறது."
+        },
+        "std-7285-1": {
+            "title": "மீண்டும் நிரப்பக்கூடிய தடையற்ற எஃகு எரிவாயு சிலிண்டர்கள் - பகுதி 1: இயல்பாக்கப்பட்ட எஃகு சிலிண்டர்கள் (மூன்றாவது திருத்தம்)",
+            "division": "இயந்திரப் பொறியியல்",
+            "product_category": "அழுத்தக் கலன்கள் மற்றும் எரிவாயு சிலிண்டர்கள்",
+            "qco_order_number": "எரிவாயு சிலிண்டர்கள் விதிகள் மற்றும் கட்டாய BIS சான்றிதழ் (PESO கட்டளை)",
+            "qco_notifying_ministry": "வர்த்தகம் மற்றும் தொழில்துறை அமைச்சகம் (PESO / DPIIT)",
+            "scope_summary": "சுருக்கப்பட்ட, திரவமாக்கப்பட்ட மற்றும் கரைந்த வாயுக்களுக்கான 0.5 லிட்டர் முதல் 150 லிட்டர் வரையிலான தடையற்ற எஃகு எரிவாயு சிலிண்டர்களுக்கான தேவைகளை நிர்ணயிக்கிறது."
+        },
+        "std-3196-1": {
+            "title": "வெல்டட் குறைந்த கார்பன் எஃகு எல்பிஜி எரிவாயு சிலிண்டர்கள் - விவரக்குறிப்பு (ஐந்தாவது திருத்தம்)",
+            "division": "இயந்திரப் பொறியியல்",
+            "product_category": "அழுத்தக் கலன்கள் மற்றும் எரிவாயு சிலிண்டர்கள்",
+            "qco_order_number": "எல்பிஜி எரிவாயு சிலிண்டர்கள் (தரக் கட்டுப்பாடு) ஆணை / PESO கட்டளை",
+            "qco_notifying_ministry": "பெட்ரோலியம் மற்றும் இயற்கை எரிவாயு அமைச்சகம் மற்றும் PESO",
+            "scope_summary": "வீட்டு 14.2 கிலோ மற்றும் வணிக 19 கிலோ வெல்டட் எஃகு எல்பிஜி சிலிண்டர்களின் வடிவமைப்பு, கட்டுமானம் மற்றும் சோதனையை குறிப்பிடுகிறது."
+        },
+        "std-6911": {
+            "title": "துருப்பிடிக்காத எஃகு தகடு, தாள் மற்றும் பட்டை - விவரக்குறிப்பு (முதல் திருத்தம்)",
+            "division": "உலோகவியல் பொறியியல்",
+            "product_category": "துருப்பிடிக்காத எஃகு மற்றும் உலோகவியல்",
+            "qco_order_number": "துருப்பிடிக்காத எஃகு பொருட்கள் (தரக் கட்டுப்பாடு) ஆணை, 2020",
+            "qco_notifying_ministry": "எஃகு அமைச்சகம் (Ministry of Steel)",
+            "scope_summary": "உணவுப் பாத்திரங்கள், தண்ணீர் கொள்கலன்கள் மற்றும் தொழில்துறை உற்பத்திக்காகப் பயன்படுத்தப்படும் துருப்பிடிக்காத எஃகு தகடுகளுக்கான வேதியியல் கலவை மற்றும் இயந்திர பண்புகளை நிர்ணயிக்கிறது."
+        },
+        "std-2062": {
+            "title": "சூடான உருட்டப்பட்ட நடுத்தர மற்றும் உயர் இழுவிசை கட்டமைப்பு எஃகு - விவரக்குறிப்பு (ஏழாவது திருத்தம்)",
+            "division": "உலோகவியல் பொறியியல்",
+            "product_category": "கட்டமைப்பு எஃகு மற்றும் உலோகவியல்",
+            "qco_order_number": "எஃகு மற்றும் எஃகு பொருட்கள் (தரக் கட்டுப்பாடு) ஆணை, 2020",
+            "qco_notifying_ministry": "எஃகு அமைச்சகம் (Ministry of Steel)",
+            "scope_summary": "பாலங்கள், கட்டிடங்கள், பரிமாற்றக் கோபுரங்கள் மற்றும் பொதுப் பொறியியல் உற்பத்திக்கான கட்டமைப்பு எஃகிற்கான தேவைகளை நிர்ணயிக்கிறது."
+        },
+        "std-14110": {
+            "title": "தங்கம் மற்றும் வெள்ளி உலோகக்கலவைகள் - தூய்மை சோதனை (தீ மதிப்பீடு மற்றும் XRF முறைகள்)",
+            "division": "உலோகவியல் பொறியியல்",
+            "product_category": "விலைமதிப்பற்ற உலோகங்கள் மற்றும் ஹால்மார்க்கிங்",
+            "qco_order_number": "தங்க நகைகள் மற்றும் கலைப்பொருட்கள் ஹால்மார்க்கிங் ஆணை, 2020",
+            "qco_notifying_ministry": "நுகர்வோர் விவகாரங்கள், உணவு மற்றும் பொது விநியோக அமைச்சகம்",
+            "scope_summary": "BIS அங்கீகரிக்கப்பட்ட மதிப்பீடு மற்றும் ஹால்மார்க்கிங் மையங்களில் (AHC) தங்கம் மற்றும் வெள்ளி நகைகளின் தூய்மையை சரிபார்ப்பதற்கான மதிப்பீடு மற்றும் சோதனை முறைகளை நிர்ணயிக்கிறது."
+        },
+        "std-10177": {
+            "title": "காஸ்டிக் சோடா, தூய மற்றும் தொழில்நுட்ப - விவரக்குறிப்பு (முதல் திருத்தம்)",
+            "division": "வேதியியல்",
+            "product_category": "தொழில்துறை இரசாயனங்கள் மற்றும் காரங்கள்",
+            "qco_order_number": "காஸ்டிக் சோடா (தரக் கட்டுப்பாடு) ஆணை, 2018",
+            "qco_notifying_ministry": "இரசாயனங்கள் மற்றும் பெட்ரோ கெமிக்கல்கள் துறை",
+            "scope_summary": "தொழில்துறை பயன்பாட்டிற்கான காஸ்டிக் சோடாவுக்கான (சோடியம் ஹைட்ராக்சைடு, NaOH) தேவைகள் மற்றும் சோதனை முறைகளை நிர்ணயிக்கிறது."
+        },
+        "std-5145": {
+            "title": "மோல்டிங் மற்றும் எக்ஸ்ட்ரூஷனுக்கான பாலிஎதிலீன் பொருள் - விவரக்குறிப்பு (இரண்டாவது திருத்தம்)",
+            "division": "வேதியியல்",
+            "product_category": "பாலிமர்கள் மற்றும் பிளாஸ்டிக் மூலப்பொருட்கள்",
+            "qco_order_number": "மோல்டிங் மற்றும் எக்ஸ்ட்ரூஷனுக்கான பாலிஎதிலீன் பொருள் (தரக் கட்டுப்பாடு) ஆணை, 2021",
+            "qco_notifying_ministry": "இரசாயனங்கள் மற்றும் பெட்ரோ கெமிக்கல்கள் துறை",
+            "scope_summary": "மோல்டிங், எக்ஸ்ட்ரூஷன், பைப் மற்றும் கொள்கலன் உற்பத்திக்கான பாலிஎதிலீன் பொருட்களுக்கான (LDPE, LLDPE, HDPE) தேவைகளை நிர்ணயிக்கிறது."
+        },
+        "std-13422": {
+            "title": "ஒற்றை பயன்பாட்டிற்கான மலட்டு ஹைப்போடெர்மிக் சிரிஞ்ச்கள் - விவரக்குறிப்பு (முதல் திருத்தம்)",
+            "division": "மருத்துவ உபகரணங்கள் மற்றும் சுகாதார பராமரிப்பு",
+            "product_category": "மருத்துவ உபகரணங்கள் & சாதனங்கள்",
+            "qco_order_number": "மருத்துவ சாதனங்கள் விதிகள் மற்றும் கட்டாய BIS தரக் கட்டளை",
+            "qco_notifying_ministry": "சுகாதாரம் மற்றும் குடும்ப நல அமைச்சகம் (CDSCO) & BIS",
+            "scope_summary": "மருந்துகளை செலுத்துவதற்கும் திரவங்களை உறிஞ்சுவதற்கும் பிளாஸ்டிக் பொருட்களால் செய்யப்பட்ட ஒற்றை பயன்பாட்டு மலட்டு ஹைப்போடெர்மிக் சிரிஞ்ச்களுக்கான தேவைகள் மற்றும் சோதனைகளை நிர்ணயிக்கிறது."
         }
     }
 }
 
 VERIFIED_SCHEMES: List[Dict[str, Any]] = [
     {
-        "scheme_code": "SCHEME_I_ISI",
-        "name": "Scheme-I: Product Certification (ISI Mark)",
-        "description": "BIS Product Certification Scheme for domestic and foreign manufacturers granting license to use the Standard Mark (ISI mark) based on conformity assessment, factory quality audit, and testing in BIS recognized labs.",
-        "applicable_sectors": ["Electrical Appliances", "Cables", "Automotive components", "Steel products", "Packaged Water", "Cement"],
-        "application_procedure_summary": "1. Application submission on ManakOnline -> 2. Document audit -> 3. Preliminary factory inspection & sample drawl -> 4. Testing at BIS recognized lab -> 5. Grant of License -> 6. Periodic surveillance.",
-        "required_documents_checklist": [
-            "Proof of factory establishment (Registration certificate)",
-            "Manufacturing machinery list and capacity",
-            "In-house testing equipment with valid calibration certificates",
-            "Plant layout and process flow chart",
-            "Appointment letter of qualified quality control personnel",
-            "Agreement/undertaking with raw material suppliers"
+        "scheme_code": "SCHEME_I_ISI_NORMAL",
+        "legacy_aliases": ["SCHEME_I_ISI"],
+        "name": "Scheme-I: Product Certification — Normal Procedure (Option 1 - ISI Mark)",
+        "classification": "Product Conformity Assessment (Standard Mark / ISI Mark)",
+        "manufacturer_scope": "DOMESTIC",
+        "legal_act_and_regulation": "BIS Act, 2016 (Sections 13, 14, 15) & BIS (Conformity Assessment) Regulations, 2018 (Schedule I, Option 1)",
+        "official_reference_url": "https://www.bis.gov.in/product-certification/product-certification-overview/",
+        "source_verification_date": "2026-10-10",
+        "data_confidence": "OFFICIAL_STATUTORY_VERIFIED",
+        "last_reviewed": "2026-10-10",
+        "description": "Statutory product certification scheme granting domestic manufacturers a license (CM/L) to use the Standard Mark (ISI mark) based on factory infrastructure audit, in-house testing capability evaluation, sample drawl, and complete testing at BIS recognized laboratories.",
+        "applicable_sectors": [
+            "Electrical Cables & Wires",
+            "Cement & Construction Materials",
+            "Automotive Safety Components",
+            "Packaged Drinking Water & Mineral Water",
+            "Structural Steel Products",
+            "Chemicals & Fertilizers"
         ],
-        "fee_structure_summary": "Application fee: Rs. 1,000; Annual License fee: Rs. 1,000; Marking fee calculated per unit output as per BIS schedule."
+        "application_procedure_summary": "1. Application submission on ManakOnline -> 2. Scrutiny of application & technical documentation -> 3. Preliminary on-site factory inspection & sample drawl -> 4. Complete independent testing at BIS or recognized laboratory -> 5. Verification of Scheme of Inspection & Testing (SIT) -> 6. Grant of License (CM/L) -> 7. Periodic surveillance & market sample drawl.",
+        "required_documents_checklist": [
+            "Proof of factory establishment (Registration certificate, MSME/Udyam, or ROC incorporation)",
+            "Manufacturing machinery list with capacity, power rating, and operational status",
+            "In-house testing equipment list conforming to BIS Scheme of Inspection & Testing (SIT)",
+            "Valid calibration certificates from NABL-accredited labs for all testing instruments",
+            "Plant layout plan and step-by-step manufacturing process flowchart",
+            "Appointment letters and technical qualification certificates of Quality Control personnel",
+            "Raw material test certificates and test records"
+        ],
+        "fee_structure_summary": "Application fee: Rs. 1,000; Preliminary inspection charges: Rs. 7,000 per man-day; Product testing charges as per laboratory schedule; Annual license fee: Rs. 1,000; Minimum marking fee payable annually in advance."
+    },
+    {
+        "scheme_code": "SCHEME_I_ISI_SIMPLIFIED",
+        "legacy_aliases": ["SCHEME_I_SIMPLIFIED"],
+        "name": "Scheme-I: Product Certification — Simplified Procedure (Option 2 - Fast-Track ISI Mark)",
+        "classification": "Product Conformity Assessment (Fast-Track License Grant within 30 Days)",
+        "manufacturer_scope": "DOMESTIC",
+        "legal_act_and_regulation": "BIS Act, 2016 & BIS (Conformity Assessment) Regulations, 2018 (Schedule I, Option 2 / Guidelines for Simplified Procedure)",
+        "official_reference_url": "https://www.bis.gov.in/product-certification/process-flow/",
+        "source_verification_date": "2026-10-10",
+        "data_confidence": "OFFICIAL_STATUTORY_VERIFIED",
+        "last_reviewed": "2026-10-10",
+        "description": "Fast-track product certification procedure enabling domestic manufacturing units to obtain an ISI license within 30 days based on self-declaration, complete in-house testing compliance, and independent test reports from BIS recognized/NABL accredited laboratories, followed by a post-grant verification inspection.",
+        "applicable_sectors": [
+            "Domestic Electrical Appliances",
+            "Toys & Child-care Articles",
+            "Plywood & Wooden Products",
+            "Sanitaryware & Pipes",
+            "Mechanical Fasteners & Hand Tools",
+            "General Consumer Goods"
+        ],
+        "application_procedure_summary": "1. Sample testing at BIS-recognized or empanelled laboratory -> 2. Obtain complete passing test report (issued within 90 days) -> 3. Submit application on ManakOnline with complete test reports & SIT compliance undertaking -> 4. Document scrutiny & fast-track grant of license within 30 days -> 5. Mandatory post-grant factory audit within 30-90 days for verification.",
+        "required_documents_checklist": [
+            "Complete independent Test Report from BIS-recognized or NABL-accredited laboratory (issued within 90 days)",
+            "Factory registration proof (MSME / GST / Industrial License)",
+            "Undertaking to adhere strictly to BIS Scheme of Inspection and Testing (SIT)",
+            "List of manufacturing machinery and testing equipment with valid calibration certificates",
+            "Consent to allow post-grant verification inspection and sample drawl"
+        ],
+        "fee_structure_summary": "Application fee: Rs. 1,000; Annual license fee: Rs. 1,000; Advance minimum marking fee; Testing charges paid directly to testing laboratory."
+    },
+    {
+        "scheme_code": "SCHEME_I_FMCS",
+        "legacy_aliases": ["SCHEME_IV_FMCS"],
+        "name": "Scheme-I: Foreign Manufacturers Certification Scheme (FMCS)",
+        "classification": "Foreign Manufacturer Conformity Assessment (Standard Mark / ISI Mark for Overseas Plants)",
+        "manufacturer_scope": "FOREIGN",
+        "legal_act_and_regulation": "BIS Act, 2016 (Sections 13, 14, 15) & BIS (Conformity Assessment) Regulations, 2018 (Schedule I, Form-V / FMCS Operating Manual)",
+        "official_reference_url": "https://www.bis.gov.in/foreign-manufacturers-certification-scheme/",
+        "source_verification_date": "2026-10-10",
+        "data_confidence": "OFFICIAL_STATUTORY_VERIFIED",
+        "last_reviewed": "2026-10-10",
+        "description": "Dedicated product certification route under Scheme-I enabling foreign manufacturing facilities located outside India to obtain a BIS license to affix the ISI mark on goods exported to the Indian market. Requires appointing an Authorized Indian Representative (AIR), physical overseas plant inspection by BIS officers, and a USD Performance Bank Guarantee.",
+        "applicable_sectors": [
+            "Steel & Metallurgy Products",
+            "Automotive Tires & Tubes",
+            "Chemicals & Petrochemicals",
+            "Heavy Electrical Components",
+            "Foreign Manufacturers Exporting ISI-Mandated Goods to India"
+        ],
+        "application_procedure_summary": "1. Submission of Form-V on ManakOnline with AIR nomination -> 2. Technical scrutiny and inspection fee deposit -> 3. Physical on-site audit of overseas factory by BIS inspecting officer -> 4. Sample drawl during audit and air-freighting to recognized lab in India -> 5. Submission of USD 10,000 Performance Bank Guarantee (PBG) -> 6. Grant of FMCS License (CM/L) -> 7. Periodic overseas surveillance audits.",
+        "required_documents_checklist": [
+            "Official Business Registration / Industrial Incorporation License from country of origin (apostilled/notarized)",
+            "Authorized Indian Representative (AIR) nomination agreement and legal undertaking (Form-V)",
+            "Proof of AIR identity, PAN card, and Indian residential/business registration",
+            "Factory layout, process flow diagram, and manufacturing machinery inventory",
+            "Complete in-house testing equipment list with valid calibration traceability certificates",
+            "Performance Bank Guarantee (PBG) of USD 10,000 from an RBI-approved scheduled bank in India",
+            "Quality Control personnel organizational chart and technical qualifications"
+        ],
+        "fee_structure_summary": "Application fee: Rs. 1,000; Inspection charges: USD 7,000 to 10,000 (covering BIS officer travel, accommodation, DA, and man-day charges); USD 10,000 Performance Bank Guarantee; Annual marking fee in convertible foreign currency."
+    },
+    {
+        "scheme_code": "ECO_MARK",
+        "legacy_aliases": ["SCHEME_VI_ECO"],
+        "name": "ECO Mark Scheme (Environment-Friendly Product Certification under Scheme-I)",
+        "classification": "Environmental Labeling & Product Quality Certification",
+        "manufacturer_scope": "DOMESTIC_AND_FOREIGN",
+        "legal_act_and_regulation": "BIS Act, 2016 & BIS (Conformity Assessment) Regulations, 2018 (Schedule I) in coordination with Ministry of Environment, Forest and Climate Change (MoEFCC) Notifications",
+        "official_reference_url": "https://www.bis.gov.in/product-certification/eco-mark-scheme/",
+        "source_verification_date": "2026-10-10",
+        "data_confidence": "OFFICIAL_STATUTORY_VERIFIED",
+        "last_reviewed": "2026-10-10",
+        "description": "Voluntary labeling and conformity assessment scheme certifying that a product conforms to the relevant Indian Standard quality requirements (ISI mark) and additionally complies with rigorous environmental criteria relating to resource conservation, recyclable packaging, biodegradability, and absence of hazardous substances.",
+        "applicable_sectors": [
+            "Soaps & Detergents",
+            "Paints & Powder Coatings",
+            "Paper, Newsprint & Packaging Materials",
+            "Dry Cell & Lead-Acid Batteries",
+            "Cosmetics & Personal Care Products",
+            "Edible Oils & Tea",
+            "Wood Substitutes & Architectural Products",
+            "Textiles & Leather Goods"
+        ],
+        "application_procedure_summary": "1. Application under Scheme-I on ManakOnline specifying ECO Mark -> 2. Verification of compliance with relevant Indian Standard specifications -> 3. Testing of environmental criteria (heavy metals, biodegradability, recyclable packaging) at BIS recognized lab -> 4. Factory environmental compliance audit -> 5. Grant of composite ISI + ECO Mark (Earthen Pot symbol) license.",
+        "required_documents_checklist": [
+            "Standard Scheme-I product certification application and factory establishment documents",
+            "Consent to Operate from State Pollution Control Board (SPCB / CPCB)",
+            "Test reports demonstrating compliance with MoEFCC specific environmental criteria",
+            "Declaration and proof of recyclable/biodegradable packaging materials",
+            "Raw material composition declarations ensuring absence of restricted heavy metals and toxic chemicals"
+        ],
+        "fee_structure_summary": "Application fee: Rs. 1,000; Standard Scheme-I factory inspection and testing fees; Additional environmental parameter testing charges."
     },
     {
         "scheme_code": "SCHEME_II_CRS",
-        "name": "Scheme-II: Compulsory Registration Scheme (CRS)",
-        "description": "Self-declaration of conformity registration scheme specifically for Electronic and Information Technology goods notified by MeitY and Solar PV notified by MNRE.",
-        "applicable_sectors": ["Laptops", "Smartphones", "Power Adapters", "LED Lighting", "Smart Watches", "Servers"],
-        "application_procedure_summary": "1. Sample testing at BIS recognized lab in India -> 2. Receive valid Test Report -> 3. Apply on CRS portal within 90 days -> 4. Document verification -> 5. Grant of Registration number (R-XXXXXXXX) -> 6. Standard CRS label display.",
-        "required_documents_checklist": [
-            "Valid Test Report from BIS-recognized testing laboratory (issued within 90 days)",
-            "Trademark registration certificate or Authorization Letter",
-            "Undertaking and Affidavit of Authorized Indian Representative (AIR) for foreign OEMs",
-            "ISO 9001 quality certificate of manufacturing facility",
-            "Product label sample depicting the CRS Mark and R-Number format"
+        "legacy_aliases": ["CRS"],
+        "name": "Scheme-II: Compulsory Registration Scheme (CRS / Self-Declaration of Conformity)",
+        "classification": "Self-Declaration of Conformity (SDoC / R-Number Grant)",
+        "manufacturer_scope": "DOMESTIC_AND_FOREIGN",
+        "legal_act_and_regulation": "BIS Act, 2016 (Sections 16, 17) & BIS (Conformity Assessment) Regulations, 2018 (Schedule II) notified under MeitY CRO, MNRE Orders, and MoC&I Notifications",
+        "official_reference_url": "https://www.crsbis.in/",
+        "source_verification_date": "2026-10-10",
+        "data_confidence": "OFFICIAL_STATUTORY_VERIFIED",
+        "last_reviewed": "2026-10-10",
+        "description": "Statutory self-declaration of conformity registration scheme specifically applicable to Electronic and Information Technology goods notified by MeitY, Solar Photovoltaic products notified by MNRE, and Low-Voltage Switchgear. Grants a unique Registration Number (R-XXXXXXXX) based entirely on product testing at BIS-recognized laboratories without preliminary factory inspection.",
+        "applicable_sectors": [
+            "Laptops, Tablets & Notebook Computers",
+            "Smartphones & Feature Phones",
+            "Power Adapters & Fast USB Chargers",
+            "LED Luminaires & Drivers",
+            "Smart Watches & Wearable Electronics",
+            "Solar PV Modules & Solar Inverters",
+            "Servers, Data Storage & POS Terminals",
+            "Audio Systems & Smart TV Sets"
         ],
-        "fee_structure_summary": "Application fee: Rs. 10,000 per base model; Inclusion fee: Rs. 5,000 per additional model; Renewal every 2 years."
+        "application_procedure_summary": "1. Submit product sample for safety testing to a BIS-recognized laboratory in India -> 2. Receive valid Test Report (issued within 90 days) -> 3. Register user profile and submit online application on CRS portal (crsbis.in) -> 4. Scrutiny of test report and trademark authorization -> 5. Grant of CRS Registration number (R-XXXXXXXX) -> 6. Affix standard CRS Self-Declaration mark on product and packaging -> 7. Renewal every 2 years.",
+        "required_documents_checklist": [
+            "Valid Test Report from a BIS-recognized testing laboratory in India (issued within 90 days)",
+            "Trademark / Brand registration certificate or formal authorization letter from brand owner",
+            "Authorized Indian Representative (AIR) legal undertaking and affidavit (for foreign OEMs)",
+            "ISO 9001 quality management system certificate of the manufacturing plant",
+            "Product label sample depicting the Standard CRS Mark, IS standard number, and R-Number format",
+            "Business registration certificate / factory manufacturing license"
+        ],
+        "fee_structure_summary": "Application fee: Rs. 10,000 per base model; Inclusion fee: Rs. 5,000 per additional model / brand; Renewal fee: Rs. 10,000 for 2 years (plus government taxes); Testing charges payable to lab."
     },
     {
-        "scheme_code": "SCHEME_IV_FMCS",
-        "name": "Scheme-IV: Foreign Manufacturers Certification Scheme (FMCS)",
-        "description": "Dedicated product certification scheme enabling foreign manufacturing units located outside India to obtain a BIS license to mark goods exported to India with the ISI mark.",
-        "applicable_sectors": ["Global Manufacturers exporting regulated products to India"],
-        "application_procedure_summary": "1. Submission of Form-V with AIR details -> 2. BIS Officer factory audit visit -> 3. Independent sample drawl & air freight to Indian lab -> 4. Bank Guarantee & Performance indemnity -> 5. Grant of FMCS License.",
-        "required_documents_checklist": [
-            "Foreign Business Registration / Incorporation license",
-            "Authorized Indian Representative (AIR) nomination and legal agreement",
-            "Factory layout, process flowchart, and in-house testing capability",
-            "Performance Bank Guarantee (PBG) in USD"
+        "scheme_code": "SCHEME_III_COC",
+        "legacy_aliases": ["COC", "SCHEME_III"],
+        "name": "Scheme-III: Certificate of Conformity (CoC for Batch / Lot Certification)",
+        "classification": "Batch / Lot Inspection & Consignment Conformity Assessment",
+        "manufacturer_scope": "DOMESTIC_AND_FOREIGN",
+        "legal_act_and_regulation": "BIS Act, 2016 (Section 13) & BIS (Conformity Assessment) Regulations, 2018 (Schedule III)",
+        "official_reference_url": "https://www.bis.gov.in/conformity-assessment/",
+        "source_verification_date": "2026-10-10",
+        "data_confidence": "OFFICIAL_STATUTORY_VERIFIED",
+        "last_reviewed": "2026-10-10",
+        "description": "Conformity assessment scheme designed for specific batches, consignments, or custom lots of products where continuous factory manufacturing marking licenses are impractical. A Certificate of Conformity (CoC) is issued for a defined quantity after statistical sampling and laboratory evaluation.",
+        "applicable_sectors": [
+            "Custom-Engineered Industrial Equipment",
+            "Specific Imported Project Consignments",
+            "Offshore Oil & Gas Infrastructure Components",
+            "Special Alloy Structural Steel Batches",
+            "Prototype & Specialized Pre-commissioning Assemblies"
         ],
-        "fee_structure_summary": "Audit inspection man-day charges + travel/stay + USD 10,000 PBG + annual marking fee."
+        "application_procedure_summary": "1. Submission of application on ManakOnline specifying consignment details and lot size -> 2. Document scrutiny & inspection schedule -> 3. BIS officer visits storage / port warehouse to conduct statistical lot sampling -> 4. Testing of sample batch in BIS recognized laboratory -> 5. Verification of test compliance -> 6. Grant of Certificate of Conformity (CoC) for the inspected lot quantity.",
+        "required_documents_checklist": [
+            "Bill of Lading / Consignment Invoice / Commercial shipping invoice detailing exact batch quantity",
+            "Manufacturer's Certificate of Analysis (CoA) / Internal test certificates for the lot",
+            "Technical product specifications, engineering drawings, and safety data sheets",
+            "Declaration of warehouse/storage location for sample drawl inspection",
+            "Authorized Indian Representative / Importer legal registration documents"
+        ],
+        "fee_structure_summary": "Application fee: Rs. 1,000; Consignment inspection fee: Rs. 7,000 per man-day; Laboratory testing fees as per sample parameters; CoC issuance fee."
+    },
+    {
+        "scheme_code": "SCHEME_IV_MSCS",
+        "legacy_aliases": ["MSCS", "SCHEME_IV"],
+        "name": "Scheme-IV: Management Systems Certification Scheme (MSCS)",
+        "classification": "Management Systems Quality & Compliance Certification",
+        "manufacturer_scope": "ORGANIZATIONS_AND_LABS",
+        "legal_act_and_regulation": "BIS Act, 2016 (Section 13) & BIS (Conformity Assessment) Regulations, 2018 (Schedule IV)",
+        "official_reference_url": "https://www.bis.gov.in/management-systems-certification/",
+        "source_verification_date": "2026-10-10",
+        "data_confidence": "OFFICIAL_STATUTORY_VERIFIED",
+        "last_reviewed": "2026-10-10",
+        "description": "Statutory conformity assessment scheme certifying organizational management systems against international and national standards, including Quality Management (IS/ISO 9001), Environmental Management (IS/ISO 14001), Food Safety Management (IS/ISO 22000), Occupational Health & Safety (IS/ISO 45001), Energy Management (IS/ISO 50001), Information Security (IS/ISO 27001), and Medical Devices Quality (IS/ISO 13485).",
+        "applicable_sectors": [
+            "Quality Management Systems (QMS - IS/ISO 9001)",
+            "Environmental Management Systems (EMS - IS/ISO 14001)",
+            "Food Safety Management Systems (FSMS - IS/ISO 22000)",
+            "Occupational Health and Safety Management (OHSMS - IS/ISO 45001)",
+            "Energy Management Systems (EnMS - IS/ISO 50001)",
+            "Information Security Management Systems (ISMS - IS/ISO 27001)",
+            "Medical Devices Quality Management Systems (MDQMS - IS/ISO 13485)"
+        ],
+        "application_procedure_summary": "1. Online application on ManakOnline with Quality Manual and process documentation -> 2. Stage-1 Adequacy Audit (documentation review) -> 3. Stage-2 On-site Implementation Audit by BIS lead auditors -> 4. Review of non-conformity resolutions -> 5. Grant of Management Systems Certificate (valid 3 years) -> 6. Annual surveillance audits.",
+        "required_documents_checklist": [
+            "Quality Manual / Management System Manual aligned with the target standard",
+            "Process interaction charts and internal audit reports with management review minutes",
+            "Proof of organizational legal establishment and site registration",
+            "List of key quality objectives, hazard analysis (HACCP for FSMS), or risk registers",
+            "Statutory and regulatory compliance approvals (Pollution consent, Factory license, FSSAI where applicable)"
+        ],
+        "fee_structure_summary": "Application fee: Rs. 15,000; Audit fee: Rs. 12,000 per auditor per day; Annual license fee: Rs. 10,000; Surveillance audit charges as applicable."
+    },
+    {
+        "scheme_code": "SCHEME_X_CAPITAL_GOODS",
+        "legacy_aliases": ["SCHEME_X"],
+        "name": "Scheme-X: Capital Goods & Industrial Machinery Certification",
+        "classification": "Technical Construction File & In-Situ Industrial Machinery Certification",
+        "manufacturer_scope": "DOMESTIC_AND_FOREIGN",
+        "legal_act_and_regulation": "BIS Act, 2016 & BIS (Conformity Assessment) Regulations, 2018 (Schedule X / Capital Goods Conformity Framework)",
+        "official_reference_url": "https://www.bis.gov.in/product-certification/",
+        "source_verification_date": "2026-10-10",
+        "data_confidence": "OFFICIAL_STATUTORY_VERIFIED",
+        "last_reviewed": "2026-10-10",
+        "description": "Simplified conformity assessment framework specifically established for heavy capital goods, industrial machinery, high-voltage electrical apparatus, compressors, and pumps. Employs a Technical Construction File (TCF) evaluation coupled with type testing and in-situ on-site testing rather than standard high-volume assembly line inspection.",
+        "applicable_sectors": [
+            "Industrial Machinery & Machine Tools",
+            "Heavy Electrical Power Equipment & Switchgears",
+            "Industrial Compressors, Blowers & Centrifugal Pumps",
+            "High-Voltage Transformers & Power Conditioning Gear",
+            "Material Handling Systems, Cranes & Hoists",
+            "Industrial Automation & Process Control Units"
+        ],
+        "application_procedure_summary": "1. Preparation and compilation of Technical Construction File (TCF) -> 2. Application submission on ManakOnline under Scheme-X -> 3. Technical evaluation of design safety, risk analysis, and circuit diagrams -> 4. In-situ factory testing and on-site witnessing by BIS technical officers -> 5. Grant of License / Certificate of Conformity -> 6. Periodic technical surveillance.",
+        "required_documents_checklist": [
+            "Technical Construction File (TCF) containing safety schematics, mechanical drawings, and electrical ratings",
+            "Comprehensive Risk Assessment & Hazard Mitigation report conforming to IS/ISO 12100",
+            "In-house and on-site testing infrastructure capabilities for heavy load & insulation testing",
+            "Type test certificates for critical sub-assemblies and safety components (relays, breakers, motors)",
+            "Calibration certificates of precision test instrumentation"
+        ],
+        "fee_structure_summary": "Application fee: Rs. 1,000; Technical evaluation & inspection charges: Rs. 7,000 per man-day; Annual license fee: Rs. 1,000; Minimum marking fee according to capital equipment scale."
+    },
+    {
+        "scheme_code": "HALLMARKING",
+        "legacy_aliases": ["SCHEME_V_HALLMARK", "HALLMARK"],
+        "name": "Hallmarking Scheme: Precious Metals (Gold & Silver Jewellery with HUID)",
+        "classification": "Precious Metals Purity Certification (6-Digit HUID Laser Inscription)",
+        "manufacturer_scope": "DOMESTIC",
+        "legal_act_and_regulation": "BIS Act, 2016 (Sections 14, 15) & Bureau of Indian Standards (Hallmarking) Regulations, 2018",
+        "official_reference_url": "https://www.bis.gov.in/hallmarking-overview/",
+        "source_verification_date": "2026-10-10",
+        "data_confidence": "OFFICIAL_STATUTORY_VERIFIED",
+        "last_reviewed": "2026-10-10",
+        "description": "Mandatory purity certification scheme for gold and silver jewellery and artifacts sold to consumers in India. Hallmarking guarantees precious metal fineness and is performed exclusively through BIS recognized Assaying & Hallmarking Centres (AHC) using 6-digit alphanumeric Hallmark Unique Identification (HUID) laser engraving.",
+        "applicable_sectors": [
+            "Gold Jewellery & Gold Artifacts (IS 1417: 14K, 18K, 20K, 22K, 23K, 24K)",
+            "Silver Jewellery & Silver Artifacts (IS 2112: 800, 835, 900, 925, 970, 990)",
+            "Precious Metal Bullion, Ingots, Coins & Medallions"
+        ],
+        "application_procedure_summary": "1. One-time online registration on ManakOnline (instant automatic grant for retail jewellers) -> 2. Jeweller sends manufactured jewellery lots to a BIS-recognized Assaying & Hallmarking Centre (AHC) -> 3. AHC conducts non-destructive XRF assaying and confirmatory fire assay testing -> 4. AHC applies laser engraving of 3 marks: BIS Logo, Purity Grade, and 6-digit HUID -> 5. Verification on BIS Care App.",
+        "required_documents_checklist": [
+            "GST Registration Certificate of the jeweller retail/wholesale outlet",
+            "Proof of business establishment (Shop & Establishment License, Udyam MSME, or ROC Deed)",
+            "Proof of sales premises / workshop address and signatory PAN card",
+            "Self-declaration of annual business turnover"
+        ],
+        "fee_structure_summary": "Registration fee: Zero (exempted for retail jewellers); Hallmarking fee: Rs. 45 + GST per gold article, Rs. 35 + GST per silver article (paid to AHC)."
+    },
+    {
+        "scheme_code": "LABORATORY_RECOGNITION",
+        "legacy_aliases": ["LRS", "LIMS"],
+        "name": "Laboratory Recognition Scheme (LRS / LIMS Empanelment)",
+        "classification": "Testing Facility Empanelment & Accreditation for Statutory BIS Testing",
+        "manufacturer_scope": "ORGANIZATIONS_AND_LABS",
+        "legal_act_and_regulation": "BIS Act, 2016 (Sections 13, 20) & Bureau of Indian Standards Rules, 2018 (Rule 32 - Recognition of Laboratories)",
+        "official_reference_url": "https://www.bis.gov.in/laboratory-recognition-scheme/",
+        "source_verification_date": "2026-10-10",
+        "data_confidence": "OFFICIAL_STATUTORY_VERIFIED",
+        "last_reviewed": "2026-10-10",
+        "description": "Statutory recognition and empanelment scheme enabling commercial, government, and industrial testing laboratories to test sample batches for BIS product certification, CRS registrations, and market surveillance. Empanelled labs are integrated into the automated BIS Laboratory Information Management System (LIMS).",
+        "applicable_sectors": [
+            "Commercial & Independent Material Testing Laboratories",
+            "Government, CSIR & PSU Research Testing Centers",
+            "University & Institutional Analytical Laboratories",
+            "Automotive, Chemical, Electrical & Mechanical Testing Facilities"
+        ],
+        "application_procedure_summary": "1. Online application on BIS LIMS portal -> 2. Scrutiny of valid NABL accreditation (ISO/IEC 17025) across requested IS scopes -> 3. On-site technical assessment of laboratory infrastructure, equipment calibration, and testing personnel -> 4. Participation in Proficiency Testing (PT) / Inter-Laboratory Comparison (ILC) -> 5. Approval and grant of BIS Recognition (valid 3 years) -> 6. Automated sample allotment via LIMS.",
+        "required_documents_checklist": [
+            "Valid NABL Accreditation Certificate with detailed ISO/IEC 17025 scope schedule",
+            "Inventory of precision testing instruments with calibration certificates traceable to national standards (NPL)",
+            "Technical qualifications and experience records of testing and authorized signatory personnel",
+            "Satisfactory Proficiency Testing (PT) / Inter-Laboratory Comparison (ILC) reports for relevant Indian Standards",
+            "Quality Manual, standard test operating procedures (SOPs), and test log records"
+        ],
+        "fee_structure_summary": "Application fee: Rs. 20,000; Technical assessment fee: Rs. 12,000 per auditor per day; Annual recognition fee: Rs. 20,000; Security deposit as per BIS schedule."
     }
 ]
 
 SCHEMES_TRANSLATIONS: Dict[str, Dict[str, Any]] = {
     "hi": {
+        "SCHEME_I_ISI_NORMAL": {
+            "name": "योजना-I: उत्पाद प्रमाणन — सामान्य प्रक्रिया (विकल्प 1 - ISI मार्क)",
+            "classification": "उत्पाद अनुरूपता मूल्यांकन (मानक चिह्न / ISI मार्क)",
+            "description": "घरेलू निर्माताओं के लिए सांविधिक उत्पाद प्रमाणन योजना जो कारखाना गुणवत्ता ऑडिट, इन-हाउस परीक्षण क्षमता और बीआईएस मान्यता प्राप्त लैब में स्वतंत्र नमूना परीक्षण के आधार पर मानक चिह्न (ISI मार्क) का उपयोग करने का लाइसेंस (CM/L) प्रदान करती है।",
+            "applicable_sectors": ["विद्युत केबल एवं तार", "सीमेंट एवं निर्माण सामग्री", "ऑटोमोबाइल सुरक्षा घटक", "पैकेज्ड पेयजल एवं खनिज जल", "संरचनात्मक इस्पात उत्पाद", "रसायन एवं उर्वरक"],
+            "fee_structure_summary": "आवेदन शुल्क: रु. 1,000; प्रारंभिक निरीक्षण शुल्क: रु. 7,000 प्रति व्यक्ति-दिवस; वार्षिक लाइसेंस शुल्क: रु. 1,000; निर्धारित दरों के अनुसार अग्रिम न्यूनतम अंकन शुल्क।"
+        },
+        "SCHEME_I_ISI_SIMPLIFIED": {
+            "name": "योजना-I: उत्पाद प्रमाणन — सरलीकृत प्रक्रिया (विकल्प 2 - फास्ट-ट्रैक ISI मार्क)",
+            "classification": "उत्पाद अनुरूपता मूल्यांकन (30 दिनों के भीतर फास्ट-ट्रैक लाइसेंस)",
+            "description": "घरेलू निर्माताओं के लिए 30 दिनों के भीतर फास्ट-ट्रैक लाइसेंस प्रक्रिया जो बीआईएस मान्यता प्राप्त लैब से पारित परीक्षण रिपोर्ट और स्व-घोषणा के आधार पर त्वरित लाइसेंस प्रदान करती है, जिसके बाद सत्यापन ऑडिट किया जाता है।",
+            "applicable_sectors": ["घरेलू विद्युत उपकरण", "खिलौने और बाल उत्पाद", "प्लाईवुड एवं लकड़ी के उत्पाद", "सैनिटरीवेयर और पाइप", "फास्टनर्स और हाथ के औजार"],
+            "fee_structure_summary": "आवेदन शुल्क: रु. 1,000; वार्षिक लाइसेंस शुल्क: रु. 1,000; न्यूनतम अंकन शुल्क; परीक्षण शुल्क सीधे लैब को देय।"
+        },
+        "SCHEME_I_FMCS": {
+            "name": "योजना-I: विदेशी निर्माता प्रमाणन योजना (FMCS)",
+            "classification": "विदेशी निर्माता अनुरूपता मूल्यांकन (विदेशी संयंत्रों के लिए ISI मार्क)",
+            "description": "भारत के बाहर स्थित विदेशी विनिर्माण इकाइयों के लिए समर्पित उत्पाद प्रमाणन योजना जो भारत में निर्यात किए जाने वाले उत्पादों पर ISI मार्क लगाने का लाइसेंस देती है। इसमें अधिकृत भारतीय प्रतिनिधि (AIR), बीआईएस अधिकारी द्वारा ऑन-साइट ऑडिट और बैंक गारंटी अनिवार्य है।",
+            "applicable_sectors": ["स्टील एवं धातुकर्म उत्पाद", "ऑटोमोबाइल टायर और ट्यूब", "रसायन एवं पेट्रोकेमिकल्स", "भारी विद्युत उपकरण", "भारत को निर्यात करने वाले वैश्विक निर्माता"],
+            "fee_structure_summary": "आवेदन शुल्क: रु. 1,000; निरीक्षण शुल्क: 7,000 से 10,000 अमेरिकी डॉलर (यात्रा/निवास/डीए); 10,000 अमेरिकी डॉलर परफॉर्मेंस बैंक गारंटी।"
+        },
+        "ECO_MARK": {
+            "name": "इको मार्क योजना (पर्यावरण-अनुकूल उत्पाद प्रमाणन)",
+            "classification": "पर्यावरण लेबलिंग एवं उत्पाद गुणवत्ता प्रमाणन",
+            "description": "बीआईएस और पर्यावरण मंत्रालय (MoEFCC) की संयुक्त योजना जो यह प्रमाणित करती है कि उत्पाद आईएसआई मार्क के गुणवत्ता मानकों के साथ-साथ कड़े पर्यावरणीय मानदंडों (संसाधन संरक्षण, पुनर्चक्रण योग्य पैकेजिंग, गैर-विषैले घटक) को पूरा करता है।",
+            "applicable_sectors": ["साबुन एवं डिटर्जेंट", "पेंट और पाउडर कोटिंग्स", "कागज और पैकेजिंग सामग्री", "बैटरी", "सौंदर्य प्रसाधन", "खाद्य तेल", "कपड़ा और चमड़ा उत्पाद"],
+            "fee_structure_summary": "आवेदन शुल्क: रु. 1,000; मानक योजना-I निरीक्षण एवं परीक्षण शुल्क; अतिरिक्त पर्यावरण पैरामीटर परीक्षण शुल्क।"
+        },
+        "SCHEME_II_CRS": {
+            "name": "योजना-II: अनिवार्य पंजीकरण योजना (CRS / अनुरूपता की स्व-घोषणा)",
+            "classification": "अनुरूपता की स्व-घोषणा (SDoC / R-नंबर पंजीकरण)",
+            "description": "MeitY द्वारा अधिसूचित इलेक्ट्रॉनिक्स और आईटी सामानों तथा MNRE द्वारा सौर पीवी के लिए अनिवार्य पंजीकरण योजना। बीआईएस मान्यता प्राप्त लैब से परीक्षण रिपोर्ट के आधार पर बिना प्रारंभिक फैक्ट्री ऑडिट के स्व-घोषणा पंजीकरण (R-XXXXXXXX) दिया जाता है।",
+            "applicable_sectors": ["लैपटॉप एवं टैबलेट", "स्मार्टफोन एवं चार्जर", "पावर एडेप्टर एवं इनवर्टर", "एलईडी लाइटिंग", "स्मार्ट वॉच", "सौर पीवी मॉड्यूल", "सर्वर और डेटा स्टोरेज"],
+            "fee_structure_summary": "आवेदन शुल्क: रु. 10,000 प्रति मॉडल; समावेशन शुल्क: रु. 5,000 प्रति अतिरिक्त मॉडल; 2 वर्ष में नवीनीकरण शुल्क: रु. 10,000।"
+        },
+        "SCHEME_III_COC": {
+            "name": "योजना-III: अनुरूपता प्रमाण पत्र (CoC - बैच / लॉट प्रमाणन)",
+            "classification": "बैच / लॉट अनुरूपता मूल्यांकन (विशिष्ट खेप प्रमाणन)",
+            "description": "विशिष्ट बैचों, आयातित खेपों या कस्टम ऑर्डरों के लिए अनुरूपता मूल्यांकन जहां निरंतर फैक्ट्री लाइसेंस अव्यावहारिक है। सांख्यिकीय नमूनाकरण और लैब परीक्षण के बाद विशिष्ट खेप के लिए अनुरूपता प्रमाण पत्र (CoC) जारी किया जाता है।",
+            "applicable_sectors": ["कस्टम औद्योगिक उपकरण", "आयातित परियोजना खेप", "अपतटीय तेल और गैस घटक", "विशेष मिश्र धातु इस्पात बैच"],
+            "fee_structure_summary": "आवेदन शुल्क: रु. 1,000; निरीक्षण शुल्क: रु. 7,000 प्रति व्यक्ति-दिवस; लैब परीक्षण शुल्क और CoC जारी करने का शुल्क।"
+        },
+        "SCHEME_IV_MSCS": {
+            "name": "योजना-IV: प्रबंधन प्रणाली प्रमाणन योजना (MSCS)",
+            "classification": "प्रबंधन प्रणाली गुणवत्ता एवं अनुपालन प्रमाणन",
+            "description": "अंतरराष्ट्रीय और राष्ट्रीय मानकों के विरुद्ध संगठनात्मक प्रबंधन प्रणालियों का प्रमाणन: गुणवत्ता (ISO 9001), पर्यावरण (ISO 14001), खाद्य सुरक्षा (ISO 22000), व्यावसायिक स्वास्थ्य (ISO 45001), ऊर्जा (ISO 50001), सूचना सुरक्षा (ISO 27001), और चिकित्सा उपकरण (ISO 13485)।",
+            "applicable_sectors": ["गुणवत्ता प्रबंधन (ISO 9001)", "पर्यावरण प्रबंधन (ISO 14001)", "खाद्य सुरक्षा (ISO 22000)", "स्वास्थ्य एवं सुरक्षा (ISO 45001)", "ऊर्जा प्रबंधन (ISO 50001)", "सूचना सुरक्षा (ISO 27001)", "चिकित्सा उपकरण (ISO 13485)"],
+            "fee_structure_summary": "आवेदन शुल्क: रु. 15,000; ऑडिट शुल्क: रु. 12,000 प्रति लेखा परीक्षक प्रति दिन; वार्षिक लाइसेंस शुल्क: रु. 10,000।"
+        },
+        "SCHEME_X_CAPITAL_GOODS": {
+            "name": "योजना-X: पूंजीगत सामान और भारी मशीनरी प्रमाणन",
+            "classification": "तकनीकी निर्माण फाइल एवं इन-सीटू मशीनरी प्रमाणन",
+            "description": "भारी औद्योगिक मशीनरी, उच्च वोल्टेज उपकरण, ट्रांसफार्मर और पंपों के लिए सरलीकृत अनुरूपता ढांचा। इसमें असेंबली लाइन ऑडिट के स्थान पर तकनीकी निर्माण फाइल (TCF) और ऑन-साइट इन-सीटू परीक्षण का मूल्यांकन किया जाता है।",
+            "applicable_sectors": ["औद्योगिक मशीनरी एवं मशीन टूल्स", "भारी विद्युत उपकरण एवं स्विचगियर", "कंप्रेसर और केन्द्रापसारक पंप", "उच्च वोल्टेज ट्रांसफार्मर", "क्रेन और उत्थापन प्रणाली"],
+            "fee_structure_summary": "आवेदन शुल्क: रु. 1,000; तकनीकी मूल्यांकन एवं ऑडिट: रु. 7,000 प्रति व्यक्ति-दिवस; वार्षिक लाइसेंस शुल्क: रु. 1,000।"
+        },
+        "HALLMARKING": {
+            "name": "हॉलमार्किंग योजना: बहुमूल्य धातुएं (स्वर्ण और रजत आभूषण - HUID)",
+            "classification": "बहुमूल्य धातु शुद्धता प्रमाणन (6-अंकीय HUID लेजर अंकन)",
+            "description": "स्वर्ण और रजत आभूषणों की शुद्धता प्रमाणित करने की अनिवार्य योजना। यह बीआईएस मान्यता प्राप्त परख और हॉलमार्किंग केंद्रों (AHC) के माध्यम से 6-अंकीय अद्वितीय पहचान (HUID) लेजर अंकन के साथ की जाती है।",
+            "applicable_sectors": ["स्वर्ण आभूषण (IS 1417: 14K, 18K, 20K, 22K, 23K, 24K)", "चांदी के आभूषण (IS 2112: 800, 835, 900, 925, 970, 990)", "बुलियन और सिक्के"],
+            "fee_structure_summary": "ज्वैलर्स के लिए पंजीकरण निःशुल्क; HUID अंकन शुल्क: रु. 45 + GST प्रति स्वर्ण वस्तु, रु. 35 + GST प्रति चांदी वस्तु।"
+        },
+        "LABORATORY_RECOGNITION": {
+            "name": "प्रयोगशाला मान्यता योजना (LRS / LIMS पैनलबद्धता)",
+            "classification": "सांविधिक बीआईएस परीक्षण हेतु परीक्षण सुविधा मान्यता",
+            "description": "व्यावसायिक, सरकारी और औद्योगिक परीक्षण प्रयोगशालाओं को बीआईएस प्रमाणन, सीआरएस और बाजार निगरानी के नमूनों का परीक्षण करने के लिए मान्यता और पैनलबद्धता। यह बीआईएस LIMS से सीधे एकीकृत है।",
+            "applicable_sectors": ["व्यावसायिक सामग्री परीक्षण प्रयोगशालाएं", "सरकारी और सीएसआईआर अनुसंधान केंद्र", "विश्वविद्यालय परीक्षण केंद्र", "विद्युत एवं यांत्रिक परीक्षण सुविधाएं"],
+            "fee_structure_summary": "आवेदन शुल्क: रु. 20,000; तकनीकी मूल्यांकन शुल्क: रु. 12,000 प्रति दिन; वार्षिक मान्यता शुल्क: रु. 20,000।"
+        },
+        # Legacy Aliases
         "SCHEME_I_ISI": {
             "name": "योजना-I: उत्पाद प्रमाणन (ISI मार्क)",
-            "description": "घरेलू और विदेशी निर्माताओं के लिए बीआईएस उत्पाद प्रमाणन योजना जो अनुरूपता मूल्यांकन, फैक्ट्री ऑडिट और बीआईएस मान्यता प्राप्त प्रयोगशालाओं में परीक्षण के आधार पर मानक चिह्न (ISI मार्क) का उपयोग करने का लाइसेंस प्रदान करती है।",
+            "description": "घरेलू और विदेशी निर्माताओं के लिए बीआईएस उत्पाद प्रमाणन योजना जो अनुरूपता मूल्यांकन, फैक्ट्री ऑडिट और बीआईएस प्रयोगशालाओं में परीक्षण के आधार पर ISI मार्क का लाइसेंस देती है।",
             "applicable_sectors": ["विद्युत उपकरण", "केबल", "ऑटोमोबाइल घटक", "स्टील उत्पाद", "पैकेज्ड पानी", "सीमेंट"],
             "fee_structure_summary": "आवेदन शुल्क: रु. 1,000; वार्षिक लाइसेंस शुल्क: रु. 1,000; बीआईएस अनुसूची के अनुसार प्रति यूनिट अंकन शुल्क।"
         },
-        "SCHEME_II_CRS": {
-            "name": "योजना-II: अनिवार्य पंजीकरण योजना (CRS)",
-            "description": "MeitY द्वारा अधिसूचित इलेक्ट्रॉनिक और सूचना प्रौद्योगिकी वस्तुओं तथा MNRE द्वारा अधिसूचित सौर पीवी के लिए अनुरूपता का स्व-घोषणा पंजीकरण।",
-            "applicable_sectors": ["लैपटॉप", "स्मार्टफोन", "पावर एडाप्टर", "एलईडी लाइटिंग", "स्मार्ट वॉच", "सर्वर"],
-            "fee_structure_summary": "आवेदन शुल्क: रु. 10,000 प्रति मॉडल; नवीनीकरण हर 2 वर्ष में।"
-        },
         "SCHEME_IV_FMCS": {
-            "name": "योजना-IV: विदेशी निर्माता प्रमाणन योजना (FMCS)",
+            "name": "योजना-IV / योजना-I: विदेशी निर्माता प्रमाणन योजना (FMCS)",
             "description": "भारत के बाहर स्थित विदेशी विनिर्माण इकाइयों को भारत में निर्यात किए जाने वाले सामानों पर ISI मार्क लगाने के लिए लाइसेंस प्राप्त करने में सक्षम बनाती है।",
             "applicable_sectors": ["भारत को निर्यात करने वाले वैश्विक निर्माता"],
             "fee_structure_summary": "ऑडिट निरीक्षण शुल्क + यात्रा/निवास + 10,000 अमेरिकी डॉलर बैंक गारंटी + वार्षिक अंकन शुल्क।"
         }
     },
     "ta": {
+        "SCHEME_I_ISI_NORMAL": {
+            "name": "திட்டம்-I: தயாரிப்பு சான்றிதழ் — இயல்பான நடைமுறை (விருப்பம் 1 - ISI முத்திரை)",
+            "classification": "தயாரிப்பு இணக்க மதிப்பீடு (நிலையான ISI முத்திரை)",
+            "description": "தொழிற்சாலை ஆய்வு, உள்நாட்டு சோதனை திறன் மதிப்பீடு மற்றும் BIS அங்கீகரிக்கப்பட்ட ஆய்வக சோதனையின் அடிப்படையில் உற்பத்தியாளர்களுக்கு ISI முத்திரையை பயன்படுத்த உரிமம் (CM/L) வழங்கும் சான்றிதழ் திட்டம்.",
+            "applicable_sectors": ["மின் கேபிள்கள் மற்றும் கம்பிகள்", "சிமெண்ட் மற்றும் கட்டுமான பொருட்கள்", "வாகன பாதுகாப்பு பாகங்கள்", "பாட்டில் குடிநீர்", "கட்டமைப்பு எஃகு பொருட்கள்", "இரசாயனங்கள்"],
+            "fee_structure_summary": "விண்ணப்பக் கட்டணம்: ரூ. 1,000; ஆய்வு கட்டணம்: ரூ. 7,000 ஒரு மனித-நாளுக்கு; வருடாந்திர உரிமக் கட்டணம்: ரூ. 1,000; முத்திரைக் கட்டணம் நிர்ணயிக்கப்பட்ட விகிதங்களின்படி."
+        },
+        "SCHEME_I_ISI_SIMPLIFIED": {
+            "name": "திட்டம்-I: தயாரிப்பு சான்றிதழ் — எளிமைப்படுத்தப்பட்ட நடைமுறை (விருப்பம் 2 - விரைவு ISI முத்திரை)",
+            "classification": "தயாரிப்பு இணக்க மதிப்பீடு (30 நாட்களுக்குள் விரைவு உரிமம்)",
+            "description": "BIS அங்கீகரிக்கப்பட்ட ஆய்வகத்திலிருந்து பெறப்பட்ட முழுமையான சோதனை அறிக்கையின் அடிப்படையில் 30 நாட்களுக்குள் விரைவாக ISI உரிமம் வழங்கும் நடைமுறை.",
+            "applicable_sectors": ["வீட்டு மின் உபகரணங்கள்", "விளையாட்டு பொருட்கள்", "மரப் பொருட்கள்", "குழாய்கள் மற்றும் சுகாதாரப் பொருட்கள்", "கை கருவிகள்"],
+            "fee_structure_summary": "விண்ணப்பக் கட்டணம்: ரூ. 1,000; வருடாந்திர உரிமக் கட்டணம்: ரூ. 1,000; ஆய்வக சோதனை கட்டணம் ஆய்வகத்திற்கு நேரடியாக செலுத்தப்படும்."
+        },
+        "SCHEME_I_FMCS": {
+            "name": "திட்டம்-I: வெளிநாட்டு உற்பத்தியாளர் சான்றிதழ் திட்டம் (FMCS)",
+            "classification": "வெளிநாட்டு உற்பத்தியாளர் இணக்க மதிப்பீடு (சர்வதேச தொழிற்சாலைகளுக்கான ISI முத்திரை)",
+            "description": "இந்தியாவுக்கு பொருட்களை ஏற்றுமதி செய்யும் வெளிநாட்டு உற்பத்தியாளர்கள் ISI முத்திரையைப் பெறுவதற்கான சிறப்புத் திட்டம். அங்கீகரிக்கப்பட்ட இந்திய பிரதிநிதி (AIR) மற்றும் நேரடி வெளிநாட்டு தொழிற்சாலை ஆய்வு கட்டாயமாகும்.",
+            "applicable_sectors": ["எஃகு மற்றும் உலோக பொருட்கள்", "வாகன டயர்கள் மற்றும் டியூப்கள்", "இரசாயன பொருட்கள்", "கனரக மின் பாகங்கள்", "சர்வதேச உற்பத்தியாளர்கள்"],
+            "fee_structure_summary": "விண்ணப்பக் கட்டணம்: ரூ. 1,000; ஆய்வு கட்டணம்: 7,000 முதல் 10,000 அமெரிக்க டாலர்; 10,000 அமெரிக்க டாலர் வங்கி உத்தரவாதம்."
+        },
+        "ECO_MARK": {
+            "name": "சுற்றுச்சூழல் முத்திரை திட்டம் (ECO Mark)",
+            "classification": "சுற்றுச்சூழல் லேபிளிங் மற்றும் தயாரிப்பு தர சான்றிதழ்",
+            "description": "தயாரிப்புகள் இந்திய தரநிலை ISI தரநிலைகளை பூர்த்தி செய்வதோடு, கூடுதல் சுற்றுச்சூழல் தேவைகளையும் (மறுசுழற்சி, நச்சுத்தன்மையின்மை) பூர்த்தி செய்வதை சான்றளிக்கும் திட்டம்.",
+            "applicable_sectors": ["சோப்புகள் மற்றும் சவர்க்காரங்கள்", "வண்ணப்பூச்சுகள்", "காகிதம் மற்றும் பேக்கேஜிங்", "பேட்டரிகள்", "அழகுசாதன பொருட்கள்", "சமையல் எண்ணெய்கள்", "ஜவுளி"],
+            "fee_structure_summary": "விண்ணப்பக் கட்டணம்: ரூ. 1,000; திட்டம்-I ஆய்வு மற்றும் சோதனை கட்டணம்; சுற்றுச்சூழல் சோதனை கட்டணம்."
+        },
+        "SCHEME_II_CRS": {
+            "name": "திட்டம்-II: கட்டாய பதிவுத் திட்டம் (CRS / சுய அறிவிப்பு இணக்கம்)",
+            "classification": "சுய அறிவிப்பு இணக்கம் (SDoC / R-எண் பதிவு)",
+            "description": "மின்னணு மற்றும் தகவல் தொழில்நுட்ப சாதனங்களுக்கான கட்டாய பதிவுத் திட்டம். BIS ஆய்வக சோதனை அறிக்கை அடிப்படையில் தொடக்க தொழிற்சாலை ஆய்வு இன்றி பதிவு எண் (R-XXXXXXXX) வழங்கப்படுகிறது.",
+            "applicable_sectors": ["மடிக்கணினிகள்", "ஸ்மார்ட்போன்கள்", "பவர் அடாப்டர்கள்", "LED விளக்குகள்", "ஸ்மார்ட் வாட்ச்கள்", "சூரிய மின்கலங்கள்", "சர்வர்கள்"],
+            "fee_structure_summary": "விண்ணப்பக் கட்டணம்: அடிப்படை மாடலுக்கு ரூ. 10,000; கூடுதல் மாடலுக்கு ரூ. 5,000; 2 ஆண்டுகளுக்கு ஒருமுறை புதுப்பித்தல்: ரூ. 10,000."
+        },
+        "SCHEME_III_COC": {
+            "name": "திட்டம்-III: இணக்கச் சான்றிதழ் (CoC - தொகுதி / தொகுதி சான்றிதழ்)",
+            "classification": "தொகுதி ஆய்வு மற்றும் குறிப்பிட்ட சரக்கு இணக்க மதிப்பீடு",
+            "description": "தொடர்ச்சியான தொழிற்சாலை உரிமம் சாத்தியமில்லாத குறிப்பிட்ட சரக்கு தொகுதிகளுக்கு ஆய்வக சோதனை மற்றும் மாதிரி ஆய்வின் அடிப்படையில் வழங்கப்படும் இணக்கச் சான்றிதழ் (CoC).",
+            "applicable_sectors": ["தனிப்பயன் தொழில்துறை உபகரணங்கள்", "இறக்குமதி செய்யப்பட்ட திட்ட சரக்குகள்", "எண்ணெய் மற்றும் எரிவாயு பாகங்கள்", "சிறப்பு எஃகு தொகுதிகள்"],
+            "fee_structure_summary": "விண்ணப்பக் கட்டணம்: ரூ. 1,000; ஆய்வு கட்டணம்: ரூ. 7,000 ஒரு மனித-நாளுக்கு; ஆய்வக சோதனை கட்டணங்கள்."
+        },
+        "SCHEME_IV_MSCS": {
+            "name": "திட்டம்-IV: மேலாண்மை அமைப்புகள் சான்றிதழ் திட்டம் (MSCS)",
+            "classification": "மேலாண்மை அமைப்புகள் தரம் மற்றும் இணக்க சான்றிதழ்",
+            "description": "சர்வதேச தரநிலைகளுக்கு எதிரான நிறுவன மேலாண்மை அமைப்புகளின் சான்றிதழ்: தர மேலாண்மை (ISO 9001), சுற்றுச்சூழல் (ISO 14001), உணவுப் பாதுகாப்பு (ISO 22000), தொழில்சார் சுகாதாரம் (ISO 45001), ஆற்றல் (ISO 50001), தகவல் பாதுகாப்பு (ISO 27001), மருத்துவ உபகரணங்கள் (ISO 13485).",
+            "applicable_sectors": ["தர மேலாண்மை (ISO 9001)", "சுற்றுச்சூழல் மேலாண்மை (ISO 14001)", "உணவுப் பாதுகாப்பு (ISO 22000)", "தொழில்சார் சுகாதாரம் (ISO 45001)", "ஆற்றல் மேலாண்மை (ISO 50001)", "தகவல் பாதுகாப்பு (ISO 27001)", "மருத்துவ சாதனங்கள் (ISO 13485)"],
+            "fee_structure_summary": "விண்ணப்பக் கட்டணம்: ரூ. 15,000; தணிக்கை கட்டணம்: ஒரு தணிக்கையாளருக்கு ஒரு நாளைக்கு ரூ. 12,000; வருடாந்திர உரிமக் கட்டணம்: ரூ. 10,000."
+        },
+        "SCHEME_X_CAPITAL_GOODS": {
+            "name": "திட்டம்-X: மூலதன பொருட்கள் மற்றும் தொழில்துறை இயந்திர சான்றிதழ்",
+            "classification": "தொழில்நுட்ப கட்டுமான கோப்பு மற்றும் நேரடி இயந்திர சான்றிதழ்",
+            "description": "கனரக தொழில்துறை இயந்திரங்கள், உயர் மின்னழுத்த உபகரணங்கள், பம்புகள் மற்றும் மின்மாற்றிகளுக்கான எளிமைப்படுத்தப்பட்ட தொழில்நுட்ப கட்டுமான கோப்பு (TCF) மற்றும் நேரடி சோதனை சான்றிதழ்.",
+            "applicable_sectors": ["தொழில்துறை இயந்திரங்கள்", "மின் உற்பத்திக் கருவிகள்", "பம்புகள் மற்றும் கம்ப்ரசர்கள்", "மின்மாற்றிகள்", "கிரேன்கள் மற்றும் தூக்கும் அமைப்புகள்"],
+            "fee_structure_summary": "விண்ணப்பக் கட்டணம்: ரூ. 1,000; தொழில்நுட்ப ஆய்வு: ரூ. 7,000 ஒரு மனித-நாளுக்கு; வருடாந்திர உரிமக் கட்டணம்: ரூ. 1,000."
+        },
+        "HALLMARKING": {
+            "name": "ஹால்மார்க்கிங் திட்டம்: தங்கம் மற்றும் வெள்ளி நகைகள் (HUID)",
+            "classification": "விலைமதிப்பற்ற உலோக தூய்மை சான்றிதழ் (6-இலக்க HUID லேசர் குறியீடு)",
+            "description": "தங்கம் மற்றும் வெள்ளி நகைகளின் தூய்மையை BIS அங்கீகரிக்கப்பட்ட AHC மையங்கள் மூலம் 6-இலக்க HUID தனித்துவக் குறியீட்டுடன் சான்றளிக்கும் கட்டாய திட்டம்.",
+            "applicable_sectors": ["தங்க நகைகள் (IS 1417: 14K, 18K, 20K, 22K, 23K, 24K)", "வெள்ளி நகைகள் (IS 2112)", "நாணயங்கள் மற்றும் கட்டிகள்"],
+            "fee_structure_summary": "நகைக்கடைகளுக்கு பதிவு இலவசம்; HUID குறியீட்டுக் கட்டணம்: ஒரு தங்கப் பொருளுக்கு ரூ. 45 + GST, வெள்ளிப் பொருளுக்கு ரூ. 35 + GST."
+        },
+        "LABORATORY_RECOGNITION": {
+            "name": "ஆய்வக அங்கீகார திட்டம் (LRS / LIMS ஏற்பு)",
+            "classification": "BIS சட்டப்பூர்வ சோதனைகளுக்கான ஆய்வக அங்கீகாரம்",
+            "description": "வணிக, அரசு மற்றும் தொழில்துறை ஆய்வகங்கள் BIS தயாரிப்பு சான்றிதழ் மற்றும் கண்காணிப்பு மாதிரிகளை சோதிக்க அங்கீகாரம் அளிக்கும் திட்டம் (BIS LIMS ஒருங்கிணைப்பு).",
+            "applicable_sectors": ["வணிக பொருள் சோதனை ஆய்வகங்கள்", "அரசு மற்றும் CSIR ஆராய்ச்சி மையங்கள்", "பல்கலைக்கழக சோதனை கூடங்கள்", "மின் மற்றும் இயந்திர சோதனை மையங்கள்"],
+            "fee_structure_summary": "விண்ணப்பக் கட்டணம்: ரூ. 20,000; தொழில்நுட்ப மதிப்பீட்டுக் கட்டணம்: ஒரு நாளைக்கு ரூ. 12,000; வருடாந்திர அங்கீகாரக் கட்டணம்: ரூ. 20,000."
+        },
+        # Legacy Aliases
         "SCHEME_I_ISI": {
             "name": "திட்டம்-I: தயாரிப்பு சான்றிதழ் (ISI முத்திரை)",
             "description": "தொழிற்சாலை தணிக்கை மற்றும் BIS ஆய்வக சோதனையின் அடிப்படையில் உற்பத்தியாளர்களுக்கு ISI முத்திரையை பயன்படுத்த அனுமதி வழங்கும் தயாரிப்பு சான்றிதழ் திட்டம்.",
             "applicable_sectors": ["மின் சாதனங்கள்", "கேபிள்கள்", "வாகன பாகங்கள்", "எஃகு பொருட்கள்", "குடிநீர்", "சிமெண்ட்"],
             "fee_structure_summary": "விண்ணப்பக் கட்டணம்: ரூ. 1,000; வருடாந்திர உரிமக் கட்டணம்: ரூ. 1,000; BIS அட்டவணைப்படி தயாரிப்பு முத்திரைக் கட்டணம்."
         },
-        "SCHEME_II_CRS": {
-            "name": "திட்டம்-II: கட்டாய பதிவுத் திட்டம் (CRS)",
-            "description": "மின்னணு மற்றும் தகவல் தொழில்நுட்ப சாதனங்களுக்கான சுய அறிவிப்பு இணக்க பதிவுத் திட்டம் (CRS).",
-            "applicable_sectors": ["மடிக்கணினிகள்", "ஸ்மார்ட்போன்கள்", "பவர் அடாப்டர்கள்", "LED விளக்குகள்", "ஸ்மார்ட் வாட்ச்கள்", "சர்வர்கள்"],
-            "fee_structure_summary": "விண்ணப்பக் கட்டணம்: அடிப்படை மாடலுக்கு ரூ. 10,000; 2 ஆண்டுகளுக்கு ஒருமுறை புதுப்பித்தல்."
-        },
         "SCHEME_IV_FMCS": {
-            "name": "திட்டம்-IV: வெளிநாட்டு உற்பத்தியாளர் சான்றிதழ் திட்டம் (FMCS)",
+            "name": "திட்டம்-IV / திட்டம்-I: வெளிநாட்டு உற்பத்தியாளர் சான்றிதழ் திட்டம் (FMCS)",
             "description": "இந்தியாவுக்கு பொருட்களை ஏற்றுமதி செய்யும் வெளிநாட்டு உற்பத்தியாளர்கள் ISI முத்திரையைப் பெறுவதற்கான சிறப்புத் திட்டம்.",
             "applicable_sectors": ["இந்தியாவுக்கு ஏற்றுமதி செய்யும் சர்வதேச உற்பத்தியாளர்கள்"],
             "fee_structure_summary": "தணிக்கை கட்டணம் + பயண செலவுகள் + 10,000 அமெரிக்க டாலர் வங்கி உத்தரவாதம் + முத்திரைக் கட்டணம்."
@@ -573,68 +1059,131 @@ SCHEMES_TRANSLATIONS: Dict[str, Dict[str, Any]] = {
     }
 }
 
-VERIFIED_LABORATORIES: List[Dict[str, Any]] = [
-    {
-        "id": "lab-001",
-        "lab_name": "BIS Central Laboratory",
-        "lab_code": "BIS-CL-GZB-01",
-        "recognition_type": "BIS_CENTRAL",
-        "city": "Ghaziabad",
-        "state": "Uttar Pradesh",
-        "address": "Plot No. 20/9, Site IV, Sahibabad Industrial Area, Ghaziabad, UP 201010",
-        "contact_details": {"phone": "+91-120-2776032", "email": "cl@bis.gov.in"},
-        "testing_scope_summary": "Comprehensive national testing facility for electrical appliances, chemical analysis, mechanical stress, plastics, and packaged drinking water.",
-        "accredited_standards": ["IS 1293:2019", "IS 13252 (Part 1):2010", "IS 14543:2016", "IS 17803:2022"]
-    },
-    {
-        "id": "lab-002",
-        "lab_name": "National Test House (Southern Region)",
-        "lab_code": "NTH-SR-CHE-02",
-        "recognition_type": "NABL_ACCREDITED",
-        "city": "Chennai",
-        "state": "Tamil Nadu",
-        "address": "Tharamani, Chennai, Tamil Nadu 600113",
-        "contact_details": {"phone": "+91-44-22541221", "email": "nth-chennai@nic.in"},
-        "testing_scope_summary": "Electrical insulation, high voltage safety, electronics, circuit breakers, plugs and sockets, and material tensile strength testing.",
-        "accredited_standards": ["IS 1293:2019", "IS 13252 (Part 1):2010", "IS 17803:2022"]
-    },
-    {
-        "id": "lab-003",
-        "lab_name": "National Test House (Eastern Region)",
-        "lab_code": "NTH-ER-KOL-03",
-        "recognition_type": "NABL_ACCREDITED",
-        "city": "Kolkata",
-        "state": "West Bengal",
-        "address": "Block CP, Sector V, Salt Lake City, Kolkata, WB 700091",
-        "contact_details": {"phone": "+91-33-23673869", "email": "nth-kolkata@nic.in"},
-        "testing_scope_summary": "Electrotechnical safety testing, fan airflow and energy ratings, mechanical testing, and chemical composition.",
-        "accredited_standards": ["IS 1293:2019", "IS 17803:2022", "IS 14543:2016"]
-    },
-    {
-        "id": "lab-004",
-        "lab_name": "Electronics Regional Test Laboratory (ERTL North)",
-        "lab_code": "ERTL-NR-DEL-04",
-        "recognition_type": "BIS_RECOGNIZED",
-        "city": "New Delhi",
-        "state": "Delhi",
-        "address": "S-Block, Okhla Industrial Area Phase-II, New Delhi 110020",
-        "contact_details": {"phone": "+91-11-26386000", "email": "ertl-north@stqc.gov.in"},
-        "testing_scope_summary": "Compulsory Registration Scheme (CRS) safety testing, EMI/EMC compliance, IT equipment, power adapters, and LED drivers.",
-        "accredited_standards": ["IS 13252 (Part 1):2010", "IS 1293:2019"]
-    },
-    {
-        "id": "lab-005",
-        "lab_name": "BIS Western Regional Laboratory",
-        "lab_code": "BIS-WRL-MUM-05",
-        "recognition_type": "BIS_BRANCH",
-        "city": "Mumbai",
-        "state": "Maharashtra",
-        "address": "Manakalaya, E9, MIDC, Andheri East, Mumbai, MH 400093",
-        "contact_details": {"phone": "+91-22-28329295", "email": "wrl@bis.gov.in"},
-        "testing_scope_summary": "Testing of consumer appliances, bottled water, food contact materials, steel products, and cables.",
-        "accredited_standards": ["IS 14543:2016", "IS 1293:2019", "IS 17803:2022"]
-    }
-]
+
+import os
+import json
+
+def _get_official_laboratories_path() -> str:
+    # Look in data/laboratories/official_bis_laboratories.json
+    cur_dir = os.path.dirname(os.path.abspath(__file__))
+    # cur_dir is backend/app/db
+    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(cur_dir)))
+    return os.path.join(root_dir, "data", "laboratories", "official_bis_laboratories.json")
+
+def load_official_laboratories() -> List[Dict[str, Any]]:
+    path = _get_official_laboratories_path()
+    if os.path.exists(path):
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict) and "laboratories" in data:
+                    return data["laboratories"]
+                elif isinstance(data, list):
+                    return data
+        except Exception:
+            pass
+
+    # Fallback to institutional apex facilities if official dataset file is not yet generated
+    return [
+        {
+            "id": "bis-cl-gzb",
+            "lab_name": "BIS Central Laboratory (Sahibabad)",
+            "lab_code": "BIS-CL-01",
+            "recognition_type": "BIS_CENTRAL",
+            "city": "Ghaziabad",
+            "district": "Ghaziabad",
+            "state": "Uttar Pradesh",
+            "address": "Plot No. 20/9, Site IV, Sahibabad Industrial Area, Ghaziabad, UP 201010",
+            "contact_details": {"contact_person": "Head (Central Lab)", "phone": "+91-120-2776032", "email": "cl@bis.gov.in"},
+            "validity_date": "Permanent / Apex Facility",
+            "status": "ACTIVE",
+            "source_url": "https://www.bis.gov.in/laboratorys/laboratory-services-overview/",
+            "scope_url": "https://www.bis.gov.in/laboratorys/laboratory-services-overview/",
+            "testing_scope_summary": "Comprehensive national testing facility for electrical appliances, chemical analysis, mechanical stress, plastics, and packaged drinking water.",
+            "accredited_standards": ["IS 1293:2019", "IS 13252 (Part 1):2010", "IS 14543:2016", "IS 17803:2022"],
+            "last_verified_at": "2026-01-15"
+        },
+        {
+            "id": "lab-002",
+            "lab_name": "National Test House (Southern Region)",
+            "lab_code": "NTH-SR-CHE-02",
+            "recognition_type": "NABL_ACCREDITED",
+            "city": "Chennai",
+            "district": "Chennai",
+            "state": "Tamil Nadu",
+            "address": "Tharamani, Chennai, Tamil Nadu 600113",
+            "contact_details": {"contact_person": "Director", "phone": "+91-44-22541221", "email": "nth-chennai@nic.in"},
+            "validity_date": "31 Dec, 2026",
+            "status": "ACTIVE",
+            "source_url": "https://lims.bis.gov.in/home/labs/",
+            "scope_url": "https://lims.bis.gov.in/home/labs/",
+            "testing_scope_summary": "Electrical insulation, high voltage safety, electronics, circuit breakers, plugs and sockets, and material tensile strength testing.",
+            "accredited_standards": ["IS 1293:2019", "IS 13252 (Part 1):2010", "IS 17803:2022"],
+            "last_verified_at": "2026-01-15"
+        },
+        {
+            "id": "lab-003",
+            "lab_name": "National Test House (Eastern Region)",
+            "lab_code": "NTH-ER-KOL-03",
+            "recognition_type": "NABL_ACCREDITED",
+            "city": "Kolkata",
+            "district": "Kolkata",
+            "state": "West Bengal",
+            "address": "Block CP, Sector V, Salt Lake City, Kolkata, WB 700091",
+            "contact_details": {"contact_person": "Director", "phone": "+91-33-23673869", "email": "nth-kolkata@nic.in"},
+            "validity_date": "31 Dec, 2026",
+            "status": "ACTIVE",
+            "source_url": "https://lims.bis.gov.in/home/labs/",
+            "scope_url": "https://lims.bis.gov.in/home/labs/",
+            "testing_scope_summary": "Electrotechnical safety testing, fan airflow and energy ratings, mechanical testing, and chemical composition.",
+            "accredited_standards": ["IS 1293:2019", "IS 17803:2022", "IS 14543:2016"],
+            "last_verified_at": "2026-01-15"
+        },
+        {
+            "id": "lab-004",
+            "lab_name": "Electronics Regional Test Laboratory (ERTL North)",
+            "lab_code": "ERTL-NR-DEL-04",
+            "recognition_type": "BIS_RECOGNIZED",
+            "city": "New Delhi",
+            "district": "South East Delhi",
+            "state": "Delhi",
+            "address": "S-Block, Okhla Industrial Area Phase-II, New Delhi 110020",
+            "contact_details": {"contact_person": "Technical Manager", "phone": "+91-11-26386000", "email": "ertl-north@stqc.gov.in"},
+            "validity_date": "31 Dec, 2027",
+            "status": "ACTIVE",
+            "source_url": "https://lims.bis.gov.in/home/labs/",
+            "scope_url": "https://lims.bis.gov.in/home/labs/",
+            "testing_scope_summary": "Compulsory Registration Scheme (CRS) safety testing, EMI/EMC compliance, IT equipment, power adapters, and LED drivers.",
+            "accredited_standards": ["IS 13252 (Part 1):2010", "IS 1293:2019"],
+            "last_verified_at": "2026-01-15"
+        },
+        {
+            "id": "bis-wrl-mum",
+            "lab_name": "BIS Western Regional Laboratory",
+            "lab_code": "BIS-WRL-MUM-05",
+            "recognition_type": "BIS_BRANCH",
+            "city": "Mumbai",
+            "district": "Mumbai Suburban",
+            "state": "Maharashtra",
+            "address": "Manakalaya, E9, MIDC, Andheri East, Mumbai, MH 400093",
+            "contact_details": {"contact_person": "Head (WRL)", "phone": "+91-22-28329295", "email": "wrl@bis.gov.in"},
+            "validity_date": "Permanent / Regional Lab",
+            "status": "ACTIVE",
+            "source_url": "https://www.bis.gov.in/laboratorys/laboratory-services-overview/",
+            "scope_url": "https://www.bis.gov.in/laboratorys/laboratory-services-overview/",
+            "testing_scope_summary": "Testing of consumer appliances, bottled water, food contact materials, steel products, and cables.",
+            "accredited_standards": ["IS 14543:2016", "IS 1293:2019", "IS 17803:2022"],
+            "last_verified_at": "2026-01-15"
+        }
+    ]
+
+VERIFIED_LABORATORIES: List[Dict[str, Any]] = load_official_laboratories()
+
+def reload_verified_laboratories() -> int:
+    """Reload laboratories from disk."""
+    global VERIFIED_LABORATORIES
+    VERIFIED_LABORATORIES = load_official_laboratories()
+    return len(VERIFIED_LABORATORIES)
 
 LABORATORIES_TRANSLATIONS: Dict[str, Dict[str, Any]] = {
     "hi": {
@@ -719,8 +1268,12 @@ def get_localized_standard(std: Dict[str, Any], language: str = "en") -> Dict[st
         res["title"] = trans["title"]
     if "division" in trans:
         res["division"] = trans["division"]
+    if "product_category" in trans:
+        res["product_category"] = trans["product_category"]
     if "qco_order_number" in trans:
         res["qco_order_number"] = trans["qco_order_number"]
+    if "qco_notifying_ministry" in trans:
+        res["qco_notifying_ministry"] = trans["qco_notifying_ministry"]
     if "scope_summary" in trans:
         res["scope_summary"] = trans["scope_summary"]
     
@@ -741,18 +1294,28 @@ def get_localized_all_standards(language: str = "en") -> List[Dict[str, Any]]:
     return [get_localized_standard(s, language) for s in VERIFIED_STANDARDS]
 
 
+
 def get_localized_scheme(scheme: Dict[str, Any], language: str = "en") -> Dict[str, Any]:
     if language not in ("hi", "ta"):
         return scheme
     
-    code = scheme.get("scheme_code")
+    code = scheme.get("scheme_code", "")
     trans = SCHEMES_TRANSLATIONS.get(language, {}).get(code, {})
+    if not trans:
+        # Check legacy aliases if direct code match not found
+        for alias in scheme.get("legacy_aliases", []):
+            if alias in SCHEMES_TRANSLATIONS.get(language, {}):
+                trans = SCHEMES_TRANSLATIONS[language][alias]
+                break
+    
     if not trans:
         return scheme
     
     res = copy.deepcopy(scheme)
     if "name" in trans:
         res["name"] = trans["name"]
+    if "classification" in trans:
+        res["classification"] = trans["classification"]
     if "description" in trans:
         res["description"] = trans["description"]
     if "applicable_sectors" in trans:
@@ -762,8 +1325,372 @@ def get_localized_scheme(scheme: Dict[str, Any], language: str = "en") -> Dict[s
     return res
 
 
-def get_localized_all_schemes(language: str = "en") -> List[Dict[str, Any]]:
-    return [get_localized_scheme(s, language) for s in VERIFIED_SCHEMES]
+def get_localized_all_schemes(
+    language: str = "en",
+    search: Optional[str] = None,
+    manufacturer_scope: Optional[str] = None,
+    classification: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    results: List[Dict[str, Any]] = []
+    
+    for scheme in VERIFIED_SCHEMES:
+        # Filter by manufacturer_scope
+        if manufacturer_scope and manufacturer_scope.upper() != "ALL":
+            scope = scheme.get("manufacturer_scope", "")
+            req_scope = manufacturer_scope.upper()
+            if req_scope == "DOMESTIC" and scope not in ("DOMESTIC", "DOMESTIC_AND_FOREIGN"):
+                continue
+            elif req_scope == "FOREIGN" and scope not in ("FOREIGN", "DOMESTIC_AND_FOREIGN"):
+                continue
+            elif req_scope == "ORGANIZATIONS_AND_LABS" and scope != "ORGANIZATIONS_AND_LABS":
+                continue
+        
+        # Filter by classification keyword
+        if classification:
+            cls_text = scheme.get("classification", "").lower()
+            if classification.lower() not in cls_text:
+                continue
+        
+        # Filter by search keyword
+        if search:
+            q = search.lower().strip()
+            code_text = scheme.get("scheme_code", "").lower()
+            aliases_text = " ".join(scheme.get("legacy_aliases", [])).lower()
+            name_text = scheme.get("name", "").lower()
+            desc_text = scheme.get("description", "").lower()
+            sectors_text = " ".join(scheme.get("applicable_sectors", [])).lower()
+            legal_text = scheme.get("legal_act_and_regulation", "").lower()
+            
+            combined = f"{code_text} {aliases_text} {name_text} {desc_text} {sectors_text} {legal_text}"
+            if q not in combined:
+                continue
+        
+        results.append(get_localized_scheme(scheme, language))
+    
+    return results
+
+
+
+
+LAB_CITY_LOCALIZATION: Dict[str, Dict[str, str]] = {
+    "ahmedabad": {"hi": "अहमदाबाद", "ta": "அகமதாபாத்"},
+    "bangalore": {"hi": "बेंगलुरु", "ta": "பெங்களூரு"},
+    "bengaluru": {"hi": "बेंगलुरु", "ta": "பெங்களூரு"},
+    "chennai": {"hi": "चेन्नई", "ta": "சென்னை"},
+    "madras": {"hi": "चेन्नई", "ta": "சென்னை"},
+    "mumbai": {"hi": "मुंबई", "ta": "மும்பை"},
+    "bombay": {"hi": "मुंबई", "ta": "மும்பை"},
+    "delhi": {"hi": "दिल्ली", "ta": "டெல்லி"},
+    "new delhi": {"hi": "नई दिल्ली", "ta": "புது டெல்லி"},
+    "kolkata": {"hi": "कोलकाता", "ta": "கொல்கத்தா"},
+    "calcutta": {"hi": "कोलकाता", "ta": "கொல்கத்தா"},
+    "hyderabad": {"hi": "हैदराबाद", "ta": "ஹைதராபாத்"},
+    "pune": {"hi": "पुणे", "ta": "புனே"},
+    "vadodara": {"hi": "वडोदरा", "ta": "வதோதரா"},
+    "baroda": {"hi": "वडोदरा", "ta": "வதோதரா"},
+    "ghaziabad": {"hi": "गाजियाबाद", "ta": "காசியாபாத்"},
+    "sahibabad": {"hi": "साहिबाबाद", "ta": "சாஹிபாபாத்"},
+    "gurgaon": {"hi": "गुरुग्राम", "ta": "குருகிராம்"},
+    "gurugram": {"hi": "गुरुग्राम", "ta": "குருகிராம்"},
+    "noida": {"hi": "नोएडा", "ta": "நொய்டா"},
+    "greater noida": {"hi": "ग्रेटर नोएडा", "ta": "கிரேட்டர் நொய்டா"},
+    "faridabad": {"hi": "फरीदाबाद", "ta": "பரிதாபாத்"},
+    "jaipur": {"hi": "जयपुर", "ta": "ஜெய்ப்பூர்"},
+    "coimbatore": {"hi": "कोयंबटूर", "ta": "கோயம்புத்தூர்"},
+    "kanpur": {"hi": "कानपुर", "ta": "கான்பூர்"},
+    "lucknow": {"hi": "लखनऊ", "ta": "லக்னோ"},
+    "nagpur": {"hi": "नागपुर", "ta": "நாக்பூர்"},
+    "indore": {"hi": "इंदौर", "ta": "இந்தூர்"},
+    "bhopal": {"hi": "भोपाल", "ta": "போபால்"},
+    "surat": {"hi": "सूरत", "ta": "சூரத்"},
+    "rajkot": {"hi": "राजकोट", "ta": "ராஜ்கோட்"},
+    "thiruvananthapuram": {"hi": "तिरुवनंतपुरम", "ta": "திருவனந்தபுரம்"},
+    "trivandrum": {"hi": "तिरुवनंतपुरम", "ta": "திருவனந்தபுரம்"},
+    "kochi": {"hi": "कोच्चि", "ta": "கொச்சி"},
+    "cochin": {"hi": "कोच्चि", "ta": "கொச்சி"},
+    "visakhapatnam": {"hi": "विशाखापत्तनम", "ta": "விசாகப்பட்டினம்"},
+    "vizag": {"hi": "विशाखापत्तनम", "ta": "விசாகப்பட்டினம்"},
+    "patna": {"hi": "पटना", "ta": "பாட்னா"},
+    "bhubaneswar": {"hi": "भुवनेश्वर", "ta": "புவனேஸ்வர்"},
+    "guwahati": {"hi": "गुवाहाटी", "ta": "குவாஹாட்டி"},
+    "chandigarh": {"hi": "चंडीगढ़", "ta": "சண்டிகர்"},
+    "ludhiana": {"hi": "लुधियाना", "ta": "லூதியானா"},
+    "jalandhar": {"hi": "जालंधर", "ta": "ஜலந்தர்"},
+    "mohali": {"hi": "मोहाली", "ta": "மொஹாலி"},
+    "mysore": {"hi": "मैसूर", "ta": "மைசூர்"},
+    "mysuru": {"hi": "मैसूर", "ta": "மைசூர்"},
+    "madurai": {"hi": "मदुरै", "ta": "மதுரை"},
+    "tirupur": {"hi": "तिरुपुर", "ta": "திருப்பூர்"},
+    "salem": {"hi": "सलेम", "ta": "சேலம்"},
+    "hosur": {"hi": "होसुर", "ta": "ஓசூர்"},
+    "ranipet": {"hi": "रानीपेट", "ta": "ராணிப்பேட்டை"},
+    "haridwar": {"hi": "हरिद्वार", "ta": "ஹரித்வார்"},
+    "dehradun": {"hi": "देहरादून", "ta": "டேஹ்ராடூன்"},
+    "roorkee": {"hi": "रुड़की", "ta": "ரூர்க்கி"},
+    "jamshedpur": {"hi": "जमशेदपुर", "ta": "ஜம்ஷெட்பூர்"},
+    "ranchi": {"hi": "राँची", "ta": "ராஞ்சி"},
+    "raipur": {"hi": "रायपुर", "ta": "ராய்ப்பூர்"},
+    "agra": {"hi": "आगरा", "ta": "ஆக்ரா"},
+    "meerut": {"hi": "मेरठ", "ta": "மீரட்"},
+    "varanasi": {"hi": "वाराणसी", "ta": "வாரணாசி"},
+    "sonipat": {"hi": "सोनीपत", "ta": "சோனிபட்"},
+    "sonepat": {"hi": "सोनीपत", "ta": "சோனிபட்"},
+    "panipat": {"hi": "पानीपत", "ta": "பானிபட்"},
+    "kundli": {"hi": "कुंडली", "ta": "குண்ட்லி"},
+    "manesar": {"hi": "मानेसर", "ta": "மனேசர்"},
+    "bawana": {"hi": "बवाना", "ta": "பவானா"},
+    "okhla": {"hi": "ओखला", "ta": "ஓக்லா"},
+    "secunderabad": {"hi": "सिकंदराबाद", "ta": "செகந்திராபாத்"},
+    "vijayawada": {"hi": "विजयवाड़ा", "ta": "விஜயவாடா"},
+    "guntur": {"hi": "गुंटूर", "ta": "குண்டூர்"},
+    "nashik": {"hi": "नासिक", "ta": "நாசிக்"},
+    "aurangabad": {"hi": "छत्रपति संभाजीनगर (औरंगाबाद)", "ta": "அவுரங்காபாத்"},
+    "chhatrapati sambhajinagar": {"hi": "छत्रपति संभाजीनगर", "ta": "சத்ரபதி சம்பாஜிநகர்"},
+    "tiruchirappalli": {"hi": "तिरुचिरापल्ली", "ta": "திருச்சிராப்பள்ளி"},
+    "trichy": {"hi": "तिरुचिरापल्ली", "ta": "திருச்சிராப்பள்ளி"},
+    "bathinda": {"hi": "बठिंडा", "ta": "பட்டிண்டா"},
+    "khargone": {"hi": "खरगोन", "ta": "கார்கோன்"},
+    "cotton green": {"hi": "कॉटन ग्रीन", "ta": "காட்டன் கிரீன்"},
+    "anand": {"hi": "आनंद", "ta": "ஆனந்த்"},
+    "ambala": {"hi": "अंबाला", "ta": "அம்பாலா"},
+    "ambala cantt": {"hi": "अंबाला छावनी", "ta": "அம்பாலா கண்டோன்மென்ட்"},
+    "baddi": {"hi": "बद्दी", "ta": "பட்டி"},
+    "bahadurgarh": {"hi": "बहादुरगढ़", "ta": "பகதூர்கர்"},
+    "durgapur": {"hi": "दुर्गापुर", "ta": "துர்காபூர்"},
+    "ernakulam": {"hi": "एर्नाकुलम", "ta": "எர்ணாகுளம்"},
+    "thane": {"hi": "ठाणे", "ta": "தானே"},
+    "navi mumbai": {"hi": "नवी मुंबई", "ta": "நவி மும்பை"},
+    "panvel": {"hi": "पनवेल", "ta": "பன்வெல்"},
+    "morbi": {"hi": "मोरबी", "ta": "மோர்பி"},
+    "jamnagar": {"hi": "जामनगर", "ta": "ஜாம்நகர்"},
+    "parwanoo": {"hi": "परवाणू", "ta": "பர்வானூ"},
+    "derabassi": {"hi": "डेराबस्सी", "ta": "தேராபஸ்ஸி"},
+    "azadpur": {"hi": "आजादपुर", "ta": "ஆசாத்பூர்"},
+    "bahadrabad": {"hi": "बहादराबाद", "ta": "பகத்ராபாத்"},
+    "alappuzha": {"hi": "अलप्पुझा", "ta": "ஆலப்புழா"},
+    "vellore": {"hi": "वेल्लोर", "ta": "வேலூர்"},
+    "tirunelveli": {"hi": "तिरुनेलवेली", "ta": "திருநெல்வேலி"},
+    "palakkad": {"hi": "पालक्काड़", "ta": "பாலக்காடு"},
+    "kollam": {"hi": "कोल्लम", "ta": "கொல்லம்"},
+    "thrissur": {"hi": "त्रिशूर", "ta": "திருச்சூர்"},
+    "kannur": {"hi": "कन्नूर", "ta": "கண்ணூர்"},
+    "kozhikode": {"hi": "कोझिकोड", "ta": "கோழிக்கோடு"},
+    "calicut": {"hi": "कोझिकोड", "ta": "கோழிக்கோடு"},
+}
+
+LAB_STATE_LOCALIZATION: Dict[str, Dict[str, str]] = {
+    "delhi": {"hi": "दिल्ली", "ta": "டெல்லி"},
+    "maharashtra": {"hi": "महाराष्ट्र", "ta": "மகாராஷ்டிரா"},
+    "tamil nadu": {"hi": "तमिलनाडु", "ta": "தமிழ்நாடு"},
+    "uttar pradesh": {"hi": "उत्तर प्रदेश", "ta": "உத்தரப் பிரதேசம்"},
+    "west bengal": {"hi": "पश्चिम बंगाल", "ta": "மேற்கு வங்காளம்"},
+    "karnataka": {"hi": "कर्नाटक", "ta": "கர்நாடகா"},
+    "gujarat": {"hi": "गुजरात", "ta": "குஜராத்"},
+    "rajasthan": {"hi": "राजस्थान", "ta": "ராஜஸ்தான்"},
+    "punjab": {"hi": "पंजाब", "ta": "பஞ்சாப்"},
+    "haryana": {"hi": "हरियाणा", "ta": "ஹரியானா"},
+    "kerala": {"hi": "केरल", "ta": "கேரளா"},
+    "madhya pradesh": {"hi": "मध्य प्रदेश", "ta": "மத்தியப் பிரதேசம்"},
+    "telangana": {"hi": "तेलंगाना", "ta": "தெலுங்கானா"},
+    "andhra pradesh": {"hi": "आंध्र प्रदेश", "ta": "ஆந்திரப் பிரதேசம்"},
+    "odisha": {"hi": "ओडिशा", "ta": "ஒடிசா"},
+    "bihar": {"hi": "बिहार", "ta": "பீகார்"},
+    "assam": {"hi": "असम", "ta": "அஸ்ஸாம்"},
+    "chhattisgarh": {"hi": "छत्तीसगढ़", "ta": "சத்தீஸ்கர்"},
+    "jharkhand": {"hi": "झारखंड", "ta": "ஜார்க்கண்ட்"},
+    "uttarakhand": {"hi": "उत्तराखंड", "ta": "உத்தரகாண்ட்"},
+    "himachal pradesh": {"hi": "हिमाचल प्रदेश", "ta": "இமாச்சலப் பிரதேசம்"},
+    "jammu & kashmir": {"hi": "जम्मू और कश्मीर", "ta": "ஜம்மு மற்றும் காஷ்மீர்"},
+    "goa": {"hi": "गोवा", "ta": "கோவா"},
+    "puducherry": {"hi": "पुडुचेरी", "ta": "புதுச்சேரி"},
+    "chandigarh": {"hi": "चंडीगढ़", "ta": "சண்டிகர்"},
+}
+
+LAB_PHRASE_PATTERNS: List[Tuple[re.Pattern, Dict[str, str]]] = [
+    # Status prefixes
+    (re.compile(r"\(deferred\)", re.IGNORECASE), {"hi": "(आस्थगित)", "ta": "(ஒத்திவைக்கப்பட்டது)"}),
+
+    # Institutional & Statutory bodies
+    (re.compile(r"COTTON ASSOCIATION OF INDIA", re.IGNORECASE), {"hi": "कॉटन एसोसिएशन ऑफ इंडिया", "ta": "காட்டன் அசோசியேஷன் ஆஃப் இந்தியா"}),
+    (re.compile(r"COTTON TESTING AND RESEARCH LABORATORY", re.IGNORECASE), {"hi": "कपास परीक्षण एवं अनुसंधान प्रयोगशाला", "ta": "பருத்தி சோதனை மற்றும் ஆராய்ச்சி ஆய்வகம்"}),
+    (re.compile(r"COTTON TESTING & RESEARCH LABORATORY", re.IGNORECASE), {"hi": "कपास परीक्षण एवं अनुसंधान प्रयोगशाला", "ta": "பருத்தி சோதனை மற்றும் ஆராய்ச்சி ஆய்வகம்"}),
+    (re.compile(r"BUREAU OF INDIAN STANDARDS", re.IGNORECASE), {"hi": "भारतीय मानक ब्यूरो (BIS)", "ta": "இந்திய தரநிலைகள் பணியகம் (BIS)"}),
+    (re.compile(r"CENTRAL POWER RESEARCH INSTITUTE", re.IGNORECASE), {"hi": "केंद्रीय विद्युत अनुसंधान संस्थान (CPRI)", "ta": "மத்திய மின் ஆராய்ச்சி நிறுவனம் (CPRI)"}),
+    (re.compile(r"ELECTRICAL RESEARCH AND DEVELOPMENT ASSOCIATION", re.IGNORECASE), {"hi": "विद्युत अनुसंधान एवं विकास संघ (ERDA)", "ta": "மின் ஆராய்ச்சி மற்றும் மேம்பாட்டு சங்கம் (ERDA)"}),
+    (re.compile(r"ELECTRONICS REGIONAL TEST LABORATORY", re.IGNORECASE), {"hi": "इलेक्ट्रॉनिक्स क्षेत्रीय परीक्षण प्रयोगशाला (ERTL)", "ta": "மின்னணுவியல் பிராந்திய சோதனை ஆய்வகம் (ERTL)"}),
+    (re.compile(r"NATIONAL TEST HOUSE", re.IGNORECASE), {"hi": "राष्ट्रीय परीक्षण गृह (NTH)", "ta": "தேசிய சோதனை இல்லம் (NTH)"}),
+    (re.compile(r"INDIAN OIL CORPORATION LIMITED", re.IGNORECASE), {"hi": "इंडियन ऑयल कॉर्पोरेशन लिमिटेड (IOCL)", "ta": "இந்தியன் ஆயில் கார்ப்பரேஷன் லிமிடெட் (IOCL)"}),
+    (re.compile(r"INDIAN OIL CORPORATION LTD\.?", re.IGNORECASE), {"hi": "इंडियन ऑयल कॉर्पोरेशन लिमिटेड (IOCL)", "ta": "இந்தியன் ஆயில் கார்ப்பரேஷன் லிமிடெட் (IOCL)"}),
+    (re.compile(r"\bIOCL\b", re.IGNORECASE), {"hi": "इंडियन ऑयल (IOCL)", "ta": "இந்தியன் ஆயில் (IOCL)"}),
+    (re.compile(r"CENTRAL INSTITUTE OF PETROCHEMICALS ENGINEERING & TECHNOLOGY", re.IGNORECASE), {"hi": "केंद्रीय पेट्रोकेमिकल्स इंजीनियरिंग एवं प्रौद्योगिकी संस्थान (CIPET)", "ta": "மத்திய பெட்ரோகெமிக்கல்ஸ் பொறியியல் மற்றும் தொழில்நுட்ப நிறுவனம் (CIPET)"}),
+    (re.compile(r"CENTRAL INSTITUTE OF PETROCHEMICALS ENGINEERING AND TECHNOLOGY", re.IGNORECASE), {"hi": "केंद्रीय पेट्रोकेमिकल्स इंजीनियरिंग एवं प्रौद्योगिकी संस्थान (CIPET)", "ta": "மத்திய பெட்ரோகெமிக்கல்ஸ் பொறியியல் மற்றும் தொழில்நுட்ப நிறுவனம் (CIPET)"}),
+    (re.compile(r"CENTRAL INSTITUTE OF PLASTICS ENGINEERING & TECHNOLOGY", re.IGNORECASE), {"hi": "केंद्रीय प्लास्टिक इंजीनियरिंग एवं प्रौद्योगिकी संस्थान (CIPET)", "ta": "மத்திய பிளாஸ்டிக் பொறியியல் மற்றும் தொழில்நுட்ப நிறுவனம் (CIPET)"}),
+    (re.compile(r"\bCIPET\b", re.IGNORECASE), {"hi": "सीपेट (CIPET)", "ta": "சிபெட் (CIPET)"}),
+    (re.compile(r"FOOTWEAR DESIGN AND DEVELOPMENT INSTITUTE", re.IGNORECASE), {"hi": "फुटवियर डिजाइन एवं विकास संस्थान (FDDI)", "ta": "காலணி வடிவமைப்பு மற்றும் மேம்பாட்டு நிறுவனம் (FDDI)"}),
+    (re.compile(r"SHRIRAM INSTITUTE FOR INDUSTRIAL RESEARCH", re.IGNORECASE), {"hi": "श्रीराम औद्योगिक अनुसंधान संस्थान", "ta": "ஸ்ரீராம் தொழில்துறை ஆராய்ச்சி நிறுவனம்"}),
+    (re.compile(r"INSTITUTE FOR INDUSTRIAL RESEARCH", re.IGNORECASE), {"hi": "औद्योगिक अनुसंधान संस्थान", "ta": "தொழில்துறை ஆராய்ச்சி நிறுவனம்"}),
+    (re.compile(r"WAKEFIELD INSPECTION SERVICES INDIA", re.IGNORECASE), {"hi": "वेकफील्ड इंस्पेक्शन सर्विसेज इंडिया", "ta": "வேக்ஃபீல்ட் இன்ஸ்பெக்ஷன் சர்வீசஸ் இந்தியா"}),
+    (re.compile(r"WAKEFIELD INSPECTION SERVICES", re.IGNORECASE), {"hi": "वेकफील्ड इंस्पेक्शन सर्विसेज", "ta": "வேக்ஃபீல்ட் இன்ஸ்பெக்ஷன் சர்வீசஸ்"}),
+    (re.compile(r"NATIONAL RESEARCH AND TECHNOLOGY CONSORTIUM", re.IGNORECASE), {"hi": "राष्ट्रीय अनुसंधान एवं प्रौद्योगिकी संघ (NRTC)", "ta": "தேசிய ஆராய்ச்சி மற்றும் தொழில்நுட்ப கூட்டமைப்பு (NRTC)"}),
+    (re.compile(r"INSTITUTE OF SECONDARY STEEL TECHNOLOGY", re.IGNORECASE), {"hi": "द्वितीयक इस्पात प्रौद्योगिकी संस्थान", "ta": "இரண்டாம் நிலை எஃகு தொழில்நுட்ப நிறுவனம்"}),
+    (re.compile(r"INSTITUTE FOR AUTO PARTS AND HAND TOOLS TECHNOLOGY", re.IGNORECASE), {"hi": "ऑटो पार्ट्स एवं हैंड टूल्स प्रौद्योगिकी संस्थान", "ta": "வாகன பாகங்கள் மற்றும் கை கருவிகள் தொழில்நுட்ப நிறுவனம்"}),
+
+    # Specialized Lab Facilities
+    (re.compile(r"ELECTRO MAGNETIC LABORATORY", re.IGNORECASE), {"hi": "इलेक्ट्रो मैग्नेटिक प्रयोगशाला", "ta": "மின்காந்த ஆய்வகம்"}),
+    (re.compile(r"ELECTRICAL TESTING AND RESEARCH LABORATORY", re.IGNORECASE), {"hi": "विद्युत परीक्षण एवं अनुसंधान प्रयोगशाला", "ta": "மின் சோதனை மற்றும் ஆராய்ச்சி ஆய்வகம்"}),
+    (re.compile(r"ELECTRICAL TESTING & RESEARCH LABORATORY", re.IGNORECASE), {"hi": "विद्युत परीक्षण एवं अनुसंधान प्रयोगशाला", "ta": "மின் சோதனை மற்றும் ஆராய்ச்சி ஆய்வகம்"}),
+    (re.compile(r"ELECTRONICS TESTING CENTRE", re.IGNORECASE), {"hi": "इलेक्ट्रॉनिक्स परीक्षण केंद्र", "ta": "மின்னணுவியல் சோதனை மையம்"}),
+    (re.compile(r"ELECTRONICS TESTING CENTER", re.IGNORECASE), {"hi": "इलेक्ट्रॉनिक्स परीक्षण केंद्र", "ta": "மின்னணுவியல் சோதனை மையம்"}),
+    (re.compile(r"COMPLIANCE AND TESTING LABORATORIES", re.IGNORECASE), {"hi": "अनुपालन एवं परीक्षण प्रयोगशालाएं", "ta": "இணக்கம் மற்றும் சோதனை ஆய்வகங்கள்"}),
+    (re.compile(r"COMPLIANCE & TESTING LABORATORIES", re.IGNORECASE), {"hi": "अनुपालन एवं परीक्षण प्रयोगशालाएं", "ta": "இணக்கம் மற்றும் சோதனை ஆய்வகங்கள்"}),
+    (re.compile(r"FOOD RESEARCH & ANALYSIS CENTRE", re.IGNORECASE), {"hi": "खाद्य अनुसंधान एवं विश्लेषण केंद्र", "ta": "உணவு ஆராய்ச்சி மற்றும் பகுப்பாய்வு மையம்"}),
+    (re.compile(r"FOOD RESEARCH AND ANALYSIS CENTRE", re.IGNORECASE), {"hi": "खाद्य अनुसंधान एवं विश्लेषण केंद्र", "ta": "உணவு ஆராய்ச்சி மற்றும் பகுப்பாய்வு மையம்"}),
+    (re.compile(r"QUALITY CERTIFICATIONS", re.IGNORECASE), {"hi": "गुणवत्ता प्रमाणन", "ta": "தர சான்றிதழ்"}),
+    (re.compile(r"CENTRAL REGIONAL OFFICE & LABORATORY", re.IGNORECASE), {"hi": "केंद्रीय क्षेत्रीय कार्यालय एवं प्रयोगशाला", "ta": "மத்திய பிராந்திய அலுவலகம் மற்றும் ஆய்வகம்"}),
+    (re.compile(r"CENTRAL REGIONAL OFFICE AND LABORATORY", re.IGNORECASE), {"hi": "केंद्रीय क्षेत्रीय कार्यालय एवं प्रयोगशाला", "ta": "மத்திய பிராந்திய அலுவலகம் மற்றும் ஆய்வகம்"}),
+    (re.compile(r"CENTRAL LABORATORY", re.IGNORECASE), {"hi": "केंद्रीय प्रयोगशाला", "ta": "மத்திய ஆய்வகம்"}),
+    (re.compile(r"WESTERN REGIONAL LABORATORY", re.IGNORECASE), {"hi": "पश्चिमी क्षेत्रीय प्रयोगशाला", "ta": "மேற்கு மண்டல ஆய்வகம்"}),
+    (re.compile(r"SOUTHERN REGIONAL LABORATORY", re.IGNORECASE), {"hi": "दक्षिणी क्षेत्रीय प्रयोगशाला", "ta": "தெற்கு மண்டல ஆய்வகம்"}),
+    (re.compile(r"EASTERN REGIONAL LABORATORY", re.IGNORECASE), {"hi": "पूर्वी क्षेत्रीय प्रयोगशाला", "ta": "கிழக்கு மண்டல ஆய்வகம்"}),
+    (re.compile(r"NORTHERN REGIONAL LABORATORY", re.IGNORECASE), {"hi": "उत्तरी क्षेत्रीय प्रयोगशाला", "ta": "வடக்கு மண்டல ஆய்வகம்"}),
+    (re.compile(r"TEXTILE COMMITTEE QUALITY ASSURANCE LABORATORY", re.IGNORECASE), {"hi": "वस्त्र समिति गुणवत्ता आश्वासन प्रयोगशाला", "ta": "ஜவுளிக் குழும தர உத்தரவாத ஆய்வகம்"}),
+    (re.compile(r"QUALITY ASSURANCE LABORATORY", re.IGNORECASE), {"hi": "गुणवत्ता आश्वासन प्रयोगशाला", "ta": "தர உத்தரவாத ஆய்வகம்"}),
+    (re.compile(r"TESTING AND RESEARCH LABORATORY", re.IGNORECASE), {"hi": "परीक्षण एवं अनुसंधान प्रयोगशाला", "ta": "சோதனை மற்றும் ஆராய்ச்சி ஆய்வகம்"}),
+    (re.compile(r"TESTING & RESEARCH LABORATORY", re.IGNORECASE), {"hi": "परीक्षण एवं अनुसंधान प्रयोगशाला", "ta": "சோதனை மற்றும் ஆராய்ச்சி ஆய்வகம்"}),
+    (re.compile(r"TEST AND RESEARCH CENTRE", re.IGNORECASE), {"hi": "परीक्षण एवं अनुसंधान केंद्र", "ta": "சோதனை மற்றும் ஆராய்ச்சி மையம்"}),
+    (re.compile(r"TEST & RESEARCH CENTRE", re.IGNORECASE), {"hi": "परीक्षण एवं अनुसंधान केंद्र", "ta": "சோதனை மற்றும் ஆராய்ச்சி மையம்"}),
+    (re.compile(r"RESEARCH AND DEVELOPMENT CENTRE", re.IGNORECASE), {"hi": "अनुसंधान एवं विकास केंद्र", "ta": "ஆராய்ச்சி மற்றும் மேம்பாட்டு மையம்"}),
+    (re.compile(r"RESEARCH & DEVELOPMENT CENTRE", re.IGNORECASE), {"hi": "अनुसंधान एवं विकास केंद्र", "ta": "ஆராய்ச்சி மற்றும் மேம்பாட்டு மையம்"}),
+    (re.compile(r"RESEARCH AND DEVELOPMENT", re.IGNORECASE), {"hi": "अनुसंधान एवं विकास", "ta": "ஆராய்ச்சி மற்றும் மேம்பாடு"}),
+    (re.compile(r"RESEARCH & DEVELOPMENT", re.IGNORECASE), {"hi": "अनुसंधान एवं विकास", "ta": "ஆராய்ச்சி மற்றும் மேம்பாடு"}),
+    (re.compile(r"CALIBRATION AND TESTING LABORATORY", re.IGNORECASE), {"hi": "अंशांकन एवं परीक्षण प्रयोगशाला", "ta": "அளவுத்திருத்தம் மற்றும் சோதனை ஆய்வகம்"}),
+    (re.compile(r"ANALYTICAL AND RESEARCH", re.IGNORECASE), {"hi": "विश्लेषणात्मक एवं अनुसंधान", "ta": "பகுப்பாய்வு மற்றும் ஆராய்ச்சி"}),
+    (re.compile(r"ENVIRONMENTAL LABORATORY", re.IGNORECASE), {"hi": "पर्यावरण प्रयोगशाला", "ta": "சுற்றுச்சூழல் ஆய்வகம்"}),
+    (re.compile(r"TESTING LABORATORY", re.IGNORECASE), {"hi": "परीक्षण प्रयोगशाला", "ta": "சோதனை ஆய்வகம்"}),
+    (re.compile(r"TESTING LABORATORIES", re.IGNORECASE), {"hi": "परीक्षण प्रयोगशालाएं", "ta": "சோதனை ஆய்வகங்கள்"}),
+    (re.compile(r"TESTING FACILITY", re.IGNORECASE), {"hi": "परीक्षण सुविधा", "ta": "சோதனை மையம்"}),
+    (re.compile(r"TEST LABORATORY", re.IGNORECASE), {"hi": "परीक्षण प्रयोगशाला", "ta": "சோதனை ஆய்வகம்"}),
+    (re.compile(r"TEST HOUSE", re.IGNORECASE), {"hi": "परीक्षण गृह", "ta": "சோதனை இல்லம்"}),
+    (re.compile(r"ANALYTICAL LABORATORY", re.IGNORECASE), {"hi": "विश्लेषणात्मक प्रयोगशाला", "ta": "பகுப்பாய்வு ஆய்வகம்"}),
+    (re.compile(r"STANDARDS LABORATORY", re.IGNORECASE), {"hi": "मानक प्रयोगशाला", "ta": "தரநிலை ஆய்வகம்"}),
+    (re.compile(r"RESEARCH INSTITUTE", re.IGNORECASE), {"hi": "अनुसंधान संस्थान", "ta": "ஆராய்ச்சி நிறுவனம்"}),
+    (re.compile(r"RESEARCH CENTRE", re.IGNORECASE), {"hi": "अनुसंधान केंद्र", "ta": "ஆராய்ச்சி மையம்"}),
+    (re.compile(r"RESEARCH CENTER", re.IGNORECASE), {"hi": "अनुसंधान केंद्र", "ta": "ஆராய்ச்சி மையம்"}),
+    (re.compile(r"TESTING CENTRE", re.IGNORECASE), {"hi": "परीक्षण केंद्र", "ta": "சோதனை மையம்"}),
+    (re.compile(r"TESTING CENTER", re.IGNORECASE), {"hi": "परीक्षण केंद्र", "ta": "சோதனை மையம்"}),
+    (re.compile(r"FOOD LABORATORY", re.IGNORECASE), {"hi": "खाद्य प्रयोगशाला", "ta": "உணவு ஆய்வகம்"}),
+    (re.compile(r"REGIONAL LABORATORY", re.IGNORECASE), {"hi": "क्षेत्रीय प्रयोगशाला", "ta": "பிராந்திய ஆய்வகம்"}),
+    (re.compile(r"A UNIT OF", re.IGNORECASE), {"hi": "की एक इकाई", "ta": "இன் ஒரு பிரிவு"}),
+    (re.compile(r"LABORATORIES", re.IGNORECASE), {"hi": "प्रयोगशालाएं", "ta": "ஆய்வகங்கள்"}),
+    (re.compile(r"LABORATORY", re.IGNORECASE), {"hi": "प्रयोगशाला", "ta": "ஆய்வகம்"}),
+
+    # Corporate Entities
+    (re.compile(r"PVT\.?\s*LTD\.?", re.IGNORECASE), {"hi": "प्राइवेट लिमिटेड", "ta": "பிரைவேட் லிமிடெட்"}),
+    (re.compile(r"PRIVATE LIMITED", re.IGNORECASE), {"hi": "प्राइवेट लिमिटेड", "ta": "பிரைவேட் லிமிடெட்"}),
+    (re.compile(r"\bLLP\b", re.IGNORECASE), {"hi": "एलएलपी", "ta": "எல்எல்பி"}),
+    (re.compile(r"LTD\.?", re.IGNORECASE), {"hi": "लिमिटेड", "ta": "லிமிடெட்"}),
+    (re.compile(r"LIMITED", re.IGNORECASE), {"hi": "लिमिटेड", "ta": "லிமிடெட்"}),
+    (re.compile(r"SOUTH ASIA", re.IGNORECASE), {"hi": "साउथ एशिया", "ta": "தெற்காசியா"}),
+    (re.compile(r"TUV SUD", re.IGNORECASE), {"hi": "टीयूवी एसयूडी", "ta": "டியூவி எஸ்யுடி"}),
+    (re.compile(r"TUV RHEINLAND", re.IGNORECASE), {"hi": "टीयूवी राइनलैंड", "ta": "டியூவி ரைன்லாந்து"}),
+    (re.compile(r"BUREAU VERITAS", re.IGNORECASE), {"hi": "ब्यूरो वेरिटास", "ta": "பியூரோ வெரிடாஸ்"}),
+    (re.compile(r"INTERTEK INDIA", re.IGNORECASE), {"hi": "इंटरटेक इंडिया", "ta": "இன்டர்டெக் இந்தியா"}),
+    (re.compile(r"INTERTEK", re.IGNORECASE), {"hi": "इंटरटेक", "ta": "இன்டர்டெக்"}),
+    (re.compile(r"UL INDIA", re.IGNORECASE), {"hi": "यूएल इंडिया", "ta": "யுஎல் இந்தியா"}),
+    (re.compile(r"SGS INDIA", re.IGNORECASE), {"hi": "एसजीएस इंडिया", "ta": "எஸ்ஜிஎஸ் இந்தியா"}),
+    (re.compile(r"EUROFINS", re.IGNORECASE), {"hi": "यूरोफिन्स", "ta": "யூரோபின்ஸ்"}),
+    (re.compile(r"DEKRA", re.IGNORECASE), {"hi": "डेक्रा", "ta": "டெக்ரா"}),
+    (re.compile(r"ITC LIMITED", re.IGNORECASE), {"hi": "आईटीसी लिमिटेड", "ta": "ஐடிசி லிமிடெட்"}),
+    (re.compile(r"\bBIS\b"), {"hi": "बीआईएस", "ta": "BIS"}),
+]
+
+
+def localize_lab_name(raw_name: str, language: str) -> str:
+    if not raw_name or language not in ("hi", "ta"):
+        return raw_name
+    
+    localized = raw_name
+    for pattern, trans in LAB_PHRASE_PATTERNS:
+        if language in trans:
+            localized = pattern.sub(trans[language], localized)
+    
+    # Replace cities in lab name
+    for city_key, city_dict in LAB_CITY_LOCALIZATION.items():
+        if language in city_dict:
+            pattern = re.compile(rf"\b{re.escape(city_key)}\b", re.IGNORECASE)
+            localized = pattern.sub(city_dict[language], localized)
+            
+    return localized
+
+
+def localize_city(city: Optional[str], language: str) -> str:
+    if not city or language not in ("hi", "ta"):
+        return city or ""
+    key = city.strip().lower()
+    return LAB_CITY_LOCALIZATION.get(key, {}).get(language, city)
+
+
+def localize_state(state: Optional[str], language: str) -> str:
+    if not state or language not in ("hi", "ta"):
+        return state or ""
+    key = state.strip().lower()
+    return LAB_STATE_LOCALIZATION.get(key, {}).get(language, state)
+
+
+def localize_scope(summary: Optional[str], language: str) -> str:
+    if not summary or language not in ("hi", "ta"):
+        return summary or ""
+    
+    is_hi = language == "hi"
+    if "Safety, electromagnetic compatibility (EMC), and performance testing" in summary:
+        return (
+            "आईटी उपकरण, उपभोक्ता इलेक्ट्रॉनिक्स, एलईडी ड्राइवर, पावर एडेप्टर और सेकेंडरी लिथियम बैटरी के लिए सुरक्षा, विद्युत चुम्बकीय अनुकूलता (EMC) और प्रदर्शन परीक्षण।"
+            if is_hi else
+            "தகவல் தொழில்நுட்ப சாதனங்கள், நுகர்வோர் மின்னணுவியல், LED டிரைவர்கள், பவர் அடாப்டர்கள் மற்றும் இரண்டாம் நிலை லித்தியம் பேட்டரிகளுக்கான பாதுகாப்பு, மின்காந்த இணக்கத்தன்மை (EMC) மற்றும் செயல்திறன் சோதனை."
+        )
+    if "Apex national testing facility" in summary:
+        return (
+            "विद्युत उपकरणों, रासायनिक विश्लेषण, मैकेनिकल इंजीनियरिंग, प्लास्टिक, पैकेजिंग और खाद्य सुरक्षा के लिए शीर्ष राष्ट्रीय परीक्षण सुविधा।"
+            if is_hi else
+            "மின் சாதனங்கள், வேதியியல் பகுப்பாய்வு, மெக்கானிக்கல் இன்ஜினியரிங், பிளாஸ்டிக், பேக்கேஜிங் மற்றும் உணவுப் பாதுகாப்புக்கான முதன்மை தேசிய சோதனை மையம்."
+        )
+    if "Western regional testing facility" in summary:
+        return (
+            "उपभोक्ता उपकरणों, प्लास्टिक, धातुकर्म, रसायनों और घरेलू विद्युत उपकरणों के लिए पश्चिमी क्षेत्रीय परीक्षण केंद्र।"
+            if is_hi else
+            "நுகர்வோர் சாதனங்கள், பிளாஸ்டிக், உலோகவியல், இரசாயனங்கள் மற்றும் வீட்டு மின் சாதனங்களுக்கான மேற்கு மண்டல சோதனை மையம்."
+        )
+    if "Southern regional testing facility" in summary:
+        return (
+            "विद्युत इन्सुलेशन, केबल, ट्रांसफार्मर, खाद्य तेल और पेय पदार्थों के लिए दक्षिणी क्षेत्रीय परीक्षण केंद्र।"
+            if is_hi else
+            "மின் காப்பு, கேபிள்கள், மின்மாற்றிகள், சமையல் எண்ணெய் மற்றும் பானங்களுக்கான தென் மண்டல சோதனை மையம்."
+        )
+    if "Eastern regional testing facility" in summary:
+        return (
+            "धातुकर्म परीक्षण, विद्युत सुरक्षा, पंखे, पैकेजिंग और रसायनों के लिए पूर्वी क्षेत्रीय परीक्षण केंद्र।"
+            if is_hi else
+            "உலோகவியல் சோதனை, மின் பாதுகாப்பு, விசிறிகள், பேக்கேஜிங் மற்றும் இரசாயனங்களுக்கான கிழக்கு மண்டல சோதனை மையம்."
+        )
+    if "Northern regional laboratory" in summary:
+        return (
+            "कृषि मशीनरी, खाद्य उत्पाद, पंप, मोटर और इलेक्ट्रो-तकनीकी वस्तुओं के लिए उत्तरी क्षेत्रीय परीक्षण प्रयोगशाला।"
+            if is_hi else
+            "விவசாய இயந்திரங்கள், உணவுப் பொருட்கள், பம்புகள், மோட்டார்கள் மற்றும் மின் தொழில்நுட்ப பொருட்களுக்கான வடக்கு மண்டல சோதனை ஆய்வகம்."
+        )
+    if "Central regional facility" in summary:
+        return (
+            "रासायनिक परीक्षण, निर्माण सामग्री, कृषि उपकरण और बोतलबंद पानी के लिए केंद्रीय क्षेत्रीय सुविधा।"
+            if is_hi else
+            "இரசாயன சோதனை, கட்டுமானப் பொருட்கள், விவசாய உபகரணங்கள் மற்றும் பாட்டில் தண்ணீருக்கான மத்திய மண்டல வசதி."
+        )
+    if "Conformity testing and quality evaluation facility recognized under BIS LIMS" in summary:
+        return (
+            "बीआईएस एलआईएमएस / प्रयोगशाला मान्यता योजना के तहत मान्यता प्राप्त अनुरूपता परीक्षण एवं गुणवत्ता मूल्यांकन सुविधा।"
+            if is_hi else
+            "BIS LIMS / ஆய்வக அங்கீகாரத் திட்டத்தின் கீழ் அங்கீகரிக்கப்பட்ட இணக்க சோதனை மற்றும் தர மதிப்பீட்டு வசதி."
+        )
+    return summary
 
 
 def get_localized_laboratory(lab: Dict[str, Any], language: str = "en") -> Dict[str, Any]:
@@ -772,18 +1699,29 @@ def get_localized_laboratory(lab: Dict[str, Any], language: str = "en") -> Dict[
     
     lab_id = lab.get("id")
     trans = LABORATORIES_TRANSLATIONS.get(language, {}).get(lab_id, {})
-    if not trans:
-        return lab
     
     res = copy.deepcopy(lab)
-    if "lab_name" in trans:
-        res["lab_name"] = trans["lab_name"]
-    if "state" in trans:
-        res["state"] = trans["state"]
-    if "city" in trans:
-        res["city"] = trans["city"]
-    if "testing_scope_summary" in trans:
-        res["testing_scope_summary"] = trans["testing_scope_summary"]
+    if trans:
+        if "lab_name" in trans:
+            res["lab_name"] = trans["lab_name"]
+        if "state" in trans:
+            res["state"] = trans["state"]
+        if "city" in trans:
+            res["city"] = trans["city"]
+        if "testing_scope_summary" in trans:
+            res["testing_scope_summary"] = trans["testing_scope_summary"]
+        return res
+    
+    # Dynamic fallback localization for all official BIS laboratories
+    res["lab_name"] = localize_lab_name(lab.get("lab_name", ""), language)
+    if lab.get("city"):
+        res["city"] = localize_city(lab.get("city"), language)
+    if lab.get("district"):
+        res["district"] = localize_city(lab.get("district"), language)
+    if lab.get("state"):
+        res["state"] = localize_state(lab.get("state"), language)
+    if lab.get("testing_scope_summary"):
+        res["testing_scope_summary"] = localize_scope(lab.get("testing_scope_summary"), language)
     return res
 
 

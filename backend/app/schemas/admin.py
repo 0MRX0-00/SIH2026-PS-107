@@ -11,8 +11,9 @@ class AdminDocumentItem(BaseModel):
     document_type: str
     year: Optional[int] = None
     division: Optional[str] = None
-    page_count: int
-    chunk_count: int
+    clause_count: int = 0
+    page_count: int = 1
+    chunk_count: int = 0  # Legacy compatibility field, mapped to verified clause_count
     file_hash: str
     status: str = "PROCESSED"  # PROCESSED, OUTDATED, FAILED, PENDING
     source_type: str = "OFFICIAL_BIS"
@@ -22,7 +23,8 @@ class AdminDocumentItem(BaseModel):
 
 class AdminOverviewResponse(BaseModel):
     total_documents: int
-    total_chunks: int
+    total_clauses: int = 0
+    total_chunks: int = 0  # Legacy compatibility field, mapped to verified total_clauses
     total_standards: int
     total_schemes: int
     total_laboratories: int

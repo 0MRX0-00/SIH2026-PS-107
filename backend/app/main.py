@@ -10,6 +10,7 @@ from app.core.middleware import (
     SecurityHeadersMiddleware,
     RequestBodySizeLimitMiddleware,
     RateLimitMiddleware,
+    BodyTooLargeException,
 )
 from app.api.v1.router import api_v1_router
 from app.schemas.health import RootHealthResponse
@@ -27,9 +28,11 @@ async def lifespan(app: FastAPI):
     # Startup lifecycle
     logger.info(f"Starting {settings.PROJECT_NAME} v{settings.VERSION} [{settings.PHASE}]")
     logger.info(f"Environment: {settings.ENVIRONMENT} | Demo Mode: {settings.DEMO_MODE}")
+    settings.validate_production_readiness()
     yield
     # Shutdown lifecycle
     logger.info(f"Shutting down {settings.PROJECT_NAME}")
+
 
 
 app = FastAPI(
@@ -42,23 +45,38 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# 1. Request ID Tracking Middleware (Outermost)
+# Exception handler for oversized payloads (HTTP 413)
+@app.exception_handler(BodyTooLargeException)
+async def body_too_large_exception_handler(request: Request, exc: BodyTooLargeException):
+    req_id = getattr(request.state, "request_id", str(uuid.uuid4()))
+    return JSONResponse(
+        status_code=413,
+        headers={"X-Request-ID": req_id},
+        content={
+            "detail": exc.detail,
+            "error_code": "PAYLOAD_TOO_LARGE",
+            "request_id": req_id
+        }
+    )
+
+# 1. Request ID Tracking Middleware (Innermost)
 app.add_middleware(RequestIDMiddleware)
 
 # 2. Security Headers
 app.add_middleware(SecurityHeadersMiddleware)
 
-# 3. Request Body Size Limiter
-app.add_middleware(RequestBodySizeLimitMiddleware)
-
-# 4. API Rate Limiter
+# 3. API Rate Limiter
 app.add_middleware(RateLimitMiddleware)
 
-# 5. CORS Configuration
+# 4. Request Body Size Limiter (Enforces 2MB limit on all requests before heavier processing)
+app.add_middleware(RequestBodySizeLimitMiddleware)
+
+# 5. CORS Configuration (Outermost)
 if settings.BACKEND_CORS_ORIGINS:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.BACKEND_CORS_ORIGINS,
+        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

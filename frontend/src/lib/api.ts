@@ -1,6 +1,21 @@
 import { HealthStatus } from "@/types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+export function getApiBaseUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (typeof window !== "undefined") {
+    // Client-side execution in browser
+    if (!envUrl || envUrl.startsWith("/") || envUrl === "http://localhost:8000" || envUrl === "http://127.0.0.1:8000") {
+      if (window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+        // When deployed on non-localhost domain/IP, route via same-origin reverse-proxy
+        return "";
+      }
+    }
+  }
+  const rawBaseUrl = envUrl || "http://localhost:8000";
+  return rawBaseUrl.replace(/\/api\/v1\/?$/, "").replace(/\/+$/, "");
+}
+
+export const API_BASE_URL = getApiBaseUrl();
 
 export async function fetchHealthStatus(): Promise<HealthStatus | null> {
   try {
@@ -79,24 +94,40 @@ export async function sendChatMessage(
   history: ChatMessageInput[] = [],
   language: string = "auto"
 ): Promise<ChatResponse> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/chat`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      message,
-      history,
-      language: language || "auto",
-    }),
-  });
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 35000);
 
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Server returned status ${res.status}`);
+    const res = await fetch(`${API_BASE_URL}/api/v1/chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message,
+        history,
+        language: language || "auto",
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.detail || `Server returned status ${res.status}`);
+    }
+
+    return await res.json();
+  } catch (err: any) {
+    if (err.name === "AbortError") {
+      throw new Error("Request timed out while contacting e-BIS Sahayak server. Please check your network connection and try again.");
+    }
+    if (err.message && (err.message.includes("Failed to fetch") || err.message.includes("NetworkError"))) {
+      throw new Error(`Unable to connect to the backend server at ${API_BASE_URL}. Please ensure the FastAPI backend is running.`);
+    }
+    throw err;
   }
-
-  return await res.json();
 }
 
 export async function fetchChatDebug(
@@ -104,24 +135,40 @@ export async function fetchChatDebug(
   history: ChatMessageInput[] = [],
   language: string = "auto"
 ): Promise<ChatDebugResponse> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/chat/debug`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      message,
-      history,
-      language: language || "auto",
-    }),
-  });
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 35000);
 
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.detail || `Server returned status ${res.status}`);
+    const res = await fetch(`${API_BASE_URL}/api/v1/chat/debug`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        message,
+        history,
+        language: language || "auto",
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.detail || `Server returned status ${res.status}`);
+    }
+
+    return await res.json();
+  } catch (err: any) {
+    if (err.name === "AbortError") {
+      throw new Error("Request timed out while contacting e-BIS Sahayak server.");
+    }
+    if (err.message && (err.message.includes("Failed to fetch") || err.message.includes("NetworkError"))) {
+      throw new Error(`Unable to connect to the backend server at ${API_BASE_URL}.`);
+    }
+    throw err;
   }
-
-  return await res.json();
 }
 
 export interface SupportedLanguageItem {
@@ -206,10 +253,20 @@ export interface StandardListItem {
   standard_number: string;
   title: string;
   division: string;
+  technical_committee?: string;
+  product_category?: string;
   year?: number;
   status: string;
+  edition_info?: string;
   is_qco_mandatory: boolean;
+  qco_order_number?: string;
+  qco_notifying_ministry?: string;
+  applicable_schemes?: string[];
   scope_summary?: string;
+  source_url?: string;
+  provenance?: string;
+  verification_status?: string;
+  last_verified?: string;
 }
 
 export interface StandardSectionItem {
@@ -224,11 +281,22 @@ export interface StandardDetailResponse {
   standard_number: string;
   title: string;
   division: string;
+  technical_committee?: string;
+  product_category?: string;
   year?: number;
   status: string;
+  edition_info?: string;
   is_qco_mandatory: boolean;
   qco_order_number?: string;
+  qco_notifying_ministry?: string;
+  applicable_schemes?: string[];
   scope_summary?: string;
+  source_url?: string;
+  source_type?: string;
+  authority?: string;
+  provenance?: string;
+  verification_status?: string;
+  last_verified?: string;
   sections: StandardSectionItem[];
   related_standards: string[];
 }
@@ -236,13 +304,17 @@ export interface StandardDetailResponse {
 export async function listStandards(params?: {
   q?: string;
   division?: string;
+  product_category?: string;
   qco_only?: boolean;
+  limit?: number;
   language?: string;
 }): Promise<StandardListItem[]> {
   const queryParams = new URLSearchParams();
   if (params?.q) queryParams.set("q", params.q);
   if (params?.division) queryParams.set("division", params.division);
+  if (params?.product_category) queryParams.set("product_category", params.product_category);
   if (params?.qco_only !== undefined) queryParams.set("qco_only", String(params.qco_only));
+  if (params?.limit) queryParams.set("limit", String(params.limit));
   if (params?.language) queryParams.set("language", params.language);
 
   const res = await fetch(`${API_BASE_URL}/api/v1/standards/?${queryParams.toString()}`);
@@ -276,21 +348,68 @@ export interface RoadmapStepItem {
   citations: CitationItem[];
 }
 
+export interface DocumentChecklistItem {
+  item: string;
+  category: "LEGAL_INCORPORATION" | "TECHNICAL_FACILITY" | "TESTING_CALIBRATION" | "AIR_FOREIGN" | string;
+  is_verified_official: boolean;
+  guidance_type: "VERIFIED_OFFICIAL" | "GENERAL_PREPARATION" | string;
+  note?: string;
+}
+
+export interface OfficialSourceCard {
+  title: string;
+  url: string;
+  description: string;
+  category: string;
+  verification_date?: string;
+  is_official_portal: boolean;
+}
+
+export interface CertificationRoadmapRequest {
+  product_name?: string;
+  product_category?: string;
+  intended_use?: string;
+  country_of_manufacture?: string;
+  manufacturer_type?: string;
+  product_description?: string;
+  standard_number?: string;
+  scheme_code?: string;
+  language?: string;
+}
+
 export interface CertificationRoadmapResponse {
   product: string;
+  product_category?: string;
+  intended_use?: string;
+  country_of_manufacture?: string;
+  manufacturer_type?: string;
   standard_number?: string;
   applicable_scheme?: string;
   scheme_name?: string;
+  route_rationale: string;
   is_mandatory_qco: boolean;
   qco_order_number?: string;
+  evidence_level: "VERIFIED_STANDARD_MATCH" | "PRELIMINARY_GENERAL_GUIDANCE" | string;
+  requires_air: boolean;
+  clarifying_questions: string[];
   steps: RoadmapStepItem[];
+  document_checklist: DocumentChecklistItem[];
+  official_sources: OfficialSourceCard[];
   disclaimer: string;
   citations: CitationItem[];
 }
 
 export interface CertificationScheme {
   scheme_code: string;
+  legacy_aliases?: string[];
   name: string;
+  classification?: string;
+  manufacturer_scope?: "DOMESTIC" | "FOREIGN" | "DOMESTIC_AND_FOREIGN" | "ORGANIZATIONS_AND_LABS" | string;
+  legal_act_and_regulation?: string;
+  official_reference_url?: string;
+  source_verification_date?: string;
+  data_confidence?: string;
+  last_reviewed?: string;
   description?: string;
   applicable_sectors?: string[];
   application_procedure_summary?: string;
@@ -298,25 +417,33 @@ export interface CertificationScheme {
   fee_structure_summary?: string;
 }
 
-export async function generateCertificationRoadmap(params: {
-  product_name?: string;
-  standard_number?: string;
-  scheme_code?: string;
-  language?: string;
-}): Promise<CertificationRoadmapResponse> {
+export async function generateCertificationRoadmap(
+  params: CertificationRoadmapRequest
+): Promise<CertificationRoadmapResponse> {
   const res = await fetch(`${API_BASE_URL}/api/v1/certification/roadmap`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),
   });
   if (!res.ok) {
-    throw new Error("Failed to generate certification roadmap");
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to generate certification roadmap");
   }
   return await res.json();
 }
 
-export async function listCertificationSchemes(language?: string): Promise<CertificationScheme[]> {
-  const qStr = language ? `?language=${encodeURIComponent(language)}` : "";
+export async function listCertificationSchemes(
+  language?: string,
+  search?: string,
+  manufacturer_scope?: string,
+  classification?: string
+): Promise<CertificationScheme[]> {
+  const params = new URLSearchParams();
+  if (language) params.append("language", language);
+  if (search) params.append("search", search);
+  if (manufacturer_scope && manufacturer_scope !== "ALL") params.append("manufacturer_scope", manufacturer_scope);
+  if (classification) params.append("classification", classification);
+  const qStr = params.toString() ? `?${params.toString()}` : "";
   const res = await fetch(`${API_BASE_URL}/api/v1/certification/schemes${qStr}`);
   if (!res.ok) {
     throw new Error("Failed to list certification schemes");
@@ -324,50 +451,128 @@ export async function listCertificationSchemes(language?: string): Promise<Certi
   return await res.json();
 }
 
+
 export interface LaboratoryItem {
   id?: string;
   lab_name: string;
   lab_code?: string;
   recognition_type: string;
   city: string;
+  district?: string;
   state: string;
   address?: string;
-  contact_details?: Record<string, any>;
+  contact_details?: {
+    contact_person?: string;
+    phone?: string;
+    email?: string;
+  };
+  validity_date?: string;
+  status?: string;
+  source_url?: string;
+  scope_url?: string;
   testing_scope_summary?: string;
   accredited_standards: string[];
+  last_verified_at?: string;
 }
 
 export interface LaboratorySearchResponse {
   total_count: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
   laboratories: LaboratoryItem[];
+}
+
+export interface LaboratoryStats {
+  total_laboratories: number;
+  recognized_count: number;
+  empaneled_count: number;
+  institutional_count: number;
+  active_count?: number;
+  expired_count?: number;
+  total_states: number;
+  states: string[];
+  last_imported_at?: string;
 }
 
 export async function searchLaboratories(params: {
   query?: string;
+  lab_code?: string;
   city?: string;
+  district?: string;
   state?: string;
   standard_number?: string;
   recognition_type?: string;
+  status?: string;
+  page?: number;
+  page_size?: number;
+  sort_by?: string;
+  sort_order?: string;
   language?: string;
 }): Promise<LaboratorySearchResponse> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/laboratories/search`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(params),
-  });
-  if (!res.ok) {
-    throw new Error("Laboratory search failed");
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/laboratories/search`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params),
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.warn("Backend laboratory search failed, using verified fallback directory:", err);
   }
-  return await res.json();
+  const { searchFallbackLaboratories } = await import("./fallbackLaboratories");
+  return searchFallbackLaboratories(params);
 }
 
-export async function listLaboratories(language?: string): Promise<LaboratoryItem[]> {
-  const qStr = language ? `?language=${encodeURIComponent(language)}` : "";
-  const res = await fetch(`${API_BASE_URL}/api/v1/laboratories/${qStr}`);
-  if (!res.ok) {
-    throw new Error("Failed to fetch laboratories");
+export async function fetchLaboratoryStats(): Promise<LaboratoryStats> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/laboratories/stats`, {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.warn("Backend stats API unavailable, using verified fallback statistics:", err);
   }
-  return await res.json();
+  const { getFallbackLaboratoryStats } = await import("./fallbackLaboratories");
+  return getFallbackLaboratoryStats();
+}
+
+export async function getLaboratoryDetails(idOrCode: string, language?: string): Promise<LaboratoryItem> {
+  const qStr = language ? `?language=${encodeURIComponent(language)}` : "";
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/laboratories/${encodeURIComponent(idOrCode)}${qStr}`);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.warn("Backend lab details API unavailable, using fallback:", err);
+  }
+  const { searchFallbackLaboratories } = await import("./fallbackLaboratories");
+  const fallbackRes = searchFallbackLaboratories({ lab_code: idOrCode });
+  if (fallbackRes.laboratories.length > 0) {
+    return fallbackRes.laboratories[0];
+  }
+  throw new Error(`Failed to fetch laboratory details for '${idOrCode}'`);
+}
+
+export async function listLaboratories(language?: string): Promise<LaboratorySearchResponse> {
+  const qStr = language ? `?language=${encodeURIComponent(language)}` : "";
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/laboratories/${qStr}`);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.warn("Backend list laboratories API unavailable, using fallback:", err);
+  }
+  const { searchFallbackLaboratories } = await import("./fallbackLaboratories");
+  return searchFallbackLaboratories({ language });
 }
 
 // --- Feedback APIs ---
@@ -422,6 +627,7 @@ export async function fetchFeedbackStats(): Promise<FeedbackStats> {
 
 export interface AdminOverview {
   total_documents: number;
+  total_clauses?: number;
   total_chunks: number;
   total_standards: number;
   total_schemes: number;
@@ -442,6 +648,7 @@ export interface AdminDocument {
   document_type: string;
   year?: number;
   division?: string;
+  clause_count?: number;
   page_count: number;
   chunk_count: number;
   file_hash: string;
@@ -463,7 +670,7 @@ export interface AdminSystemStatus {
   timestamp: string;
 }
 
-export async function fetchAdminOverview(adminKey: string = "ebis-admin-secret-key-2026"): Promise<AdminOverview> {
+export async function fetchAdminOverview(adminKey: string): Promise<AdminOverview> {
   const res = await fetch(`${API_BASE_URL}/api/v1/admin/overview`, {
     headers: { "X-Admin-Key": adminKey },
     cache: "no-store",
@@ -474,7 +681,7 @@ export async function fetchAdminOverview(adminKey: string = "ebis-admin-secret-k
   return await res.json();
 }
 
-export async function fetchAdminDocuments(adminKey: string = "ebis-admin-secret-key-2026"): Promise<AdminDocument[]> {
+export async function fetchAdminDocuments(adminKey: string): Promise<AdminDocument[]> {
   const res = await fetch(`${API_BASE_URL}/api/v1/admin/documents`, {
     headers: { "X-Admin-Key": adminKey },
     cache: "no-store",
@@ -485,7 +692,7 @@ export async function fetchAdminDocuments(adminKey: string = "ebis-admin-secret-
   return await res.json();
 }
 
-export async function triggerAdminReindex(adminKey: string = "ebis-admin-secret-key-2026", force: boolean = true): Promise<any> {
+export async function triggerAdminReindex(adminKey: string, force: boolean = true): Promise<any> {
   const res = await fetch(`${API_BASE_URL}/api/v1/admin/documents/reindex`, {
     method: "POST",
     headers: {
@@ -500,7 +707,7 @@ export async function triggerAdminReindex(adminKey: string = "ebis-admin-secret-
   return await res.json();
 }
 
-export async function fetchAdminSystemStatus(adminKey: string = "ebis-admin-secret-key-2026"): Promise<AdminSystemStatus> {
+export async function fetchAdminSystemStatus(adminKey: string): Promise<AdminSystemStatus> {
   const res = await fetch(`${API_BASE_URL}/api/v1/admin/system-status`, {
     headers: { "X-Admin-Key": adminKey },
     cache: "no-store",
@@ -510,4 +717,5 @@ export async function fetchAdminSystemStatus(adminKey: string = "ebis-admin-secr
   }
   return await res.json();
 }
+
 

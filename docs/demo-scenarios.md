@@ -17,7 +17,7 @@ This document outlines five verified, end-to-end demonstration scenarios for **e
 ---
 
 ## Scenario 2: Source-Grounded Document Q&A with Verifiable Citations
-* **Objective:** Demonstrate zero-hallucination conversational RAG with clause and page traceability.
+* **Objective:** Demonstrate evidence-grounded conversational assistant with clause and source traceability.
 * **User Query:** `"What are the rated voltages and currents specified in IS 1293:2019 Clause 6?"`
 * **Workflow:**
   1. `QueryService` executes `_retrieve_bis_evidence()` via deterministic keyword and standard matching against `SeedBISDataProvider` (`app/db/seed_intelligence.py`), retrieving `[EVIDENCE 1]` for `IS 1293:2019` (Section 6, Clause 6.1 & 6.2).

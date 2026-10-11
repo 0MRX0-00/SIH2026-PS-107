@@ -10,17 +10,25 @@ def get_standards_service() -> StandardsService:
 
 @router.get("/", response_model=List[StandardListItem])
 def list_or_search_standards(
-    q: Optional[str] = Query(None, description="Search keyword, standard number, or product"),
-    division: Optional[str] = Query(None, description="Filter by division e.g. Electrotechnical"),
+    q: Optional[str] = Query(None, description="Search keyword, standard number, product, or committee"),
+    division: Optional[str] = Query(None, description="Filter by technical division e.g. Electrotechnical, Civil Engineering"),
+    product_category: Optional[str] = Query(None, description="Filter by product category e.g. Electrical Cables & Wires, Cement"),
     qco_only: Optional[bool] = Query(None, description="Filter standards with mandatory QCO"),
     limit: int = Query(50, ge=1, le=100),
     language: Optional[str] = Query("en", description="Target language: en, hi, ta"),
     service: StandardsService = Depends(get_standards_service)
 ):
     """
-    Search and explore Indian Standards repository by keyword, division, or QCO status.
+    Search and explore Indian Standards repository by keyword, IS number, division, product category, or QCO status.
     """
-    return service.search_standards(query=q, division=division, qco_only=qco_only, limit=limit, language=language or "en")
+    return service.search_standards(
+        query=q,
+        division=division,
+        product_category=product_category,
+        qco_only=qco_only,
+        limit=limit,
+        language=language or "en"
+    )
 
 @router.get("/{standard_id_or_number}", response_model=StandardDetailResponse)
 def get_standard_details(

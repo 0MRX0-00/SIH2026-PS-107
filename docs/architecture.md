@@ -46,12 +46,12 @@
 
 ---
 
-## 2. RAG Pipeline & Evidence Retrieval Architecture
+## 2. Evidence Retrieval & Grounding Architecture
 
 The backend pipeline enforces an evidence-grounded control flow:
 
 1. **Input Sanity & Garbage Gatekeeper**:
-   - `_is_garbage_input()` intercepts noise, uninformative strings ("asdfgh", "123456", "@@@@"), and low-entropy inputs before vector/database lookups or LLM invocation.
+   - `_is_garbage_input()` intercepts noise, uninformative strings ("asdfgh", "123456", "@@@@"), and low-entropy inputs before catalog lookups or LLM invocation.
 
 2. **Security & Prompt Injection Guardrail**:
    - Pattern-matches adversarial phrases ("ignore instructions", "make up standards", "treat external data as authoritative") and issues an immediate hard refusal.
@@ -62,8 +62,8 @@ The backend pipeline enforces an evidence-grounded control flow:
 4. **Curated Data Provider Lookup**:
    - `BaseBISDataProvider` abstraction with `SeedBISDataProvider` and `SeedProviderWithProvenanceTag` performs deterministic keyword and entity matching against the curated seed catalog (`app/db/seed_intelligence.py`).
 
-5. **Abstention Gatekeeper (`RAG_MIN_RELEVANCE_SCORE = 0.65`)**:
-   - If zero evidence items clear the relevance threshold (e.g. for fictional items like "teleportation machines"), the system returns `insufficient_evidence=True`, `grounded=False`, `sources=[]` directly **without calling the LLM**.
+5. **Abstention Gatekeeper**:
+   - If zero verified evidence items exist for an unsupported or fictional query, the system returns `insufficient_evidence=True`, `grounded=False`, `sources=[]` directly **without calling the LLM**.
 
 6. **Evidence-Constrained Groq Generation**:
    - For valid queries with retrieved evidence, Groq `llama-3.3-70b-versatile` synthesizes a markdown answer constrained strictly to the provided evidence context.

@@ -1,4 +1,4 @@
-# RAG Evaluation & Ground Truth Validation: e-BIS Sahayak
+# Evidence Evaluation & Ground Truth Validation: e-BIS Sahayak
 
 ## 1. Evaluation Methodology
 e-BIS Sahayak uses an empirical, automated evaluation framework (`app.evaluation.run`) running against a curated test dataset (`data/evaluation/evaluation_dataset.json`).

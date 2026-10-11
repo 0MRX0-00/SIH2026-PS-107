@@ -24,7 +24,7 @@ export default function DocsViewPage() {
       file: "architecture.md",
       title: t("docs_view.architecture_title", "System Architecture"),
       icon: Layers,
-      desc: t("docs_view.architecture_desc", "Decoupled multi-tier services, vector search, and LLM orchestration."),
+      desc: t("docs_view.architecture_desc", "Decoupled multi-tier services, deterministic standards search, and Groq LLM orchestration."),
     },
     {
       file: "technology-stack.md",

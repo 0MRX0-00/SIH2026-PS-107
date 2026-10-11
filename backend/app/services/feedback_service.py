@@ -9,40 +9,17 @@ logger = logging.getLogger("ebis_sahayak.feedback")
 
 class FeedbackService:
     """
-    Manages user feedback, ratings, and issue reports for continuous RAG quality improvement.
+    Manages user feedback, ratings, and issue reports for continuous system quality improvement.
+    Stores real verified user submissions with bounded in-memory retention (Option A: ephemeral FIFO buffer,
+    capped at 1,000 entries max; resets on backend restart; relational DB persistence is not required/enabled).
     """
 
+    MAX_RETAINED_FEEDBACK = 1000
     _feedback_store: List[FeedbackItem] = []
 
     def __init__(self):
-        # Preload initial verified baseline feedback for demo visibility if empty
-        if not self._feedback_store:
-            self._feedback_store.extend([
-                FeedbackItem(
-                    id=str(uuid.uuid4()),
-                    message_id="sample-1",
-                    query="What are the rated voltages in IS 1293:2019?",
-                    answer_snippet="Standard rated voltages are 250 V a.c. with 6A, 16A, 25A ratings.",
-                    is_helpful=True,
-                    rating=5,
-                    category="great_answer",
-                    comment="Exact clause 6.1 cited accurately.",
-                    language="en",
-                    created_at=datetime.now(timezone.utc)
-                ),
-                FeedbackItem(
-                    id=str(uuid.uuid4()),
-                    message_id="sample-2",
-                    query="நான் மின்விசிறி தயாரிக்கிறேன். எந்த தரநிலை?",
-                    answer_snippet="IS 17803:2022 மின்விசிறிகளுக்கான தரநிலை.",
-                    is_helpful=True,
-                    rating=5,
-                    category="great_answer",
-                    comment="Good Tamil translation with exact standard preservation.",
-                    language="ta",
-                    created_at=datetime.now(timezone.utc)
-                )
-            ])
+        # Starts with an empty store; real user submissions only
+        pass
 
     def record_feedback(self, feedback_in: FeedbackCreate) -> FeedbackItem:
         item = FeedbackItem(
@@ -58,7 +35,9 @@ class FeedbackService:
             created_at=datetime.now(timezone.utc)
         )
         self._feedback_store.append(item)
-        logger.info(f"Recorded feedback: helpful={item.is_helpful}, query='{item.query[:30]}...'")
+        if len(self._feedback_store) > self.MAX_RETAINED_FEEDBACK:
+            self._feedback_store.pop(0)
+        logger.info("Recorded feedback: id=%s, helpful=%s, rating=%s, lang=%s", item.id, item.is_helpful, item.rating, item.language)
         return item
 
     def get_all_feedback(self, limit: int = 50) -> List[FeedbackItem]:
@@ -71,21 +50,24 @@ class FeedbackService:
                 total_feedback=0,
                 positive_count=0,
                 negative_count=0,
-                helpfulness_rate=100.0,
-                recent_issues=[]
+                helpfulness_rate=0.0,
+                recent_issues=[],
+                storage_type="in_memory_ephemeral",
+                persistence_note="In-memory bounded buffer (1,000 entries max); resets on process restart."
             )
 
         positives = sum(1 for f in self._feedback_store if f.is_helpful)
         negatives = total - positives
         rate = round((positives / total) * 100, 1)
         recent_issues = [f for f in self._feedback_store if not f.is_helpful][-10:]
-
         return FeedbackStatsResponse(
             total_feedback=total,
             positive_count=positives,
             negative_count=negatives,
             helpfulness_rate=rate,
-            recent_issues=recent_issues
+            recent_issues=recent_issues,
+            storage_type="in_memory_ephemeral",
+            persistence_note="In-memory bounded buffer (1,000 entries max); resets on process restart."
         )
 
 

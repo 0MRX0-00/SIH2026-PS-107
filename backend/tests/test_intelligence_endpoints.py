@@ -55,8 +55,10 @@ def test_certification_roadmap_endpoint():
     assert response.status_code == 200
     data = response.json()
     assert data["standard_number"] == "IS 1293:2019"
-    assert len(data["steps"]) == 5
+    assert len(data["steps"]) >= 5
     assert "disclaimer" in data
+    assert len(data["document_checklist"]) > 0
+    assert len(data["official_sources"]) == 5
 
 
 def test_certification_schemes_endpoint():
@@ -80,5 +82,6 @@ def test_laboratories_list_endpoint():
     response = client.get("/api/v1/laboratories/")
     assert response.status_code == 200
     data = response.json()
-    assert isinstance(data, list)
-    assert len(data) >= 5
+    assert "laboratories" in data
+    assert isinstance(data["laboratories"], list)
+    assert data["total_count"] >= 5

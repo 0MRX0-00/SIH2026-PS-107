@@ -122,6 +122,7 @@ class IntentRouter:
         r"\b(?:what\s+(?:are\s+you|is\s+(?:this|ebis|e-bis|e-bis\s+sahayak|ebis\s+sahayak))\s+used\s+for)\b",
         r"\b(?:what\s+can\s+you\s+do|what\s+do\s+you\s+do|what\s+are\s+you\s+capable\s+of|what\s+is\s+your\s+purpose)\b",
         r"\b(?:what\s+is\s+the\s+use\s+of\s+you|what\s+is\s+your\s+use)\b",
+        r"\b(?:why\s+(?:i\s+want\s+you|should\s+i\s+(?:use|choose|want)\s+you|do\s+i\s+need\s+you|use\s+you|want\s+you))\b",
         r"\b(?:how\s+can\s+you\s+(?:help|assist)(?:\s+me)?|how\s+do\s+you\s+work)\b",
         r"\b(?:what\s+(?:is|are)\s+your\s+(?:capabilities|features|functions|services|purpose|role|scope))\b",
         r"\b(?:what\s+services\s+(?:do\s+you|can\s+you)\s+provide)\b",
@@ -247,6 +248,9 @@ class IntentRouter:
         return any(re.search(p, q_lower) for p in self.CAPABILITY_PATTERNS)
 
     def classify(self, query: str, language: str = "en") -> IntentAnalysisResult:
+        return self.classify_and_route(query, language=language)
+
+    def analyze_intent(self, query: str, history: Optional[List[Dict[str, str]]] = None, language: str = "en") -> IntentAnalysisResult:
         return self.classify_and_route(query, language=language)
 
     def classify_intent(self, query: str, language: str = "en"):

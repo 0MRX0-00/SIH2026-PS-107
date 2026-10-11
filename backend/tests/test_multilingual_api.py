@@ -40,3 +40,24 @@ def test_chat_endpoint_with_explicit_language():
     assert response.status_code == 200
     data = response.json()
     assert data["language"] == "hi"
+
+
+def test_laboratories_endpoint_multilingual_hindi():
+    response = client.get("/api/v1/laboratories/?language=hi&page_size=5")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["laboratories"]) > 0
+    first_lab = data["laboratories"][0]
+    assert any('\u0900' <= char <= '\u097F' for char in first_lab["lab_name"])
+    assert any('\u0900' <= char <= '\u097F' for char in first_lab["state"])
+
+
+def test_laboratories_endpoint_multilingual_tamil():
+    response = client.get("/api/v1/laboratories/?language=ta&page_size=5")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["laboratories"]) > 0
+    first_lab = data["laboratories"][0]
+    assert any('\u0B80' <= char <= '\u0BFF' for char in first_lab["lab_name"])
+    assert any('\u0B80' <= char <= '\u0BFF' for char in first_lab["state"])
+
