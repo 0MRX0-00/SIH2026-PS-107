@@ -26,16 +26,23 @@ import {
   RefreshCw,
   BookOpen,
   ArrowUpRight,
-  CheckSquare
+  CheckSquare,
+  FileDown,
+  Printer,
+  Download,
+  X
 } from "lucide-react";
 import {
   generateCertificationRoadmap,
   listCertificationSchemes,
+  exportCertificationDossier,
+  downloadCertificationDossier,
   CertificationRoadmapRequest,
   CertificationRoadmapResponse,
   CertificationScheme,
   DocumentChecklistItem,
-  OfficialSourceCard
+  OfficialSourceCard,
+  DossierExportResponse
 } from "@/lib/api";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -311,6 +318,70 @@ function CertificationContent() {
   const [schemeSearch, setSchemeSearch] = useState<string>("");
   const [schemeScope, setSchemeScope] = useState<string>("ALL");
   const [schemeClassification, setSchemeClassification] = useState<string>("ALL");
+
+  // Dossier Export Modal State
+  const [isDossierModalOpen, setIsDossierModalOpen] = useState(false);
+  const [isExportingDossier, setIsExportingDossier] = useState(false);
+  const [dossierApplicant, setDossierApplicant] = useState("MSME Enterprise");
+  const [dossierOrg, setDossierOrg] = useState("");
+  const [dossierAddress, setDossierAddress] = useState("");
+  const [dossierData, setDossierData] = useState<DossierExportResponse | null>(null);
+
+  const handleOpenDossier = async () => {
+    if (!activeRoadmap) return;
+    setIsDossierModalOpen(true);
+    setIsExportingDossier(true);
+    try {
+      const data = await exportCertificationDossier({
+        roadmap: activeRoadmap,
+        applicant_name: dossierApplicant || "MSME Enterprise",
+        organization: dossierOrg || undefined,
+        factory_address: dossierAddress || undefined,
+        language
+      });
+      setDossierData(data);
+    } catch (err) {
+      console.error("Failed to generate dossier preview:", err);
+    } finally {
+      setIsExportingDossier(false);
+    }
+  };
+
+  const handleDownloadDossierFile = async () => {
+    if (!activeRoadmap) return;
+    try {
+      const blob = await downloadCertificationDossier({
+        roadmap: activeRoadmap,
+        applicant_name: dossierApplicant || "MSME Enterprise",
+        organization: dossierOrg || undefined,
+        factory_address: dossierAddress || undefined,
+        language
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = dossierData?.file_name || `BIS_Compliance_Dossier_${activeRoadmap.product.replace(/\\s+/g, "_")}.html`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error("Failed to download dossier file:", err);
+    }
+  };
+
+  const handlePrintDossier = () => {
+    if (!dossierData) return;
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(dossierData.html_content);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 350);
+    }
+  };
 
   const evaluateGuidance = useCallback(
     (customPayload?: Partial<CertificationRoadmapRequest>) => {
@@ -701,15 +772,26 @@ function CertificationContent() {
                     )}
                   </div>
 
-                  {activeRoadmap.standard_number && (
-                    <Link
-                      href={`/standards/${encodeURIComponent(activeRoadmap.standard_number)}`}
-                      className="text-xs font-mono font-bold text-amber-300 hover:text-amber-200 bg-slate-800/80 hover:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-600 transition-all flex items-center space-x-1.5"
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleOpenDossier}
+                      className="text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 px-3 py-1.5 rounded-lg border border-amber-300 transition-all flex items-center space-x-1.5 shadow-sm"
                     >
-                      <span>{t("certification.standard_link", "Standard:")} {activeRoadmap.standard_number}</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
-                  )}
+                      <FileDown className="w-3.5 h-3.5 text-slate-950" />
+                      <span>{t("certification.export_dossier_btn", "Export Compliance Dossier (PDF)")}</span>
+                    </button>
+
+                    {activeRoadmap.standard_number && (
+                      <Link
+                        href={`/standards/${encodeURIComponent(activeRoadmap.standard_number)}`}
+                        className="text-xs font-mono font-bold text-amber-300 hover:text-amber-200 bg-slate-800/80 hover:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-600 transition-all flex items-center space-x-1.5"
+                      >
+                        <span>{t("certification.standard_link", "Standard:")} {activeRoadmap.standard_number}</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    )}
+                  </div>
                 </div>
 
                 <div className="space-y-1 pt-1">
@@ -1004,6 +1086,15 @@ function CertificationContent() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleOpenDossier}
+                    className="bg-emerald-700 hover:bg-emerald-600 text-white font-bold px-4 py-2.5 rounded-xl text-xs flex items-center space-x-2 transition-all shadow-sm"
+                  >
+                    <FileDown className="w-4 h-4 text-white" />
+                    <span>{t("certification.export_dossier_action", "Download MSME Readiness Dossier")}</span>
+                  </button>
+
                   <Link
                     href={`/laboratories?standard=${encodeURIComponent(activeRoadmap.standard_number || "")}`}
                     className="bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 font-bold px-4 py-2.5 rounded-xl text-xs flex items-center space-x-2 transition-all shadow-sm"
@@ -1248,6 +1339,125 @@ function CertificationContent() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Dossier Export & Print Preview Modal */}
+      {isDossierModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
+            {/* Modal Header */}
+            <div className="bg-[#0a2540] text-white p-5 flex items-center justify-between border-b border-slate-800">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-amber-500/20 text-amber-400 rounded-lg">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-white">
+                    {t("certification.dossier_modal_title", "MSME Official Compliance Dossier")}
+                  </h3>
+                  <p className="text-xs text-slate-300">
+                    {dossierData?.dossier_id || "Preparing compliance dossier..."}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDossierModalOpen(false)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors"
+                title={t("certification.dossier_close_btn", "Close Preview")}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body: Controls & Metadata customization */}
+            <div className="p-4 sm:p-5 bg-slate-50 border-b border-slate-200 grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  {t("certification.dossier_applicant_label", "Applicant Name")}
+                </label>
+                <input
+                  type="text"
+                  value={dossierApplicant}
+                  onChange={(e) => setDossierApplicant(e.target.value)}
+                  placeholder="e.g. MSME Quality Head"
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  {t("certification.dossier_org_label", "Enterprise Legal Name")}
+                </label>
+                <input
+                  type="text"
+                  value={dossierOrg}
+                  onChange={(e) => setDossierOrg(e.target.value)}
+                  placeholder="e.g. Acme Manufacturing Ltd"
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs"
+                />
+              </div>
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  {t("certification.dossier_address_label", "Factory / Works Address")}
+                </label>
+                <input
+                  type="text"
+                  value={dossierAddress}
+                  onChange={(e) => setDossierAddress(e.target.value)}
+                  placeholder="e.g. Phase 2, Industrial Estate"
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs"
+                />
+              </div>
+            </div>
+
+            {/* Modal Action Bar */}
+            <div className="px-5 py-3 bg-amber-50/70 border-b border-amber-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <span className="text-amber-900 font-medium">
+                {t("certification.dossier_modal_desc", "Audit-ready compliance summary with statutory sign-off tables, procedural milestones, and gazette citations.")}
+              </span>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={handlePrintDossier}
+                  disabled={!dossierData || isExportingDossier}
+                  className="bg-[#0a2540] hover:bg-[#143257] text-white font-bold px-3.5 py-1.5 rounded-lg flex items-center space-x-1.5 shadow-sm transition-all disabled:opacity-50"
+                >
+                  <Printer className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{t("certification.dossier_print_btn", "Print / Save as PDF (A4)")}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadDossierFile}
+                  disabled={!activeRoadmap || isExportingDossier}
+                  className="bg-emerald-700 hover:bg-emerald-600 text-white font-bold px-3.5 py-1.5 rounded-lg flex items-center space-x-1.5 shadow-sm transition-all disabled:opacity-50"
+                >
+                  <Download className="w-3.5 h-3.5 text-white" />
+                  <span>{t("certification.dossier_download_btn", "Download Offline Dossier (.html)")}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Preview Area */}
+            <div className="p-4 flex-1 overflow-y-auto bg-slate-100 min-h-[350px]">
+              {isExportingDossier ? (
+                <div className="flex flex-col items-center justify-center h-72 space-y-3 text-slate-600">
+                  <RefreshCw className="w-6 h-6 animate-spin text-amber-500" />
+                  <p className="text-xs font-semibold">Generating official audit dossier with statutory tables...</p>
+                </div>
+              ) : dossierData ? (
+                <iframe
+                  title="Compliance Dossier Preview"
+                  srcDoc={dossierData.html_content}
+                  className="w-full h-[500px] bg-white rounded-lg border border-slate-300 shadow-inner"
+                />
+              ) : (
+                <div className="flex items-center justify-center h-64 text-slate-400 text-xs">
+                  No preview available.
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

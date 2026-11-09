@@ -212,7 +212,7 @@ class InMemoryRateLimiter:
 
         with self._lock:
             # Periodic sweep of expired records or when approaching capacity
-            if now - self._last_cleanup > self.cleanup_interval_seconds or len(self._records) >= self.max_entries:
+            if now - self._last_cleanup >= self.cleanup_interval_seconds or len(self._records) >= self.max_entries:
                 self._cleanup_expired(now, window_seconds)
                 self._evict_lru_if_needed()
 

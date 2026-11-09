@@ -9,6 +9,7 @@ from app.services.standards_service import StandardsService, standards_service
 from app.services.admin_service import AdminService, admin_service
 from app.services.feedback_service import FeedbackService, feedback_service
 from app.services.official_source_service import OfficialSourceService, official_source_service
+from app.services.dossier_service import DossierService
 
 __all__ = [
     "GroqService",
@@ -34,5 +35,6 @@ __all__ = [
     "feedback_service",
     "OfficialSourceService",
     "official_source_service",
+    "DossierService",
 ]
 

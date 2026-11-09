@@ -72,6 +72,10 @@ load_test_results.json
 evaluation_report.json
 *.jsonl
 
+# Graphify local cache & temporary state
+graphify-out/cache/
+graphify-out/.graphify_*
+
 # Explicitly retain environment configuration templates
 !.env.example
 !.env.production.example

@@ -117,6 +117,23 @@ class CertificationRoadmapResponse(BaseModel):
     citations: List[CitationItem] = Field(default_factory=list)
 
 
+class DossierExportRequest(BaseModel):
+    roadmap: CertificationRoadmapResponse
+    applicant_name: Optional[str] = Field("MSME Industrial Applicant", description="Name of applicant or enterprise")
+    organization: Optional[str] = Field(None, description="Enterprise or company legal name")
+    factory_address: Optional[str] = Field(None, description="Manufacturing facility address")
+    license_type: Optional[str] = Field(None, description="New License / Renewal / Extension of Scope")
+    language: Optional[str] = Field("en", description="Target language: en, hi, ta")
+
+
+class DossierExportResponse(BaseModel):
+    dossier_id: str
+    generated_at: str
+    file_name: str
+    html_content: str
+    metadata: Dict[str, Any]
+
+
 # --- Laboratory Search Schemas ---
 
 class LaboratorySearchRequest(BaseModel):

@@ -451,6 +451,52 @@ export async function listCertificationSchemes(
   return await res.json();
 }
 
+export interface DossierExportRequest {
+  roadmap: CertificationRoadmapResponse;
+  applicant_name?: string;
+  organization?: string;
+  factory_address?: string;
+  license_type?: string;
+  language?: string;
+}
+
+export interface DossierExportResponse {
+  dossier_id: string;
+  generated_at: string;
+  file_name: string;
+  html_content: string;
+  metadata: Record<string, any>;
+}
+
+export async function exportCertificationDossier(
+  params: DossierExportRequest
+): Promise<DossierExportResponse> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/certification/export-dossier`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to generate compliance dossier");
+  }
+  return await res.json();
+}
+
+export async function downloadCertificationDossier(
+  params: DossierExportRequest
+): Promise<Blob> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/certification/download-dossier`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) {
+    throw new Error("Failed to download compliance dossier");
+  }
+  return await res.blob();
+}
+
 
 export interface LaboratoryItem {
   id?: string;

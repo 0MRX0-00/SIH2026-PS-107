@@ -265,7 +265,17 @@
     "guidance_status_preliminary": "Preliminary Technical Guidance",
     "ready_to_proceed": "Ready to proceed with testing or interactive query?",
     "find_labs_or_ask": "Find accredited laboratories or ask specific questions directly to the Sahayak AI.",
-    "schemes_directory_subtitle": "Official directory of statutory product certification, self-declaration registration, and conformity assessment routes under the Bureau of Indian Standards Act, 2016 and BIS Conformity Assessment Regulations, 2018."
+    "schemes_directory_subtitle": "Official directory of statutory product certification, self-declaration registration, and conformity assessment routes under the Bureau of Indian Standards Act, 2016 and BIS Conformity Assessment Regulations, 2018.",
+    "export_dossier_btn": "Export Compliance Dossier (PDF)",
+    "export_dossier_action": "Download MSME Readiness Dossier",
+    "dossier_modal_title": "MSME Official Compliance Dossier",
+    "dossier_modal_desc": "Audit-ready compliance summary with statutory sign-off tables, procedural milestones, and gazette citations.",
+    "dossier_print_btn": "Print / Save as PDF (A4)",
+    "dossier_download_btn": "Download Offline Dossier (.html)",
+    "dossier_applicant_label": "Applicant Name",
+    "dossier_org_label": "Enterprise Legal Name",
+    "dossier_address_label": "Factory / Works Address",
+    "dossier_close_btn": "Close Preview"
   },
   "laboratories": {
     "title": "Recognized Testing Laboratories Directory",
