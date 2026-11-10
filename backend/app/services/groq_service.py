@@ -3,6 +3,7 @@ import logging
 import re
 import asyncio
 import time
+import ssl
 from typing import Dict, Any, List, Optional
 import httpx
 from app.core.config import settings
@@ -152,6 +153,75 @@ class GroqService:
                     await asyncio.sleep(backoff_delays[attempt])
                     continue
                 return self._generate_generic_error_fallback(messages)
+
+        return self._generate_generic_error_fallback(messages)
+
+    def generate_chat_completion_sync(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        system_prompt: Optional[str] = None,
+    ) -> str:
+        """Synchronous chat completion with retry logic and model auto-recovery."""
+        is_placeholder = (
+            not self.api_key
+            or self.api_key.strip() in ("", "your_groq_api_key_here", "dummy_key", "placeholder")
+            or self.api_key.strip().startswith("your_")
+        )
+        if is_placeholder:
+            return self._generate_api_key_missing_fallback(messages)
+
+        temp = temperature if temperature is not None else settings.GROQ_TEMPERATURE
+        tokens = max_tokens if max_tokens is not None else settings.GROQ_MAX_TOKENS
+        prompt_to_use = system_prompt if system_prompt is not None else CENTRALIZED_SYSTEM_PROMPT
+        payload_messages = [{"role": "system", "content": prompt_to_use}]
+        payload_messages.extend(messages)
+
+        url = f"{self.base_url.rstrip('/')}/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": self.model,
+            "messages": payload_messages,
+            "temperature": temp,
+            "max_tokens": tokens,
+        }
+
+        max_retries = 3
+        backoff_delays = [0.5, 1.2, 2.0]
+
+        for attempt in range(max_retries):
+            try:
+                with httpx.Client(timeout=self.timeout) as client:
+                    response = client.post(url, headers=headers, json=payload)
+                    if response.status_code == 404 and "model" in response.text.lower():
+                        if payload["model"] != "openai/gpt-oss-120b":
+                            payload["model"] = "openai/gpt-oss-120b"
+                            response = client.post(url, headers=headers, json=payload)
+
+                    if response.status_code == 200:
+                        data = response.json()
+                        raw_text = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                        if raw_text:
+                            return self._scrub_sensitive_data(raw_text.strip())
+
+                    if response.status_code in (429, 500, 502, 503, 504):
+                        if attempt < max_retries - 1:
+                            time.sleep(backoff_delays[attempt])
+                            continue
+            except (httpx.ConnectError, httpx.TimeoutException, ssl.SSLError) as net_err:
+                logger.warning(f"Groq sync attempt {attempt + 1} network notice: {net_err}")
+                if attempt < max_retries - 1:
+                    time.sleep(backoff_delays[attempt])
+                    continue
+            except Exception as e:
+                logger.error(f"Groq sync invocation error: {repr(e)}")
+                if attempt < max_retries - 1:
+                    time.sleep(backoff_delays[attempt])
+                    continue
 
         return self._generate_generic_error_fallback(messages)
 

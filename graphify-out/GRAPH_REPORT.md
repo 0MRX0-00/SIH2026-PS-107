@@ -1,17 +1,17 @@
 # Graph Report - Mini Project  (2026-11-10)
 
 ## Corpus Check
-- 185 files · ~278,736 words
+- 186 files · ~280,102 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 18 file(s) not represented in the graph (top: (none) 7, .bat 5, .example 4)
 
 ## Summary
-- 1720 nodes · 3501 edges · 117 communities (76 shown, 41 thin omitted)
+- 1732 nodes · 3537 edges · 114 communities (75 shown, 39 thin omitted)
 - Extraction: 87% EXTRACTED · 13% INFERRED · 0% AMBIGUOUS · INFERRED: 452 edges (avg confidence: 0.91)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `a0b7261b`
+- Built from commit: `527b270a`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -23,7 +23,7 @@
 - benchmark_load_test.py
 - backend
 - LanguageService
-- ProductDiscoveryRequest
+- test_capability_and_relevance_gate.py
 - package.json
 - e-BIS Sahayak — Final Documentation Repair and Deterministic Test Verification Report
 - endpoints/chat.py
@@ -49,9 +49,8 @@
 - main.py
 - schemas/__init__.py
 - .get_relevant_urls
-- ChatMessageInput
+- schemas/chat.py
 - config.py
-- Feature Verification & Status Matrix
 - 3. Core Tables & Field Definitions
 - intelligence.py
 - LaboratoryService
@@ -97,8 +96,8 @@
 - ChatRequest
 - EXECUTIVE SUMMARY — e-BIS SAHAYAK (SIH 2026 / PS-107)
 - test_health.py
-- test_live_greetings_and_conversation
-- seed_intelligence.py
+- LaboratorySearchRequest
+- StandardDetailResponse
 - e-BIS Sahayak — System Limitations & Boundaries
 - .eslintrc.json
 - next.config.js
@@ -108,22 +107,19 @@
 - PULL_REQUEST_TEMPLATE.md
 - Project Rules & Guidelines — e-BIS Sahayak
 - ⚖️ License & Disclaimer
-- test_production_remediation.py
 - DEPLOYMENT CHECKLIST & PRODUCTION RUNBOOK — e-BIS SAHAYAK
 - Contributor Covenant Code of Conduct
 - System Architecture: e-BIS Sahayak
 - test_multilingual_anti_hallucination.py
 - BodyTooLargeException
 - ._is_garbage_input
-- TestCacheManagement
-- query_service
 
 ## God Nodes (most connected - your core abstractions)
 1. `ChatRequest` - 88 edges
 2. `QueryService` - 57 edges
 3. `OfficialSourceService` - 49 edges
 4. `SeedBISDataProvider` - 35 edges
-5. `GroqService` - 31 edges
+5. `GroqService` - 32 edges
 6. `LaboratoryService` - 31 edges
 7. `IntentRouter` - 30 edges
 8. `BaseBISDataProvider` - 28 edges
@@ -135,21 +131,21 @@
   docs/groq-integration.md → backend/app/services/query_service.py
 - `5. Citation Validation & Anti-Hallucination Pipeline` --references--> `QueryService`  [INFERRED]
   docs/groq-integration.md → backend/app/services/query_service.py
-- `1. Overview` --references--> `BaseBISDataProvider`  [INFERRED]
-  docs/groq-integration.md → backend/app/services/data_providers/base_provider.py
-- `1.2 Standards Discovery & Grounding` --references--> `BaseBISDataProvider`  [INFERRED]
-  docs/requirements.md → backend/app/services/data_providers/base_provider.py
 - `2. Intent Classification & Query Router` --references--> `IntentRouter`  [INFERRED]
   docs/bis-intelligence.md → backend/app/services/intent_router.py
+- `4. Security & Production Checklist` --references--> `IntentRouter`  [INFERRED]
+  docs/deployment.md → backend/app/services/intent_router.py
+- `2.1 Prompt Injection & Adversarial Defense` --references--> `IntentRouter`  [INFERRED]
+  docs/security.md → backend/app/services/intent_router.py
 
 ## Import Cycles
 - None detected.
 
-## Communities (117 total, 41 thin omitted)
+## Communities (114 total, 39 thin omitted)
 
 ### Community 0 - "intelligence.py"
 Cohesion: 0.07
-Nodes (41): download_certification_dossier(), export_certification_dossier(), generate_certification_roadmap(), get_certification_service(), list_certification_schemes(), CertificationRoadmapRequest, CertificationRoadmapResponse, CertificationSchemeItem (+33 more)
+Nodes (40): download_certification_dossier(), export_certification_dossier(), generate_certification_roadmap(), get_certification_service(), CertificationRoadmapRequest, CertificationRoadmapResponse, CertificationSchemeItem, DocumentChecklistItem (+32 more)
 
 ### Community 1 - "Base"
 Cohesion: 0.24
@@ -161,23 +157,23 @@ Nodes (22): get_admin_documents(), get_admin_feedback(), get_admin_overview(), g
 
 ### Community 3 - "IntentRouter"
 Cohesion: 0.09
-Nodes (20): IntentRouter, UserIntent, test_hinglish_language_detection(), intent_router(), query_service(), test_capability_intent_classification_en(), test_capability_intent_classification_hi(), test_capability_intent_classification_ta() (+12 more)
+Nodes (17): IntentAnalysisResult, IntentRouter, UserIntent, test_hinglish_language_detection(), intent_router(), query_service(), router(), test_certification_guidance_intent() (+9 more)
 
 ### Community 4 - "benchmark_load_test.py"
-Cohesion: 0.07
-Nodes (14): main(), enrich_laboratories(), fetch_url_html(), TestLabImporterTLSSecurity, groq_service(), benchmark_endpoint_concurrency(), main(), run_single_request() (+6 more)
+Cohesion: 0.05
+Nodes (16): GroqEvaluator, main(), enrich_laboratories(), fetch_url_html(), test_rag_evaluation_runner_structure(), TestLabImporterTLSSecurity, groq_service(), benchmark_endpoint_concurrency() (+8 more)
 
 ### Community 5 - "backend"
 Cohesion: 0.05
 Nodes (46): build, container_name, depends_on, environment, healthcheck, networks, ports, restart (+38 more)
 
 ### Community 6 - "LanguageService"
-Cohesion: 0.08
-Nodes (23): detect_query_language(), get_language_service(), list_supported_languages(), LanguageDetectRequest, LanguageDetectResponse, SupportedLanguageItem, SupportedLanguagesResponse, LanguageService (+15 more)
+Cohesion: 0.06
+Nodes (39): detect_query_language(), get_language_service(), list_supported_languages(), discover_product_standards(), get_product_discovery_service(), ProductDiscoveryRequest, ProductDiscoveryResponse, LanguageDetectRequest (+31 more)
 
-### Community 7 - "ProductDiscoveryRequest"
-Cohesion: 0.17
-Nodes (16): discover_product_standards(), get_product_discovery_service(), ProductDiscoveryRequest, ProductDiscoveryResponse, ProductDiscoveryService, test_fictional_product_no_hallucination(), discovery_service(), test_hindi_ambiguous_bottle_clarification() (+8 more)
+### Community 7 - "test_capability_and_relevance_gate.py"
+Cohesion: 0.18
+Nodes (7): intent_router(), query_service(), test_capability_intent_classification_en(), test_capability_intent_classification_hi(), test_capability_intent_classification_ta(), test_capability_query_bypasses_retrieval(), TestIntentRouter
 
 ### Community 8 - "package.json"
 Cohesion: 0.07
@@ -188,23 +184,23 @@ Cohesion: 0.11
 Nodes (17): 1. Concurrency Scaling Across Tiers (100 Requests / Endpoint), 1. ESLint Check, 1. Executive Summary & Final Verdict, 2. Failure Mode Injection Results, 2. TypeScript Compilation Check, 3. Actual Command Executions and Test Outputs, 3. Production Bundle Build, 4. Submission ZIP Archive Integrity & Validation (+9 more)
 
 ### Community 10 - "endpoints/chat.py"
-Cohesion: 0.10
-Nodes (5): chat_debug_endpoint(), chat_endpoint(), get_query_service(), ChatDebugResponse, IntentAnalysisResult
+Cohesion: 0.16
+Nodes (7): chat_debug_endpoint(), chat_endpoint(), get_query_service(), ChatDebugResponse, ChatResponse, QueryService, query_service()
 
 ### Community 11 - "api.ts"
 Cohesion: 0.09
 Nodes (25): AdminDashboardPage(), AdminDocument, AdminOverview, AdminSystemStatus, API_BASE_URL, CandidateStandardItem, ChatDebugResponse, CitationItem (+17 more)
 
 ### Community 12 - "test_standards_explorer.py"
-Cohesion: 0.06
-Nodes (16): get_localized_all_standards(), get_localized_standard(), test_catalogue_count_and_is_prefix_integrity(), test_empty_query_and_no_result_handling(), test_identifier_normalization_variations(), test_multilingual_localization_hindi_and_tamil(), test_provenance_metadata_completeness_on_all_standards(), test_qco_evidence_not_assumed_without_explicit_metadata() (+8 more)
+Cohesion: 0.05
+Nodes (26): get_localized_all_laboratories(), get_localized_all_schemes(), get_localized_all_standards(), get_localized_laboratory(), get_localized_scheme(), get_localized_standard(), _get_official_laboratories_path(), load_official_laboratories() (+18 more)
 
 ### Community 13 - "GroqService"
-Cohesion: 0.07
-Nodes (17): GroqEvaluator, GroqService, QueryService, test_rag_evaluation_runner_structure(), test_10_unrelated_application_endpoints_continue_working(), test_1_why_should_i_use_you_calls_groq(), test_2_comparison_with_other_chatbots_no_evidence_validation(), test_3_general_question_never_receives_unrelated_citation() (+9 more)
+Cohesion: 0.09
+Nodes (14): GroqService, test_10_unrelated_application_endpoints_continue_working(), test_1_why_should_i_use_you_calls_groq(), test_2_comparison_with_other_chatbots_no_evidence_validation(), test_3_general_question_never_receives_unrelated_citation(), test_4_groq_only_chat_does_not_call_retriever_or_vector_db(), test_5_no_source_responses_return_empty_sources_and_citations(), test_6_evidence_related_status_is_none_for_groq_chat() (+6 more)
 
 ### Community 14 - "OfficialSourceService"
-Cohesion: 0.11
+Cohesion: 0.12
 Nodes (4): OfficialSourceService, TestFetchPage, TestRateLimiting, TestTLSSecurityAndVerification
 
 ### Community 16 - "services"
@@ -216,23 +212,23 @@ Cohesion: 0.13
 Nodes (24): AboutPage(), DocsViewPage(), metadata, RootLayout(), DashboardPage(), AppShell(), Footer(), Header() (+16 more)
 
 ### Community 18 - "get_bis_data_provider"
-Cohesion: 0.12
-Nodes (9): get_bis_data_provider(), test_invalid_url_record_invalidates_verified_status(), test_live_provider_fallback_to_seed(), test_missing_evidence_results_in_insufficient_status(), test_provenance_metadata_present_on_all_seed_records(), test_standard_existence_does_not_imply_mandatory_qco_without_evidence(), test_unrelated_lab_not_presented_as_product_specific(), test_unsupported_fee_question_does_not_invent_amount() (+1 more)
+Cohesion: 0.09
+Nodes (12): get_bis_data_provider(), test_invalid_url_record_invalidates_verified_status(), test_live_provider_fallback_to_seed(), test_missing_evidence_results_in_insufficient_status(), test_provenance_metadata_present_on_all_seed_records(), test_standard_existence_does_not_imply_mandatory_qco_without_evidence(), test_unrelated_lab_not_presented_as_product_specific(), test_unsupported_fee_question_does_not_invent_amount() (+4 more)
 
 ### Community 19 - "StandardsService"
-Cohesion: 0.17
-Nodes (11): get_standard_details(), get_standards_service(), list_or_search_standards(), StandardsService, test_fictional_standard_lookup_returns_none(), std_service(), test_get_nonexistent_standard_details(), test_get_standard_details() (+3 more)
+Cohesion: 0.14
+Nodes (14): get_standard_details(), get_standards_service(), list_or_search_standards(), _is_fictional_or_invalid(), _normalize_key(), StandardsService, _synthesize_standard_with_groq(), test_fictional_standard_lookup_returns_none() (+6 more)
 
 ### Community 20 - ".process_query"
-Cohesion: 0.13
-Nodes (10): ChatResponse, test_capability_query_bypasses_retrieval(), test_capability_queries(), test_certification_missing_product_requires_clarification(), test_general_conversation(), test_negative_no_fake_grounding_or_citations(), test_product_specific_query(), test_standards_query() (+2 more)
+Cohesion: 0.14
+Nodes (7): test_capability_queries(), test_certification_missing_product_requires_clarification(), test_general_conversation(), test_negative_no_fake_grounding_or_citations(), test_product_specific_query(), test_standards_query(), TestProductionRemediationSuite
 
 ### Community 21 - "laboratories/page.tsx"
 Cohesion: 0.17
 Nodes (20): getRecognitionTypeOptions(), LaboratoriesContent(), LaboratoriesPage(), STATE_TRANSLATIONS, fetchLaboratoryStats(), getLaboratoryDetails(), LaboratoryItem, LaboratorySearchResponse (+12 more)
 
 ### Community 23 - "test_official_source_service.py"
-Cohesion: 0.15
+Cohesion: 0.18
 Nodes (3): OfficialSourceEvidence, TestEvidenceFormatting, TestOfficialSourceEvidence
 
 ### Community 24 - "test_laboratory_directory_complete.py"
@@ -248,8 +244,8 @@ Cohesion: 0.29
 Nodes (7): 1. Backend Setup, 2. Frontend Setup, Option A: One-Click Windows Launcher (Recommended), Option B: Manual Installation, Option C: Docker Compose, Prerequisites, 🚀 Quick Start
 
 ### Community 28 - "test_evidence_traceability.py"
-Cohesion: 0.13
-Nodes (8): test_fake_certificate_yields_procedure_guidance(), test_live_provider_fallback_labels_curated_evidence(), test_missing_or_invalid_url_yields_unverified_status(), test_unknown_product_yields_limited_evidence_status(), test_unknown_standard_yields_insufficient_evidence(), test_unsupported_claim_type_rejected(), test_unsupported_fee_yields_insufficient_evidence(), test_valid_curated_record_has_authoritative_curated_status()
+Cohesion: 0.18
+Nodes (6): test_fake_certificate_yields_procedure_guidance(), test_live_provider_fallback_labels_curated_evidence(), test_unknown_product_yields_limited_evidence_status(), test_unknown_standard_yields_insufficient_evidence(), test_unsupported_claim_type_rejected(), test_unsupported_fee_yields_insufficient_evidence()
 
 ### Community 29 - "standards/page.tsx"
 Cohesion: 0.14
@@ -260,36 +256,32 @@ Cohesion: 0.11
 Nodes (17): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+9 more)
 
 ### Community 31 - "main.py"
-Cohesion: 0.18
-Nodes (4): favicon(), lifespan(), root_health(), root_index()
+Cohesion: 0.13
+Nodes (9): list_certification_schemes(), RateLimitMiddleware, RequestIDMiddleware, SecurityHeadersMiddleware, favicon(), lifespan(), root_health(), root_index() (+1 more)
 
 ### Community 32 - "schemas/__init__.py"
 Cohesion: 0.10
 Nodes (19): get_subsystem_health(), dummy_session_maker(), DummyAsyncSession, CitationBase, CitationCreate, CitationResponse, ConversationBase, ConversationCreate (+11 more)
 
-### Community 34 - "ChatMessageInput"
-Cohesion: 0.24
-Nodes (4): ChatMessageInput, test_multi_turn_query_resolution(), query_service(), TestConversationalResolution
+### Community 34 - "schemas/chat.py"
+Cohesion: 0.09
+Nodes (9): ChatMessageInput, test_multi_turn_query_resolution(), query_service(), TestConversationalResolution, live_query_service(), test_live_greetings_and_conversation(), test_live_prompt_injection_defense(), anyio_backend() (+1 more)
 
 ### Community 35 - "config.py"
 Cohesion: 0.20
 Nodes (7): Settings, test_development_allows_unconfigured_secrets(), test_production_fails_when_secrets_are_placeholders(), test_production_fails_when_secrets_missing(), test_production_passes_when_valid_secrets_configured(), test_settings_defaults(), TestProductionCredentialSafety
-
-### Community 36 - "Feature Verification & Status Matrix"
-Cohesion: 0.22
-Nodes (4): RateLimitMiddleware, RequestIDMiddleware, SecurityHeadersMiddleware, Feature Verification & Status Matrix
 
 ### Community 37 - "3. Core Tables & Field Definitions"
 Cohesion: 0.14
 Nodes (13): 1. Schema Overview, 2. Entity Relationship Diagram (Conceptual), 3.1 `users`, 3.2 `documents`, 3.3 `standards`, 3.4 `standard_sections` (Clauses), 3.5 `certification_schemes`, 3.6 `laboratories` (+5 more)
 
 ### Community 38 - "intelligence.py"
-Cohesion: 0.09
-Nodes (12): SourceItem, CandidateStandardItem, LaboratorySearchResponse, StandardDetailResponse, StandardListItem, StandardSectionItem, BaseBISDataProvider, SeedProviderWithProvenanceTag (+4 more)
+Cohesion: 0.11
+Nodes (9): SourceItem, CandidateStandardItem, StandardListItem, BaseBISDataProvider, SeedProviderWithProvenanceTag, SeedBISDataProvider, 2. Evidence Retrieval & Grounding Architecture, Phase 2: Ingestion & Catalog Provider Engine (+1 more)
 
 ### Community 39 - "LaboratoryService"
-Cohesion: 0.13
-Nodes (16): get_laboratory_details(), get_laboratory_service(), get_laboratory_stats(), list_laboratories(), refresh_laboratory_directory(), search_laboratories(), run_diagnostics(), LaboratorySearchRequest (+8 more)
+Cohesion: 0.18
+Nodes (9): get_laboratory_details(), get_laboratory_service(), get_laboratory_stats(), list_laboratories(), refresh_laboratory_directory(), run_diagnostics(), LaboratorySearchResponse, LaboratoryStatsResponse (+1 more)
 
 ### Community 40 - "Knowledge Base & Full-Scale Ingestion (Future Unimplemented Roadmap)"
 Cohesion: 0.15
@@ -320,7 +312,7 @@ Cohesion: 0.40
 Nodes (4): BACKEND_INTERNAL_URL, NEXT_PUBLIC_API_URL, NODE_ENV, entrypoint.sh script
 
 ### Community 49 - "🇮🇳 e-BIS Sahayak (ई-बीआईएस सहायक / இ-பிஐஎஸ் சஹாயக்)"
-Cohesion: 0.13
+Cohesion: 0.15
 Nodes (13): 🔌 API Reference, 🤝 Contributing, 📚 Documentation, 🇮🇳 e-BIS Sahayak (ई-बीआईएस सहायक / இ-பிஐஎஸ் சஹாயக்), ⚙️ Environment Configuration, 📌 Executive Overview, Intelligent Multilingual AI Assistant for Indian Standards & BIS Services, ✨ Key Features (+5 more)
 
 ### Community 51 - "conftest.py"
@@ -419,9 +411,13 @@ Nodes (13): ChatRequest, TestDeepDebuggingAcceptance, test_ambiguous_question_cl
 Cohesion: 0.33
 Nodes (5): 1. Executive Context & Mission, 2. Core Upgrades & Engineering Milestones Delivered, 3. Test & Validation Summary, EXECUTIVE SUMMARY — e-BIS SAHAYAK (SIH 2026 / PS-107), Key Engineering Accomplishments:
 
-### Community 85 - "seed_intelligence.py"
-Cohesion: 0.19
-Nodes (10): get_localized_all_schemes(), get_localized_laboratory(), get_localized_scheme(), _get_official_laboratories_path(), load_official_laboratories(), localize_city(), localize_lab_name(), localize_scope() (+2 more)
+### Community 84 - "LaboratorySearchRequest"
+Cohesion: 0.26
+Nodes (7): search_laboratories(), LaboratorySearchRequest, test_fictional_laboratory_search_returns_empty(), lab_service(), test_search_laboratories_by_city(), test_search_laboratories_by_standard(), test_search_laboratories_by_state()
+
+### Community 85 - "StandardDetailResponse"
+Cohesion: 0.31
+Nodes (3): StandardDetailResponse, StandardSectionItem, test_dynamic_synthesis_caching()
 
 ### Community 95 - "PULL_REQUEST_TEMPLATE.md"
 Cohesion: 0.40
@@ -447,28 +443,24 @@ Nodes (3): 1. High-Level Architecture Overview, 3. Deployment Topology, System A
 Cohesion: 0.40
 Nodes (3): query_service(), test_fictional_standard_hindi_anti_hallucination(), test_fictional_standard_tamil_anti_hallucination()
 
-### Community 110 - "._is_garbage_input"
-Cohesion: 0.40
-Nodes (3): 1. Threat Modeling & Mitigation Matrix, 2. Secrets Management & Environment Hygiene, SECURITY REVIEW & THREAT MODEL — e-BIS SAHAYAK
-
 ## Knowledge Gaps
 - **5 isolated node(s):** `BACKEND_INTERNAL_URL`, `NEXT_PUBLIC_API_URL`, `NODE_ENV`, `next/core-web-vitals`, `ebis-sahayak-backend`
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 704 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **41 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 708 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **39 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `OfficialSourceService` connect `OfficialSourceService` to `.get_relevant_urls`, `IntentRouter`, `Feature Verification & Status Matrix`, `GroqService`, `OfficialSourceService`, `TestCacheManagement`, `TestHTMLExtraction`, `.process_query`, `TestDomainValidation`, `test_official_source_service.py`, `.lookup_evidence`, `TTLCache`?**
-  _High betweenness centrality (0.065) - this node is a cross-community bridge._
+- **Why does `OfficialSourceService` connect `OfficialSourceService` to `.get_relevant_urls`, `IntentRouter`, `benchmark_load_test.py`, `endpoints/chat.py`, `OfficialSourceService`, `TestHTMLExtraction`, `TestDomainValidation`, `test_official_source_service.py`, `.lookup_evidence`, `TTLCache`, `main.py`?**
+  _High betweenness centrality (0.076) - this node is a cross-community bridge._
 - **Are the 50 inferred relationships involving `ChatRequest` (e.g. with `chat_debug_endpoint()` and `chat_endpoint()`) actually correct?**
   _`ChatRequest` has 50 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `BACKEND_INTERNAL_URL`, `NEXT_PUBLIC_API_URL`, `NODE_ENV` to the rest of the system?**
   _5 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `intelligence.py` be split into smaller, more focused modules?**
-  _Cohesion score 0.06649616368286446 - nodes in this community are weakly interconnected._
-- **Why does `QueryService` connect `GroqService` to `SIH 2026 Demonstration Scenarios (SIH26107)`, `ChatMessageInput`, `IntentRouter`, `Feature Verification & Status Matrix`, `test_production_remediation.py`, `intelligence.py`, `endpoints/chat.py`, `test_multilingual_anti_hallucination.py`, `Groq Cloud LPU Integration & Anti-Hallucination Architecture`, `OfficialSourceService`, `ChatRequest`, `query_service`, `.resolve_conversational_query`, `.process_query`?**
-  _High betweenness centrality (0.050) - this node is a cross-community bridge._
+  _Cohesion score 0.07374890254609306 - nodes in this community are weakly interconnected._
+- **Why does `SeedBISDataProvider` connect `intelligence.py` to `SIH 2026 Demonstration Scenarios (SIH26107)`, `2. Technical Justification`, `LanguageService`, `LaboratoryService`, `Knowledge Base & Full-Scale Ingestion (Future Unimplemented Roadmap)`, `test_standards_explorer.py`, `LaboratoryItem`, `RequestBodySizeLimitMiddleware`, `Performance & Latency Benchmarks: e-BIS Sahayak`, `get_bis_data_provider`, `LaboratorySearchRequest`, `StandardDetailResponse`?**
+  _High betweenness centrality (0.066) - this node is a cross-community bridge._
 - **Are the 36 inferred relationships involving `QueryService` (e.g. with `chat_debug_endpoint()` and `chat_endpoint()`) actually correct?**
   _`QueryService` has 36 INFERRED edges - model-reasoned connections that need verification._
 - **Should `endpoints/admin.py` be split into smaller, more focused modules?**
