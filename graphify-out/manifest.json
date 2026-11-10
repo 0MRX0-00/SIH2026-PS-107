@@ -120,9 +120,9 @@
     "semantic_hash": ""
   },
   "backend/app/main.py": {
-    "mtime": 1794194083.3149843,
-    "seen": 1794194522.705894,
-    "ast_hash": "0551722accac0ffff42efc75a08ad726",
+    "mtime": 1794287639.7152002,
+    "seen": 1794287860.233858,
+    "ast_hash": "42ffdeba51f3af58c80237676bbffcee",
     "semantic_hash": ""
   },
   "backend/app/models/__init__.py": {
@@ -828,9 +828,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1794197966.7196133,
-    "seen": 1794286543.2562065,
-    "ast_hash": "a8e4014d619af915aba4e7144caa87bc",
+    "mtime": 1794287133.7909312,
+    "seen": 1794287860.258463,
+    "ast_hash": "19b395fc420039dda03ef9a9d4445e89",
     "semantic_hash": ""
   },
   "backend/requirements-test.txt": {
@@ -995,12 +995,6 @@
     "ast_hash": "64a7f4c9ad9642a34910d69227c1c9e6",
     "semantic_hash": ""
   },
-  ".github/workflows/ci.yml": {
-    "mtime": 1794197745.5456958,
-    "seen": 1794286543.2446835,
-    "ast_hash": "f1f6c76d7691b290ab5a2ff84d351edd",
-    "semantic_hash": ""
-  },
   ".github/ISSUE_TEMPLATE/bug_report.md": {
     "mtime": 1794197745.4314182,
     "seen": 1794286543.2562065,
@@ -1092,9 +1086,15 @@
     "semantic_hash": ""
   },
   "render.yaml": {
-    "mtime": 1794286523.5713367,
-    "seen": 1794286543.2562065,
-    "ast_hash": "24a21e77623c815d676179e382ad66f8",
+    "mtime": 1794286705.0284235,
+    "seen": 1794287860.258463,
+    "ast_hash": "3ee2c295226853ec386e4d9e170bdb81",
+    "semantic_hash": ""
+  },
+  "docs/ci-pipeline.yml": {
+    "mtime": 1794197745.5456958,
+    "seen": 1794287860.2504342,
+    "ast_hash": "f1f6c76d7691b290ab5a2ff84d351edd",
     "semantic_hash": ""
   },
   "frontend/package-lock.json": {

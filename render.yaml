@@ -39,3 +39,4 @@ services:
           type: web
           name: ebis-backend
           property: host
+

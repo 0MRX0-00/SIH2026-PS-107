@@ -102,6 +102,27 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
+# Root Welcome & Cloud Status Endpoint
+@app.get("/", tags=["Health & Status"])
+async def root_index():
+    return {
+        "status": "healthy",
+        "service": settings.PROJECT_NAME,
+        "version": settings.VERSION,
+        "phase": settings.PHASE,
+        "docs_url": "/docs",
+        "health_url": "/health",
+        "api_v1": settings.API_V1_STR,
+        "message": "e-BIS Sahayak Backend API Gateway is active."
+    }
+
+
+# Favicon handler to eliminate 404 browser logs
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return JSONResponse(status_code=204, content={})
+
+
 # Root Health Endpoint
 @app.get("/health", response_model=RootHealthResponse, tags=["Health & Status"])
 async def root_health() -> RootHealthResponse:
