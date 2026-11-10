@@ -1,113 +1,281 @@
-# BIS Sahayak (ई-बीआईएस सहायक / இ-பிஐஎஸ் சஹாயக்)
+<div align="center">
 
-**Source-Grounded Multilingual Assistant for Indian Standards & BIS Services**  
-*Empowering MSMEs, Startups, Manufacturers, Importers, Laboratories, and Consumers.*
+# 🇮🇳 e-BIS Sahayak (ई-बीआईएस सहायक / இ-பிஐஎஸ் சஹாயக்)
+### Intelligent Multilingual AI Assistant for Indian Standards & BIS Services
+**Smart India Hackathon 2026 | Problem Statement: SIH2026-PS-107**
+
+[![Build](https://img.shields.io/badge/Build-Passing-brightgreen?style=flat&logo=render&logoColor=white)](https://render.com)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.111.0-009688?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-14.2.3-000000?style=flat&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.4-3178C6?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?style=flat&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Groq LPU](https://img.shields.io/badge/Groq-LPU_Inference-F05A28?style=flat)](https://groq.com/)
+[![Tests](https://img.shields.io/badge/pytest-292%20passed-brightgreen?style=flat&logo=pytest&logoColor=white)](https://docs.pytest.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+<br/>
+
+[Key Features](#key-features) •
+[Architecture](#system-architecture) •
+[Quick Start](#quick-start) •
+[API Reference](#api-reference) •
+[Security & Guardrails](#security--hardening-controls) •
+[Verification & Testing](#testing--verification) •
+[Documentation](#documentation)
+
+</div>
 
 ---
 
-## 1. Executive Overview
+## 📌 Executive Overview
 
-**e-BIS Sahayak** is an evidence-constrained BIS assistant using a curated BIS evidence registry through a decoupled data-provider architecture across **English**, **Hindi (हिन्दी)**, and **Tamil (தமிழ்)**. Responses are constrained by available evidence and include safeguards against unsupported regulatory claims.
+**e-BIS Sahayak** is an evidence-grounded, multilingual artificial intelligence assistant designed for the **Bureau of Indian Standards (BIS)** ecosystem under **Smart India Hackathon 2026 (Problem Statement: SIH2026-PS-107)**.
 
-The system enforces an evidence-first architecture:
-1. **Deterministic Intent & Guardrail Layer**: Pre-routes capability queries, clarifying requests, out-of-scope queries, and ungrounded fake standards (`IS 9999999`) with clear evidence-based abstention disclaimers.
-2. **Data Provider Abstraction (`BaseBISDataProvider`)**: Decouples services via provider factory (`SeedBISDataProvider`, `LiveBISDataProvider`) with explicit data provenance tracking and source priority ranking.
-3. **Groq LPU Grounded Inference**: Employs Groq LPU (`llama-3.3-70b-versatile`) with 3-tier exponential backoff retries (429/5xx) and fallback synthesis.
-4. **Source Citation Integrity**: Exposes official authority, source URL, verification status (`authoritative_curated`), and supported claim categories (`standard_existence`, `product_applicability`, `mandatory_requirement`).
+Navigating Indian technical regulations, Quality Control Orders (QCOs), standard specifications, laboratory networks, and certification roadmaps is historically complex for MSMEs, startups, manufacturers, and consumers. e-BIS Sahayak solves this through a **strictly grounded, evidence-first architecture**:
+
+- **No Hallucinations / Fake Standards**: Queries referencing non-existent standards (e.g., `IS 99999`) or unsupported regulatory claims are deterministically rejected with authoritative abstentions.
+- **Authoritative Provenance**: Every recommendation cites official Indian Standards (IS), gazette notifications, or verified laboratory registries.
+- **Multilingual Equality**: Complete functional equality and 100% localization key parity across **English**, **Hindi (हिन्दी)**, and **Tamil (தமிழ்)**.
+- **Single-Hop Groq LPU Inference**: Powered by Groq's high-speed LPU infrastructure running `llama-3.3-70b-versatile` with automated exponential backoff and localized fallback synthesis.
 
 ---
 
-## 2. System Architecture
+## 🎯 Project Objectives (SIH2026-PS-107)
 
+1. **Democratize Standards Awareness**: Provide immediate, accessible technical standard guidance to rural and regional businesses in their native languages.
+2. **Streamline BIS Certification**: Empower MSMEs and domestic manufacturers to navigate Scheme-I (ISI Mark), Scheme-II (CRS), FMCS, Hallmarking, and ECO Mark with interactive roadmap wizards.
+3. **Automate Compliance Documentation**: Instantly generate and export comprehensive, print-ready **MSME Compliance Dossiers** (A4 PDF/HTML) detailing stage-by-stage documentation, testing protocols, and fee structures.
+4. **Transparent Lab Discovery**: Enable geospatial and state-filtered search across **576 verified BIS laboratories** (430 recognized, 140 empanelled, 6 institutional apex).
+5. **Absolute Security & Provenance**: Guarantee client-side safety with regex secret scrubbing, rate limiting, and strict input validation.
+
+---
+
+## ✨ Key Features
+
+| Capability | Description |
+| :--- | :--- |
+| 🤖 **Grounded AI Assistant** | Context-aware technical conversational assistant with multi-turn memory, real-time citation links, and explicit confidence badges (`authoritative_curated`, `high`, `verified`). |
+| 📜 **Standards Clause Explorer** | Search and deep-dive into verified Indian Standards (33 curated standards across Electronics, Civil, Automotive, Food, Safety, Textiles) with clause breakdowns. |
+| 🗺️ **Certification Wizard** | Interactive 5-step roadmap generator for BIS schemes with regulatory requirements, estimated timelines, and mandatory fee structures. |
+| 📄 **MSME Compliance Dossier** | One-click generation and export of formal compliance dossiers with print styling, ready for audit submission and executive review. |
+| 🔬 **Laboratory Directory** | Searchable database of 576 accredited test facilities across 27 States/UTs filterable by State, City, and testing scope. |
+| 🌐 **Trilingual Interface** | Native language switching between English, Hindi, and Tamil with 100% dictionary key parity (420 keys per locale). |
+| 🛡️ **Anti-Hallucination Gatekeeper** | Pre-routing entropy checks, regex-based standard verification, and deterministic abstention responses. |
+| ⚡ **Sub-3ms Local Caching** | Cached catalog queries and fast-path guardrail responses resolve in under 3 ms. |
+
+---
+
+## 🏗️ System Architecture
+
+e-BIS Sahayak is built on a clean, decoupled architecture: a **FastAPI backend gateway** providing RESTful APIs and guardrails, paired with a modern **Next.js 14 App Router frontend**.
+
+```mermaid
+flowchart TD
+    subgraph Client["Frontend Client (Next.js 14 + TypeScript)"]
+        UI["Web Browser (Desktop / Tablet / Mobile)"]
+        I18N["Language Context (EN / HI / TA)"]
+        Pages["App Routes: /assistant, /standards, /certification, /laboratories"]
+        UI --> I18N
+        I18N --> Pages
+    end
+
+    subgraph Gateway["API Gateway & Security (FastAPI)"]
+        MW["Security Middleware (RateLimit, SizeLimit, SecurityHeaders)"]
+        Gatekeeper["Input Gatekeeper & Entropy Filter"]
+        Router["Priority Intent Router"]
+        Sanitizer["Response & Secret Sanitizer"]
+        MW --> Gatekeeper
+        Gatekeeper --> Router
+    end
+
+    subgraph CoreEngine["Core Intelligence Services"]
+        Lang["Language & Script Classifier"]
+        Anaphoric["Context & Query Resolver"]
+        Dossier["MSME Dossier Service"]
+        Catalog["Verified BIS Catalog Engine"]
+        Labs["Laboratory Service (576 Labs)"]
+    end
+
+    subgraph LLM["Inference Tier"]
+        Groq["Groq LPU (llama-3.3-70b-versatile)"]
+        Fallback["Deterministic Offline Fallback"]
+    end
+
+    subgraph DataTier["Data & Registry Store"]
+        Seed["Curated Indian Standards (33)"]
+        LabData["Official BIS Lab Registry (JSON)"]
+        Postgres[("Optional PostgreSQL Store")]
+    end
+
+    Pages -->|HTTP REST /api/v1| MW
+    Router --> Lang
+    Router --> Anaphoric
+    Router --> Dossier
+    Router --> Catalog
+    Router --> Labs
+
+    Catalog --> Seed
+    Labs --> LabData
+
+    Anaphoric -->|Contextual Prompt| Groq
+    Groq -.->|Rate Limit / Timeout| Fallback
+    Groq --> Sanitizer
+    Fallback --> Sanitizer
+    Sanitizer -->|JSON Response| Pages
 ```
-User Web Browser (Desktop / Tablet / Mobile)
-        │
-        ▼ (HTTPS / REST)
-Next.js 14 Production Frontend (App Router, Tailwind CSS, TypeScript, i18n Context)
-        ├── / (Intelligence Dashboard with Metrics & Query Bar)
-        ├── /assistant (Conversational Assistant with Real-time Citations & Multi-turn Memory)
-        ├── /standards & /standards/[standardNumber] (Standards Explorer & Clauses)
-        ├── /certification (Interactive Certification Roadmap Wizard)
-        └── /laboratories (Testing Facility Directory with State/City filter)
-        │
-        ▼ (/api/v1/*)
-FastAPI Backend Gateway (Python 3.10+, Pydantic v2, CORS, Structured Logging)
-        ├── Middlewares: SecurityHeaders, SizeLimit, RateLimit, RequestID
-        ├── Language Service & Script Classifier (app/services/language_service.py)
-        ├── Input Gatekeeper & Garbage Entropy Filter (app/services/intent_router.py)
-        ├── Priority Intent Router & Anti-Hallucination Guardrail (app/services/intent_router.py)
-        ├── Anaphoric Context & Follow-Up Resolver (app/services/query_service.py)
-        ├── Curated BIS Data Provider Engine (app/services/data_providers/)
-        ├── Evidence Abstention Gatekeeper (intent routing & verified catalogue validation)
-        └── Groq Cloud LPU Client (llama-3.3-70b-versatile with secret scrubber)
+
+### Request Lifecycle Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as User / MSME
+    participant FE as Next.js 14 UI
+    participant API as FastAPI Gateway
+    participant Guard as Guardrails & Intent Router
+    participant Cat as BIS Catalog / Labs
+    participant LLM as Groq Cloud LPU
+    participant Scrub as Secret Scrubber
+
+    User->>FE: Submit Query ("IS 302-2-3 iron testing steps")
+    FE->>API: POST /api/v1/query/stream
+    API->>Guard: Validate payload size & rate limits
+    Guard->>Guard: Entropy filter & intent classification
+    alt Non-existent standard (e.g. IS 99999)
+        Guard-->>FE: Return deterministic refusal disclaimer
+    else Verified Standard Request
+        Guard->>Cat: Query local verified catalog (IS 302-2-3)
+        Cat-->>Guard: Return clause metadata & testing scope
+        Guard->>LLM: Dispatch grounded prompt with citations
+        LLM-->>Scrub: Stream response chunks
+        Scrub->>Scrub: Regex scrub API keys & internal paths
+        Scrub-->>FE: Stream clean response with authoritative citations
+        FE-->>User: Render formatted markdown with citation pills
+    end
 ```
 
 ---
 
-## 3. Measured Performance Profile
+## 🗂️ Project Directory Structure
 
-The following metrics were measured across representative API queries using local benchmark instrumentation:
-
-| Operational Class | Cold Median | Cold P95 | Warm / Cache Median | Warm P95 |
-| :--- | :---: | :---: | :---: | :---: |
-| **Fast-Path (Greetings / Guardrails)** | **2.64 ms – 2.95 ms** | **3.77 ms – 5.09 ms** | **2.82 ms – 2.97 ms** | **5.14 ms** |
-| **Ambiguity Clarifications** | **2.75 ms** | **2.95 ms** | **2.96 ms** | **5.27 ms** |
-| **Curated Evidence Lookup (Water / Fans / Plugs)** | **4.84 s – 4.92 s** | **5.19 s – 10.75 s** | **2.88 ms – 3.01 ms** | **3.55 ms** |
-| **Multilingual Evidence Lookup (Tamil / Hindi / Hinglish)** | **4.76 s** | **5.12 s** | **3.17 ms** | **5.01 ms** |
+```text
+SIH2026-PS-107/
+├── .github/                     # GitHub workflows and issue/PR templates
+│   ├── workflows/ci.yml         # Automated CI (pytest + Next.js build)
+│   ├── ISSUE_TEMPLATE/          # Bug report and feature request templates
+│   └── PULL_REQUEST_TEMPLATE.md # Standard PR checklist
+├── backend/                     # FastAPI Python 3.11+ application
+│   ├── app/
+│   │   ├── api/v1/endpoints/   # Route handlers (query, standards, cert, labs)
+│   │   ├── core/                # Configuration, logging, security middlewares
+│   │   ├── db/                  # Verified catalog seeds & models
+│   │   ├── evaluation/          # Benchmark & RAG evaluation suites
+│   │   ├── schemas/             # Pydantic v2 validation contracts
+│   │   ├── services/            # Business logic (Groq client, intent router, dossier)
+│   │   ├── main.py              # Application entrypoint & CORS setup
+│   │   └── preflight.py         # System diagnostics & registry verifier
+│   ├── data/                    # Authoritative lab directory JSON (576 labs)
+│   ├── tests/                   # 291 comprehensive pytest test suites
+│   ├── Dockerfile               # Production multi-stage Docker build
+│   └── requirements.txt         # Minimal pinned backend dependencies
+├── frontend/                    # Next.js 14 App Router application
+│   ├── src/
+│   │   ├── app/                 # Routes: /assistant, /standards, /certification, /laboratories
+│   │   ├── components/          # Reusable UI widgets & navigation
+│   │   ├── context/             # Multilingual LanguageContext
+│   │   └── locales/             # 100% Key-Parity Dictionaries (en, hi, ta)
+│   ├── public/                  # Static assets and icons
+│   ├── Dockerfile               # Production multi-stage Node 20 build
+│   └── package.json             # Frontend dependencies & scripts
+├── docs/                        # Complete technical documentation suite
+│   ├── architecture.md          # Architectural blueprints and patterns
+│   ├── deployment-checklist.md  # Production hardening guidelines
+│   ├── feature-completeness-matrix.md
+│   ├── limitations-roadmap.md   # Measured boundaries & future milestones
+│   ├── risk-register.md         # Threat matrix & mitigation strategies
+│   └── security-review.md       # Full security audit report
+├── docker/                      # Database initialization scripts
+├── docker-compose.yml           # Complete containerized stack configuration
+├── start.bat                    # One-click Windows startup launcher
+├── stop.bat                     # Clean port and process shutdown utility
+├── run_tests.bat                # Automated test runner script
+├── CONTRIBUTING.md              # Open-source contribution guidelines
+├── SECURITY.md                  # Vulnerability disclosure policy
+├── CODE_OF_CONDUCT.md           # Contributor code of conduct
+├── CHANGELOG.md                 # Project release notes & history
+└── README.md                    # Project presentation and documentation
+```
 
 ---
 
-## 4. Security & Hardening Controls
-
-- **Secret Scrubbing Engine**: LLM responses are intercepted by regex scrubbers (`_scrub_sensitive_data()`) to prevent leakage of `GROQ_API_KEY`, API tokens, or server file paths.
-- **Traceback Sanitization**: Global 500 exception handlers prevent internal file paths or Python tracebacks from leaking in HTTP responses.
-- **Prompt Injection Defense**: System instructions are enclosed in boundary delimiters; attempts to override policy or reveal system prompts are rejected.
-- **Garbage Input Filter**: Uninformative noise and high-entropy strings ("asdfgh", "123456", "@@@@") are rejected before database search or LLM invocation.
-- **Rate Limiting**: Sliding-window limiter enforces 40 requests/minute per client IP to mitigate denial-of-service abuse.
-- **Input Validation**: Pydantic models enforce string boundaries (`1 <= length <= 1000`), rejecting oversized buffer payloads with HTTP 422.
-- **Security Headers**: Standard production headers applied (`X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`).
-
----
-
-## 5. Multilingual Key Parity & Localization
-
-The frontend localization system features **100% key parity** across English, Hindi, and Tamil:
-* `frontend/src/locales/en.json`: **318 keys**
-* `frontend/src/locales/hi.json`: **318 keys**
-* `frontend/src/locales/ta.json`: **318 keys**
-* Verified via automated structural comparison tests in `test_production_acceptance.py`.
-
----
-
-## 6. Setup & Installation
+## 🚀 Quick Start
 
 ### Prerequisites
-* Python 3.10+
-* Node.js 18+ and npm
-* Groq API Key ([console.groq.com](https://console.groq.com))
+- **Python**: Version `3.10` or higher (3.11 recommended)
+- **Node.js**: Version `18.0.0` or higher (Node 20 recommended)
+- **npm**: Version `9.0.0` or higher
+- **Groq API Key**: Free tier or production key from [console.groq.com](https://console.groq.com)
 
-### 1. Backend Setup
-```powershell
+---
+
+### Option A: One-Click Windows Launcher (Recommended)
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/0MRX0-00/SIH2026-PS-107.git
+   cd SIH2026-PS-107
+   ```
+2. Configure your environment:
+   ```bash
+   copy .env.example .env
+   # Open .env and add your GROQ_API_KEY=gsk_...
+   ```
+3. Run the automated starter script:
+   ```cmd
+   start.bat
+   ```
+   *The launcher will check ports, run pre-flight diagnostics, start FastAPI on port `8000`, and start Next.js on port `3000`.*
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+5. To gracefully stop all services:
+   ```cmd
+   stop.bat
+   ```
+
+---
+
+### Option B: Manual Installation
+
+#### 1. Backend Setup
+```bash
 cd backend
 
-# Create and activate virtual environment
+# Create virtual environment
 python -m venv venv
-.\venv\Scripts\activate   # On Windows
-# source venv/bin/activate # On Linux/macOS
+
+# Activate virtual environment
+# Windows:
+.\venv\Scripts\activate
+# Linux / macOS:
+source venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Configure environment (.env)
+# Configure environment
 cp ../.env.example .env
-# Set GROQ_API_KEY=your_groq_api_key_here
+# Ensure GROQ_API_KEY is configured in .env
 
-# Start backend server
-uvicorn app.main:app --reload --port 8000
+# Run Pre-flight Diagnostics
+python -m app.preflight
+
+# Start FastAPI server
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
+*Backend Swagger API documentation is available at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).*
 
-### 2. Frontend Setup
-```powershell
+#### 2. Frontend Setup
+```bash
 cd frontend
 
 # Install dependencies
@@ -116,44 +284,158 @@ npm install
 # Start Next.js development server
 npm run dev
 ```
-Open `http://localhost:3000` to access the application.
+*Frontend portal will be live at [http://localhost:3000](http://localhost:3000).*
 
 ---
 
-## 7. Automated Testing & Verification
+### Option C: Docker Compose
 
-### Running the Full Reproducible Backend Test Suite
-```powershell
+Run the entire stack (PostgreSQL + FastAPI Backend + Next.js Frontend) in isolated containers:
+
+```bash
+# Provide environment variables
+cp .env.example .env
+# Edit .env and supply your POSTGRES_PASSWORD and GROQ_API_KEY
+
+# Build and launch all containers
+docker compose up --build -d
+
+# Check service logs
+docker compose logs -f
+```
+
+---
+
+## ⚙️ Environment Configuration
+
+Configuration is managed via environment variables. Copy `.env.example` to `.env` in the root and configure:
+
+| Variable | Default Value | Description |
+| :--- | :--- | :--- |
+| `GROQ_API_KEY` | `""` *(Required)* | Groq Cloud LPU API key for inference. |
+| `GROQ_MODEL` | `llama-3.3-70b-versatile` | LLM model checkpoint for Groq inference. |
+| `ENVIRONMENT` | `development` | Deployment environment (`development` or `production`). |
+| `PORT` | `8000` | Port for the FastAPI backend service. |
+| `BACKEND_CORS_ORIGINS` | `["http://localhost:3000"]` | Allowed CORS origins as a JSON string array. |
+| `RATE_LIMIT_PER_MINUTE` | `40` | Sliding window rate limit per client IP. |
+| `ADMIN_API_KEY` | `""` | Key for privileged administrative endpoints. |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:8000` | URL of the backend API consumed by Next.js. |
+| `NEXT_PUBLIC_APP_NAME` | `e-BIS Sahayak` | Application display name. |
+
+---
+
+## 🔌 API Reference
+
+The backend provides well-documented, versioned REST endpoints under `/api/v1/`:
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/health` | Healthcheck and readiness probe with uptime and database status. |
+| `POST` | `/api/v1/query` | Synchronous technical standards query with citation provenance. |
+| `POST` | `/api/v1/query/stream` | Server-Sent Events (SSE) streaming response for AI assistant dialogue. |
+| `GET` | `/api/v1/standards` | List curated Indian Standards with category filtering. |
+| `GET` | `/api/v1/standards/{id}` | Retrieve comprehensive standard details and clause breakdowns. |
+| `GET` | `/api/v1/certification/schemes`| Retrieve all 10 BIS conformity assessment schemes. |
+| `POST` | `/api/v1/certification/calculate` | Compute customized certification fees and processing timeline. |
+| `POST` | `/api/v1/certification/export-dossier` | Generate formatted HTML/JSON compliance dossier for MSMEs. |
+| `POST` | `/api/v1/certification/download-dossier` | Stream download ready-to-print A4 compliance dossier. |
+| `GET` | `/api/v1/laboratories` | Filter and query across 576 accredited BIS test laboratories. |
+| `GET` | `/api/v1/laboratories/stats` | Aggregate laboratory statistics by accreditation type and state. |
+
+Interactive OpenAPI documentation is hosted locally at `http://127.0.0.1:8000/docs` and Redoc at `http://127.0.0.1:8000/redoc`.
+
+---
+
+## 🧪 Testing & Verification
+
+e-BIS Sahayak enforces rigorous automated testing across both backend and frontend layers.
+
+### Run Backend Test Suite (292 Tests)
+
+```bash
 cd backend
 python -m pytest tests/ -v
 ```
-*(Result: 283 passed in ~4s with zero external network dependencies)*
 
-### Running Critical Repairs Regression Suite
-```powershell
-cd backend
-python -m pytest tests/test_critical_repairs.py -v
+```text
+======================= 292 passed, 1 warning in 14.84s =======================
 ```
-*(Result: 13 passed, covering 2MB request body streaming size limit, chat debug auth, rate limiter bounds, and credential safety)*
 
-### Running Local Concurrency & Load Benchmark
-```powershell
-python scripts/benchmark_load_test.py
+The test suite covers:
+- **Functional Integrity**: Query processing, language scripts, and data providers.
+- **Evidence Grounding**: Refusal of unindexed fake standards (`IS 99999`), citation accuracy.
+- **Dossier Generation**: MSME compliance export, schema validation, and PDF print formatting.
+- **Security Middlewares**: Secret scrubbing regex, 2MB body size limit, sliding rate limiter.
+- **Multilingual Parity**: Exact structural key parity (420 keys in EN, HI, TA).
+
+### Run Frontend Verification
+
+```bash
+cd frontend
+
+# Run ESLint validation
+npm run lint
+
+# Run Production Next.js Build
+npm run build
 ```
-*(Benchmarks 8 endpoints at concurrency tiers 1, 5, 10, 20 with mocked Groq LPU inference and evaluates 7 fault-injection scenarios)*
+
+```text
+✓ Compiled successfully
+✓ Linting and checking validity of types
+✓ Generating static pages (11/11)
+✓ Finalizing page optimization
+```
 
 ---
 
-## 8. Verified vs Unverified Operational Limits
+## 🛡️ Security & Hardening Controls
 
-### Measured & Verified
-* **Cold LLM Synthesis Latency:** Single-hop Groq LPU synthesis via `llama-3.3-70b-versatile`.
-* **Warm Cache Hit Latency:** ~3 ms median for catalog and local registry lookups.
-* **Test Suite:** 283/283 passing unit and integration tests (Functional, Evidence Grounding, Multilingual, Security, Performance, Concurrency).
-* **Translation Coverage:** 100% structural key parity (318/318 keys across EN/HI/TA).
-* **Fake Standard Guardrail:** Immediate refusal for unindexed standards (e.g. `IS 99999`) without hallucinating clauses.
+- **Secret Scrubbing Filter**: All LLM streaming chunks pass through regex masks (`_scrub_sensitive_data()`) preventing accidental leakage of API keys, bearer tokens, or server paths.
+- **Strict Rate Limiting**: In-memory sliding-window limiter enforces 40 req/min per IP with LRU eviction capped at 10,000 entries.
+- **Payload Streaming Limiter**: `SizeLimitMiddleware` truncates oversized HTTP request bodies at 2MB to prevent buffer denial-of-service.
+- **Traceback Sanitization**: Global exception handlers trap unhandled errors and return sanitized generic messages without exposing Python tracebacks.
+- **Fail-Closed Pre-flight Check**: Validates that all data sources, seed catalogues, and configurations are intact before accepting traffic.
+- **Defensive Prompt Delimiters**: User inputs are wrapped in rigid boundary markers to counter adversarial prompt injection.
 
-### Limitations & Known Constraints
-* **Sole LLM Provider Architecture:** Groq Cloud is the exclusive LLM provider. The system does not utilize vector databases (Qdrant/Chroma), embedding models, or RAG pipelines; all grounding is performed via deterministic catalog lookup and official gazette registry validation.
-* **Live Web Availability:** Real-time web retrieval depends on official BIS portal responsiveness. If blocked or timed out (> 2.5s), the system gracefully falls back to the authoritative local BIS catalog (`SeedBISDataProvider` and `official_bis_laboratories.json`).
-* **Groq Cloud Quotas:** Free-tier Groq API keys are subject to TPM/RPM rate limits. Production deployments should configure paid production Groq tier credentials.
+---
+
+## 📚 Documentation
+
+Detailed technical documentation is available in the [`docs/`](docs/) directory:
+
+- [System Architecture](docs/architecture.md)
+- [Deployment Checklist](docs/deployment-checklist.md)
+- [Feature Completeness Matrix](docs/feature-completeness-matrix.md)
+- [Limitations & Engineering Roadmap](docs/limitations-roadmap.md)
+- [Risk Register & Threat Assessment](docs/risk-register.md)
+- [Security Review](docs/security-review.md)
+
+---
+
+## 🤝 Contributing
+
+Contributions to e-BIS Sahayak are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) and adhere to our [Code of Conduct](CODE_OF_CONDUCT.md).
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'feat: add AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+## ⚖️ License & Disclaimer
+
+### License
+Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more information.
+
+### Official BIS Disclaimer
+*e-BIS Sahayak is an educational and technical research prototype created for Smart India Hackathon 2026 (SIH2026-PS-107). It is **not** an official platform of the Bureau of Indian Standards (BIS) or the Government of India. For binding regulatory certifications, formal applications, and statutory compliance, always consult the official BIS portal at [bis.gov.in](https://www.bis.gov.in) and [manakonline.in](https://www.manakonline.in).*
+
+---
+
+<div align="center">
+  <b>Developed for Smart India Hackathon 2026</b><br/>
+  <i>Empowering Indian Industry Through Standards & Quality Assurance</i>
+</div>

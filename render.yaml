@@ -1,0 +1,41 @@
+services:
+  # ----------------------------------------------------------------------------
+  # e-BIS Sahayak — Backend FastAPI Service
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: ebis-backend
+    env: docker
+    dockerContext: .
+    dockerfilePath: Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-120b
+      - key: BACKEND_CORS_ORIGINS
+        value: '["*"]'
+
+  # ----------------------------------------------------------------------------
+  # e-BIS Sahayak — Frontend Next.js Service
+  # ----------------------------------------------------------------------------
+  - type: web
+    name: ebis-frontend
+    env: node
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_APP_NAME
+        value: e-BIS Sahayak
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: ebis-backend
+          property: host

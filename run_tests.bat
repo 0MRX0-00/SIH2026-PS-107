@@ -14,7 +14,7 @@ if exist "venv\Scripts\activate.bat" (
     call venv\Scripts\activate.bat
 )
 
-echo [1/2] Running 87 Backend Unit & Integration Tests...
+echo [1/2] Running 292 Backend Unit & Integration Tests...
 python -m pytest -v
 echo.
 

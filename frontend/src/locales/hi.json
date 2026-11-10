@@ -314,6 +314,7 @@
     "problem_statement_desc": "ई-बीआईएस सहायक के लिए संदर्भ, चुनौतियां और मुख्य उद्देश्य।",
     "requirements_title": "सिस्टम आवश्यकताएं",
     "requirements_desc": "कार्यात्मक (FR) और गैर-कार्यात्मक (NFR) इंजीनियरिंग आवश्यकताएं।",
+    "architecture_title": "सिस्टम वास्तुकला",
     "architecture_desc": "मल्टी-टियर सेवाएं, मानक सूची खोज और Groq LLM ऑर्केस्ट्रेशन।",
     "technology_stack_title": "तकनीक स्टैक",
     "technology_stack_desc": "FastAPI, Next.js, PostgreSQL, Groq और उपयोग का कारण।",
