@@ -1064,11 +1064,25 @@ import os
 import json
 
 def _get_official_laboratories_path() -> str:
-    # Look in data/laboratories/official_bis_laboratories.json
+    # Check multiple candidate locations for official_bis_laboratories.json
     cur_dir = os.path.dirname(os.path.abspath(__file__))
-    # cur_dir is backend/app/db
-    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(cur_dir)))
-    return os.path.join(root_dir, "data", "laboratories", "official_bis_laboratories.json")
+    candidates = [
+        # Relative to project root: data/laboratories/official_bis_laboratories.json
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))), "data", "laboratories", "official_bis_laboratories.json"),
+        # Inside backend/data: backend/data/laboratories/official_bis_laboratories.json
+        os.path.join(os.path.dirname(os.path.dirname(cur_dir)), "data", "laboratories", "official_bis_laboratories.json"),
+        # Current working directory
+        os.path.join(os.getcwd(), "data", "laboratories", "official_bis_laboratories.json"),
+        # Docker root path
+        "/app/data/laboratories/official_bis_laboratories.json",
+        "/app/backend/data/laboratories/official_bis_laboratories.json",
+        # Frontend data mirror
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))), "frontend", "src", "data", "laboratories.json"),
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            return c
+    return candidates[0]
 
 def load_official_laboratories() -> List[Dict[str, Any]]:
     path = _get_official_laboratories_path()

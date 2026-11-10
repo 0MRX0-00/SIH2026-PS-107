@@ -317,7 +317,8 @@ export async function listStandards(params?: {
   if (params?.limit) queryParams.set("limit", String(params.limit));
   if (params?.language) queryParams.set("language", params.language);
 
-  const res = await fetch(`${API_BASE_URL}/api/v1/standards/?${queryParams.toString()}`);
+  const qStr = queryParams.toString() ? `?${queryParams.toString()}` : "";
+  const res = await fetch(`${API_BASE_URL}/api/v1/standards${qStr}`);
   if (!res.ok) {
     throw new Error("Failed to retrieve standards list");
   }

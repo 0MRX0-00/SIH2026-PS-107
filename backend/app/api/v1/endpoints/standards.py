@@ -8,6 +8,7 @@ router = APIRouter()
 def get_standards_service() -> StandardsService:
     return StandardsService()
 
+@router.get("", response_model=List[StandardListItem])
 @router.get("/", response_model=List[StandardListItem])
 def list_or_search_standards(
     q: Optional[str] = Query(None, description="Search keyword, standard number, product, or committee"),

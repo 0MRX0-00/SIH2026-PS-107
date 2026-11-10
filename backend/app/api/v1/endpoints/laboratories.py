@@ -54,6 +54,7 @@ def search_laboratories(
         )
 
 
+@router.get("", response_model=LaboratorySearchResponse)
 @router.get("/", response_model=LaboratorySearchResponse)
 def list_laboratories(
     query: Optional[str] = Query(None, description="Free text keyword or capability search"),

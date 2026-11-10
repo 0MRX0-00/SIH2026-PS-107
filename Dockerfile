@@ -32,8 +32,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY backend/requirements.txt ./backend/requirements.txt
 RUN pip install --no-cache-dir -r ./backend/requirements.txt
 
-# 2. Copy Backend Application Code
+# 2. Copy Backend Application Code & Laboratory Datasets
 COPY backend/ ./backend/
+COPY data/ ./data/
 
 # 3. Copy Built Frontend Application
 WORKDIR /app/frontend
