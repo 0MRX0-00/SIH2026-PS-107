@@ -34,3 +34,4 @@ export NEXT_PUBLIC_API_URL="/api/v1"
 export NODE_ENV=production
 
 exec npm start -- -p "${PUBLIC_PORT}"
+
