@@ -1,9 +1,9 @@
 # Graph Report - Mini Project  (2026-11-10)
 
 ## Corpus Check
-- 183 files · ~232,355 words
+- 183 files · ~232,386 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 17 file(s) not represented in the graph (top: (none) 6, .bat 5, .example 4)
+- Unclassified: 18 file(s) not represented in the graph (top: (none) 7, .bat 5, .example 4)
 
 ## Summary
 - 1719 nodes · 3501 edges · 111 communities (73 shown, 38 thin omitted)
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `08a0ef26`
+- Built from commit: `28f25d04`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -130,12 +130,12 @@
   docs/groq-integration.md → backend/app/services/query_service.py
 - `5. Citation Validation & Anti-Hallucination Pipeline` --references--> `QueryService`  [INFERRED]
   docs/groq-integration.md → backend/app/services/query_service.py
+- `1. Overview` --references--> `BaseBISDataProvider`  [INFERRED]
+  docs/groq-integration.md → backend/app/services/data_providers/base_provider.py
+- `1.2 Standards Discovery & Grounding` --references--> `BaseBISDataProvider`  [INFERRED]
+  docs/requirements.md → backend/app/services/data_providers/base_provider.py
 - `2. Intent Classification & Query Router` --references--> `IntentRouter`  [INFERRED]
   docs/bis-intelligence.md → backend/app/services/intent_router.py
-- `4. Security & Production Checklist` --references--> `IntentRouter`  [INFERRED]
-  docs/deployment.md → backend/app/services/intent_router.py
-- `2.1 Prompt Injection & Adversarial Defense` --references--> `IntentRouter`  [INFERRED]
-  docs/security.md → backend/app/services/intent_router.py
 
 ## Import Cycles
 - None detected.
@@ -443,14 +443,14 @@ Nodes (4): Reporting a Vulnerability, Security Architecture & Hardening Controls
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `OfficialSourceService` connect `OfficialSourceService` to `.get_relevant_urls`, `IntentRouter`, `QueryService`, `OfficialSourceService`, `TestHTMLExtraction`, `TestDomainValidation`, `test_official_source_service.py`, `.lookup_evidence`, `3. Detailed Work Breakdown`, `TTLCache`, `main.py`?**
-  _High betweenness centrality (0.098) - this node is a cross-community bridge._
+  _High betweenness centrality (0.079) - this node is a cross-community bridge._
 - **Are the 50 inferred relationships involving `ChatRequest` (e.g. with `chat_debug_endpoint()` and `chat_endpoint()`) actually correct?**
   _`ChatRequest` has 50 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `BACKEND_INTERNAL_URL`, `NEXT_PUBLIC_API_URL`, `NODE_ENV` to the rest of the system?**
   _5 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `intelligence.py` be split into smaller, more focused modules?**
   _Cohesion score 0.0773892773892774 - nodes in this community are weakly interconnected._
-- **Why does `IntentRouter` connect `IntentRouter` to `README.md`, `Knowledge Base & Full-Scale Ingestion (Future Unimplemented Roadmap)`, `e-BIS Sahayak — Production Deployment Guide`, `QueryService`, `e-BIS Sahayak — Phase 4: BIS Intelligence Layer Documentation`, `3. Detailed Work Breakdown`, `2. Threat Modeling & Mitigations`, `main.py`?**
+- **Why does `QueryService` connect `QueryService` to `SIH 2026 Demonstration Scenarios (SIH26107)`, `ChatMessageInput`, `IntentRouter`, `GroqEvaluator`, `SeedBISDataProvider`, `GroqService`, `OfficialSourceService`, `Groq Cloud LPU Integration & Anti-Hallucination Architecture`, `get_bis_data_provider`, `conftest.py`, `ChatRequest`, `main.py`?**
   _High betweenness centrality (0.053) - this node is a cross-community bridge._
 - **Are the 36 inferred relationships involving `QueryService` (e.g. with `chat_debug_endpoint()` and `chat_endpoint()`) actually correct?**
   _`QueryService` has 36 INFERRED edges - model-reasoned connections that need verification._

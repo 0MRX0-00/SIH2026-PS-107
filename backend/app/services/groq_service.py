@@ -118,6 +118,13 @@ class GroqService:
                         return self._scrub_sensitive_data(raw_text.strip())
                     return "I was unable to retrieve a response for your query. Please rephrase your question."
 
+                if response.status_code == 404 and "model" in response.text.lower():
+                    if payload["model"] != "openai/gpt-oss-120b":
+                        logger.warning(f"Configured model {payload['model']} not accessible on this Groq account. Auto-recovering with 'openai/gpt-oss-120b'...")
+                        payload["model"] = "openai/gpt-oss-120b"
+                        self.model = "openai/gpt-oss-120b"
+                        continue
+
                 if response.status_code in (429, 500, 502, 503, 504):
                     logger.warning(
                         f"Groq API HTTP {response.status_code} (attempt {attempt + 1}/{max_retries}, latency: {elapsed_ms:.2f}ms)"
