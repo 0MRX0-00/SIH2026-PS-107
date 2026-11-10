@@ -1,9 +1,9 @@
 services:
   # ----------------------------------------------------------------------------
-  # e-BIS Sahayak — Backend FastAPI Service
+  # e-BIS Sahayak — Unified Full-Stack Service (Next.js Frontend + FastAPI Backend)
   # ----------------------------------------------------------------------------
   - type: web
-    name: ebis-backend
+    name: sih2026-ps-107
     env: docker
     dockerContext: .
     dockerfilePath: Dockerfile
@@ -18,25 +18,5 @@ services:
         value: openai/gpt-oss-120b
       - key: BACKEND_CORS_ORIGINS
         value: '["*"]'
-
-  # ----------------------------------------------------------------------------
-  # e-BIS Sahayak — Frontend Next.js Service
-  # ----------------------------------------------------------------------------
-  - type: web
-    name: ebis-frontend
-    env: node
-    rootDir: frontend
-    buildCommand: npm install && npm run build
-    startCommand: npm start
-    plan: free
-    envVars:
-      - key: NODE_ENV
-        value: production
       - key: NEXT_PUBLIC_APP_NAME
         value: e-BIS Sahayak
-      - key: NEXT_PUBLIC_API_URL
-        fromService:
-          type: web
-          name: ebis-backend
-          property: host
-

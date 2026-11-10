@@ -14,6 +14,14 @@ const nextConfig = {
         source: "/health",
         destination: `${cleanBackendUrl}/health`,
       },
+      {
+        source: "/docs",
+        destination: `${cleanBackendUrl}/docs`,
+      },
+      {
+        source: "/openapi.json",
+        destination: `${cleanBackendUrl}/openapi.json`,
+      },
     ];
   },
 };

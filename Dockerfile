@@ -1,26 +1,55 @@
+# -----------------------------------------------------------------------------
+# Stage 1: Build Next.js Production Bundle
+# -----------------------------------------------------------------------------
+FROM node:20-alpine AS frontend-builder
+
+WORKDIR /app/frontend
+
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm ci
+
+COPY frontend/ ./
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN npm run build
+
+# -----------------------------------------------------------------------------
+# Stage 2: Final Full-Stack Production Container (Python + Node.js)
+# -----------------------------------------------------------------------------
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install build essentials & postgres client libs
+# Install Node.js 20 runtime, curl, and build tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
     gcc \
     libpq-dev \
-    curl \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy dependency definition from backend directory
-COPY backend/requirements.txt ./requirements.txt
+# 1. Install Backend Dependencies
+COPY backend/requirements.txt ./backend/requirements.txt
+RUN pip install --no-cache-dir -r ./backend/requirements.txt
 
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# 2. Copy Backend Application Code
+COPY backend/ ./backend/
 
-# Copy backend application code
-COPY backend/ .
+# 3. Copy Built Frontend Application
+WORKDIR /app/frontend
+COPY --from=frontend-builder /app/frontend/package.json ./package.json
+COPY --from=frontend-builder /app/frontend/node_modules ./node_modules
+COPY --from=frontend-builder /app/frontend/.next ./.next
+COPY --from=frontend-builder /app/frontend/public ./public
+COPY --from=frontend-builder /app/frontend/next.config.js ./next.config.js
 
-ENV PORT=8000
-EXPOSE 8000
+# 4. Copy Startup Entrypoint Script
+WORKDIR /app
+COPY docker/entrypoint.sh ./entrypoint.sh
+RUN sed -i 's/\r$//' ./entrypoint.sh && chmod +x ./entrypoint.sh
 
-# Run FastAPI via Uvicorn with dynamic port binding for cloud hosts (Render, Railway)
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+ENV PORT=3000
+EXPOSE 3000
 
+# Execute Unified Entrypoint
+CMD ["./entrypoint.sh"]
